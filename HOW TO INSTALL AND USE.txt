@@ -1,0 +1,27 @@
+TANKTROUBLE COLOR LAB - v1.0
+Made and run by wazzey. Not affiliated with TankTrouble.
+Custom colours, paints, items and map themes for TankTrouble. Cosmetic only: only YOU see them, other players see the normal game.
+
+Official download (the only one): https://github.com/wazzey/tanktrouble-color-lab/releases
+Check the zip's SHA-256 matches the one listed there before installing.
+
+INSTALL (Chrome, Edge, Brave, Opera)
+1. Unzip. Keep the "TankTrouble-Color-Lab" folder - the browser runs it from there.
+2. Open chrome://extensions (edge:// or brave://).
+3. Turn on Developer mode (top right).
+4. Click "Load unpacked" and pick the "TankTrouble-Color-Lab" folder.
+5. Pin it from the puzzle-piece icon, then open or refresh tanktrouble.com.
+
+UPDATE (keeps everything)
+Copy the new files over your old folder, press reload on the extension, then refresh TankTrouble.
+
+USING IT
+- Alt+C opens the panel. Alt+V refreshes your tank's look.
+- Garage: "All" shows Color Lab boxes in folders (Original / Custom). "Real" is the game's own and saves to your account. All never changes your account.
+- 🗺 Maze tab: 75 map themes (light or dark), themed bullets and crates, and Laika dressed for the map.
+- 🏆 tab: hidden achievements - earn them in online rounds to unlock items and paints.
+- ? buttons explain everything and replay the tutorial.
+
+Back up your looks with Settings > Export.
+Full details of what it changes and what it stores: "WHAT IT CHANGES AND PRIVACY.txt".
+Feedback and bug reports: the forum thread or GitHub issues.

@@ -1,0 +1,74 @@
+TANKTROUBLE COLOR LAB - WHAT IT CHANGES AND PRIVACY
+Not affiliated with TankTrouble. A fan-made, cosmetic-only extension.
+
+Color Lab is cosmetic only. It gives no advantage in the game: no aim help, no
+seeing through walls, no speed or reload changes. Everything below is visual,
+and only YOU see it unless you choose to save a real change to your tank.
+
+
+WHAT IT CHANGES ON YOUR SCREEN
+- Tank colours: turret, base and treads of your tanks and of any tank you
+  give a custom look.
+- Paints and items: extra pattern paints and accessories (hats, glasses,
+  capes, auras and so on), in their own boxes in the garage.
+- Garage: adds folders (Original / Custom) and Color Lab boxes to the shelf,
+  plus a search panel.
+- Maps: the maze floor, walls, crates and decorations can use a map theme.
+- Bullets: bullet colours can match the map, and multi-coloured bullets spin.
+  The laser and aiming lines are recoloured so they stay visible on every map.
+- Laika (the computer opponent): Laika's tank and Laika's dog can dress up to
+  match the map.
+- Achievements: an extra Achievements tab with hidden achievements that
+  unlock Color Lab items and paints. They are separate from the game's own.
+- A panel (Alt+C), a short tutorial and update notes.
+
+
+WHAT OTHER PLAYERS SEE
+The normal game. Color Lab looks are never sent to the game's server.
+The only exception is the garage's "Real" mode (and the dice / "Find in Real"
+buttons). These change your actual tank on your account, exactly like the
+game's own garage, and only with items you already own.
+
+
+WHAT IT CAN ACCESS
+- Only tanktrouble.com. It does not run on any other website and cannot see
+  your other tabs, history, cookies, passwords or downloads.
+- Browser permissions it asks for: "storage" (to save your looks) and
+  "scripting" (so the toolbar button / Alt+C can open the panel).
+- It reads TankTrouble's own game messages in the page, so it can recolour
+  tanks and notice kills, wins and pickups for achievements. Your login
+  passes through the game the normal way. Color Lab does not read, keep
+  or send your password.
+
+
+WHAT IT STORES (only on your own computer)
+- Your saved looks, presets, favourites and settings.
+- For tanks you give a custom look: their in-game username, player ID and
+  any nickname you type.
+- Achievement progress: your kills, wins, streaks and which days you played.
+  The time of day is checked for one achievement and is not saved.
+- A backup copy of the above in TankTrouble's site storage in your browser,
+  so your looks survive reinstalling the extension.
+- A cache of pictures so the garage loads faster.
+
+Nothing is collected by the author. There is no tracking, no analytics and
+no account. Nothing about you is sent anywhere.
+
+It only ever talks to TankTrouble itself: no other website is contacted.
+
+
+DELETING EVERYTHING
+1. Settings > Export first, if you want to keep a copy of your looks.
+2. Remove the extension at chrome://extensions.
+3. Clear tanktrouble.com's site data (click the padlock next to the address,
+   then Site settings > Delete data). This removes the backup copy and
+   picture cache.
+
+
+STAY SAFE
+Only install Color Lab from the official download:
+https://github.com/wazzey/tanktrouble-color-lab/releases
+Check the zip's SHA-256 matches the one listed there. A changed copy from
+someone else could do things this one does not.
+
+Made and run by wazzey.
