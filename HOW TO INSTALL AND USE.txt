@@ -1,4 +1,4 @@
-TANKTROUBLE COLOR LAB - v1.0
+TANKTROUBLE COLOR LAB - v1.0.1
 Made and run by wazzey. Not affiliated with TankTrouble.
 Custom colours, paints, items and map themes for TankTrouble. Cosmetic only: only YOU see them, other players see the normal game.
 

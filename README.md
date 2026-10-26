@@ -83,6 +83,7 @@ Each release lists the zip's **SHA-256** checksum, which is also posted in the f
 
 | Version | File | SHA-256 |
 |---|---|---|
+| v1.0.1 (latest) | `TankTrouble-Color-Lab-v1.0.1.zip` | `5c41cce773aeaf17b7ab38bff2f163f6981cf886b6f861027649acb646adc24c` |
 | v1.0 | `TankTrouble-Color-Lab-v1.0.zip` | `162a9646ec5084ab65ba70f8587db65319e13e6496419dc72464e4035a33a69c` |
 
 ### How to check the SHA-256
