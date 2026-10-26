@@ -13,14 +13,9 @@ This started as a personal project. I just wanted to see how different looks wou
 - **AI was used** to help make this, including much of the artwork for the paints and accessories, so don't expect every picture or feature to be perfect.
 - **Feedback is very welcome**: ideas, bugs, or anything I could do better. That includes artwork: if a paint or accessory doesn't sit well on the actual tank, or a pattern doesn't look right in the in-game maze, let me know. Reply on the forum thread or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here.
 
-## Want to help with artwork?
+## Want to help with accessories?
 
-Help with paints and accessories would be really welcome, since a lot of the current artwork was made with AI and could look better. That includes both:
-
-- **the tank picture** (the big tank you see in the garage and on the menu), and
-- **the in-game tank** in the maze, where paints and patterns need to look right from above.
-
-If you'd like to make a paint, an accessory or a whole box, or improve an existing one, see the **[artwork guide](ART-GUIDE.md)**. It covers sizes, where items go on the tank, tips for using AI, and how to send it in.
+Help with accessories would be really welcome, since a lot of the current artwork was made with AI and could look better. If you'd like to make a new item or improve an existing one, see the **[accessory guide](ART-GUIDE.md)**. It has a tank template to draw on, sizes, where items go, tips for using AI, and how to send it in.
 
 ## Main features
 
@@ -44,19 +39,34 @@ Color Lab's own achievements, earned in online rounds. Each one unlocks an item,
 
 ## Screenshots
 
-**The colour panel**
+### 🎨 The colour panel
+
+Paint any tank's turret, base and treads, and try on paints and items from every box.
+
 ![The Color Lab colour panel with the Streetwear box's paints and items](images/colour-panel.jpg)
 
-**Saved looks and presets**
+### 💾 Saved looks and presets
+
+Keep a look for each tank, with presets to switch between.
+
 ![A saved tank with two presets](images/saved-presets.jpg)
 
-**The garage**
+### 🏠 The garage
+
+Every Color Lab box in the game's own garage. Here, a tank in Streetwear items with the Cursed Seal box open.
+
 ![A reskinned tank in the garage, with the Cursed Seal box open](images/garage.jpg)
 
-**A themed map in play**
+### 🗺 A themed map in play
+
+Themed walls, floor, crates and bullets, with Laika dressed to match.
+
 ![A themed map in a local game against Laika](images/themed-map.jpg)
 
-**Picking a map theme**
+### 🗺 Picking a map theme
+
+Choose one map, take turns, or get a random theme every round.
+
 ![The Maze tab in the Color Lab panel](images/map-themes.jpg)
 
 ## Download
