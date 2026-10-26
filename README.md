@@ -11,11 +11,11 @@ This started as a personal project. I just wanted to see how different looks wou
 - It is **free and not for profit**. There is nothing to buy and no ads.
 - I work on it in my **spare time**, so updates and changes come whenever I'm free.
 - **AI was used** to help make this, including much of the artwork for the paints and accessories, so don't expect every picture or feature to be perfect.
-- **Feedback is very welcome**: ideas, bugs, or anything I could do better. That includes artwork: if a paint or accessory doesn't sit well on the actual tank, or a pattern doesn't look right in the in-game maze, let me know. Reply on the forum thread or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here.
+- **Feedback is very welcome**: ideas, bugs, or anything I could do better. That includes artwork: if a paint or accessory doesn't sit well on the actual tank, or a pattern doesn't look right in the in-game maze, let me know. Reply on the [forum thread](https://tanktrouble.com/forum?id=475180) or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here.
 
 ## For the TankTrouble team
 
-If anything in Color Lab isn't allowed or you'd like something changed or removed, please reply to the Color Lab thread on the TankTrouble forum, send me a message there, or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here. I'll make the change straight away.
+If anything in Color Lab isn't allowed or you'd like something changed or removed, please reply to the [Color Lab thread on the TankTrouble forum](https://tanktrouble.com/forum?id=475180), send me a message there, or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here. I'll make the change straight away.
 
 ## Want to help with accessories?
 
@@ -105,7 +105,7 @@ The long code it prints must match the SHA-256 above exactly.
 
 1. Unzip it and keep the `TankTrouble-Color-Lab` folder somewhere safe. The browser runs it from there.
 2. Go to `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
-3. Turn on **Developer mode** (top right).
+3. Turn on **Developer mode** (top right in Chrome, Brave and Opera; in the left-hand menu in Edge).
 4. Click **Load unpacked** and choose the `TankTrouble-Color-Lab` folder.
 5. Pin it from the puzzle-piece icon, then open or refresh tanktrouble.com and press **Alt+C**.
 
@@ -177,7 +177,7 @@ No. It never reads, keeps or sends your password, and there's no Color Lab accou
 No. Copy the new files over your old folder and your looks are kept. You can also back them up with **Settings > Export**.
 
 **Something looks wrong or doesn't fit the tank. What should I do?**
-Let me know on the forum thread or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues), ideally with a screenshot.
+Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues), ideally with a screenshot.
 
 ## Known issues
 
