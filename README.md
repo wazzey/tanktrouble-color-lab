@@ -13,6 +13,10 @@ This started as a personal project. I just wanted to see how different looks wou
 - **AI was used** to help make this, including much of the artwork for the paints and accessories, so don't expect every picture or feature to be perfect.
 - **Feedback is very welcome**: ideas, bugs, or anything I could do better. That includes artwork: if a paint or accessory doesn't sit well on the actual tank, or a pattern doesn't look right in the in-game maze, let me know. Reply on the forum thread or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here.
 
+## For the TankTrouble team
+
+If anything in Color Lab isn't allowed or you'd like something changed or removed, please reply to the Color Lab thread on the TankTrouble forum, send me a message there, or open an [issue](https://github.com/wazzey/tanktrouble-color-lab/issues) here. I'll make the change straight away.
+
 ## Want to help with accessories?
 
 Help with accessories would be really welcome, since a lot of the current artwork was made with AI and could look better. If you'd like to make a new item or improve an existing one, see the **[accessory guide](ART-GUIDE.md)**. It has a tank template to draw on, sizes, where items go, tips for using AI, and how to send it in.
