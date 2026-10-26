@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TankTrouble Color Lab",
-  "version": "1.0.1",
+  "version": "1.1",
   "author": "wazzey",
   "homepage_url": "https://github.com/wazzey/tanktrouble-color-lab",
   "description": "Cosmetic-only fan extension: custom colours, paints, items, map themes and Laika looks. Not affiliated with TankTrouble.",
@@ -25,7 +25,8 @@
     "storage"
   ],
   "host_permissions": [
-    "https://tanktrouble.com/*"
+    "https://tanktrouble.com/*",
+    "https://ttcl-share.wazzey.workers.dev/*"
   ],
   "commands": {
     "_execute_action": {

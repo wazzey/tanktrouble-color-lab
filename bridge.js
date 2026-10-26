@@ -39,12 +39,28 @@
     } else if (d.type === 'artFile' && typeof d.name === 'string' && /^[\w.-]+$/.test(d.name)) {
       // Color Lab's own pictures, read from the extension's art folder on your PC when the page needs one
       fetch(chrome.runtime.getURL('art/' + d.name)).then(r => r.ok ? r.blob() : null).catch(() => null).then(blob => toPage({ type: 'artFile', name: d.name, blob }));
+    } else if (d.type === 'share' && (d.op === 'get' || d.op === 'put' || d.op === 'delete' || d.op === 'watch' || d.op === 'latest')) {
+      // Shared looks: the extension's background page talks to Color Lab's look server, never the page itself.
+      // Your tanks' looks are locked to this copy by a secret key kept here (and in the site storage backup, so a reinstall keeps it).
+      const send = (key) => { try { chrome.runtime.sendMessage({ type: 'share', op: d.op, ids: d.ids, pid: d.pid, look: d.look, key }, (res) => { void chrome.runtime.lastError; toPage({ type: 'shareRes', rid: d.rid, res: res || null }); }); } catch { toPage({ type: 'shareRes', rid: d.rid, res: null }); } };
+      if (d.op === 'get' || d.op === 'watch' || d.op === 'latest') send(null);
+      else chrome.storage.local.get('ttcl_share_key', (it) => {
+        let key = it && it.ttcl_share_key; try { if (!key) key = localStorage.getItem('ttcl_share_key'); } catch {}
+        if (!key || !/^[0-9a-f]{64}$/.test(key)) { const b = new Uint8Array(32); crypto.getRandomValues(b); key = [...b].map(x => x.toString(16).padStart(2, '0')).join(''); }
+        chrome.storage.local.set({ ttcl_share_key: key }); try { localStorage.setItem('ttcl_share_key', key); } catch {}
+        send(key);
+      });
+    } else if (d.type === 'devReload') { // (Ren's DEV copy only: reload the extension from the page while testing)
+      try { const p = chrome.runtime.sendMessage({ type: 'devReload' }); if (p && p.catch) p.catch(() => {}); } catch {}
     } else if (d.type === 'migrate') {
       const items = pick(d.items);
       Object.assign(data || (data = {}), items);
       chrome.storage.local.set(items, () => { if (!chrome.runtime.lastError) toPage({ type: 'migrated' }); }); backup();
     }
   });
+
+  // a watched tank's look was just saved: straight to the page
+  chrome.runtime.onMessage.addListener((m) => { if (m && m.type === 'shareLive' && alive()) toPage({ type: 'shareLive', pid: m.pid, look: m.look }); });
 
   chrome.storage.local.get(KEYS, (items) => {
     data = items || {};

@@ -1,6 +1,6 @@
-TANKTROUBLE COLOR LAB - v1.0.1
+TANKTROUBLE COLOR LAB - v1.1
 Made and run by wazzey. Not affiliated with TankTrouble.
-Custom colours, paints, items and map themes for TankTrouble. Cosmetic only: only YOU see them, other players see the normal game.
+Custom colours, paints, items and map themes for TankTrouble. Cosmetic only: you and other Color Lab users see them, everyone else sees the normal game.
 
 Official download (the only one): https://github.com/wazzey/tanktrouble-color-lab/releases
 Check the zip's SHA-256 matches the one listed there before installing.
@@ -20,6 +20,9 @@ USING IT
 - Garage: "All" shows Color Lab boxes in folders (Original / Custom). "Real" is the game's own and saves to your account. All never changes your account.
 - 🗺 Maze tab: 75 map themes (light or dark), themed bullets and crates, and Laika dressed for the map.
 - 🏆 tab: hidden achievements - earn them in online rounds to unlock items and paints.
+- Page themes (Maze tab): the page, buttons and lobby in a map's colours, plus Halloween, Christmas and Easter. Match the map, keep one, or a new one every day.
+- New versions: Color Lab tells you when one is out (Settings > Help to check or switch off).
+- Look sharing: other Color Lab users see your look, and you see theirs. Click a tank for its Real / Color Lab switch. Switch it off in Settings > Look sharing.
 - ? buttons explain everything and replay the tutorial.
 
 Back up your looks with Settings > Export.

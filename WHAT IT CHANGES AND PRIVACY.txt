@@ -2,8 +2,9 @@ TANKTROUBLE COLOR LAB - WHAT IT CHANGES AND PRIVACY
 Not affiliated with TankTrouble. A fan-made, cosmetic-only extension.
 
 Color Lab is cosmetic only. It gives no advantage in the game: no aim help, no
-seeing through walls, no speed or reload changes. Everything below is visual,
-and only YOU see it unless you choose to save a real change to your tank.
+seeing through walls, no speed or reload changes. Everything below is visual.
+Only you and other Color Lab users see it (see LOOK SHARING), unless you choose
+to save a real change to your tank.
 
 
 WHAT IT CHANGES ON YOUR SCREEN
@@ -14,8 +15,13 @@ WHAT IT CHANGES ON YOUR SCREEN
 - Garage: adds folders (Original / Custom) and Color Lab boxes to the shelf,
   plus a search panel.
 - Maps: the maze floor, walls, crates and decorations can use a map theme.
+- Page themes: the page's background, header, side boxes, the game's buttons,
+  the lobby pictures, the garage and the panel can take a theme's colours
+  on every page, forum, news and shop included (forum threads and replies
+  can follow it, go dark or stay normal).
 - Bullets: bullet colours can match the map, and multi-coloured bullets spin.
-  The laser and aiming lines are recoloured so they stay visible on every map.
+  The laser and aiming lines, mines and mine shrapnel are recoloured so they
+  stay visible on every map.
 - Laika (the computer opponent): Laika's tank and Laika's dog can dress up to
   match the map.
 - Achievements: an extra Achievements tab with hidden achievements that
@@ -24,15 +30,19 @@ WHAT IT CHANGES ON YOUR SCREEN
 
 
 WHAT OTHER PLAYERS SEE
-The normal game. Color Lab looks are never sent to the game's server.
+Players without Color Lab see the normal game. Color Lab looks are never sent
+to the game's server.
+Players with Color Lab see your Color Lab look too (see LOOK SHARING).
 The only exception is the garage's "Real" mode (and the dice / "Find in Real"
 buttons). These change your actual tank on your account, exactly like the
 game's own garage, and only with items you already own.
 
 
 WHAT IT CAN ACCESS
-- Only tanktrouble.com. It does not run on any other website and cannot see
-  your other tabs, history, cookies, passwords or downloads.
+- It runs only on tanktrouble.com. It does not run on any other website and
+  cannot see your other tabs, history, cookies, passwords or downloads.
+- It also talks to Color Lab's look server (ttcl-share.wazzey.workers.dev) for
+  look sharing, and to nothing else.
 - Browser permissions it asks for: "storage" (to save your looks) and
   "scripting" (so the toolbar button / Alt+C can open the panel).
 - It reads TankTrouble's own game messages in the page, so it can recolour
@@ -51,10 +61,31 @@ WHAT IT STORES (only on your own computer)
   so your looks survive reinstalling the extension.
 - A cache of pictures so the garage loads faster.
 
-Nothing is collected by the author. There is no tracking, no analytics and
-no account. Nothing about you is sent anywhere.
+LOOK SHARING
+So that Color Lab users can see each other's looks, Color Lab's look server
+(run by the author on Cloudflare) keeps:
+- for each of your logged-in tanks that has a Color Lab look: its player ID
+  and that look (paints, items, which patterns show in the maze, the bullets
+  you picked), and when it was last saved;
+- a scrambled copy (hash) of a random key made by your copy of Color Lab, so
+  only your copy can change or remove your tank's shared look.
+To show other tanks' looks, your copy sends the server the player IDs of the
+tanks around you, and keeps a connection open so changes arrive at once.
+Nothing else is sent: no usernames, no passwords, no stats, no browsing.
+The server keeps no record of who asked for which looks. Like any website,
+Cloudflare (which runs it) sees your IP address when your browser connects.
+Switch it off in Settings > Look sharing:
+- "Share my look" off removes your logged-in tanks' looks from the server.
+- "See other players' looks" off stops asking for anyone's look.
 
-It only ever talks to TankTrouble itself: no other website is contacted.
+UPDATE CHECK
+Now and then Color Lab asks the look server which version is the newest (the
+server asks GitHub, at most once an hour), and tells you when there's a new
+one. Nothing about you is sent. Switch it off in Settings > Help.
+
+There is no tracking, no analytics and no account.
+
+Apart from the look server, it only talks to TankTrouble itself.
 
 
 DELETING EVERYTHING
@@ -63,6 +94,8 @@ DELETING EVERYTHING
 3. Clear tanktrouble.com's site data (click the padlock next to the address,
    then Site settings > Delete data). This removes the backup copy and
    picture cache.
+To also remove your shared look from the look server, switch off
+Settings > Look sharing > Share my look BEFORE removing the extension.
 
 
 STAY SAFE

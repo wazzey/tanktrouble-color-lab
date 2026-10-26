@@ -2,7 +2,7 @@
 
 Made and run by **wazzey**. **Not affiliated with TankTrouble.** Color Lab is an independent, fan-made, cosmetic-only browser extension. TankTrouble, its name and its artwork belong to their owners.
 
-Color Lab lets you reskin TankTrouble your way: custom colours and pattern paints for your tank, extra accessories, themed maps, matching bullets and crates, and new looks for Laika. It is **purely cosmetic**. It gives no advantage in the game, and only **you** see your looks. Other players see the normal game.
+Color Lab lets you reskin TankTrouble your way: custom colours and pattern paints for your tank, extra accessories, themed maps, matching bullets and crates, and new looks for Laika. It is **purely cosmetic**. It gives no advantage in the game. Only **you and other Color Lab users** see your looks. Everyone else sees the normal game.
 
 ## About this project
 
@@ -30,13 +30,22 @@ Pick any tank by name (or press **Me** for your own), then paint the turret, bas
 **Save** keeps a look for that tank. Each tank can have up to 10 **presets** to switch between, and each saved tank can be switched on or off. Back everything up with **Settings > Export**.
 
 **🔁 Your real look stays safe**
-Your Color Lab look is only on your screen. Your real TankTrouble look, the one other players see, is never changed by it. To change your real look, switch to **Real** in the garage (or pause Color Lab with ⏻), change it as normal, then switch back to **All** or turn ⏻ back on. Your custom look comes straight back, and your new real look is what everyone else sees.
+Your Color Lab look never changes your real TankTrouble look, the one players without Color Lab see. To change your real look, switch to **Real** in the garage (or pause Color Lab with ⏻), change it as normal, then switch back to **All** or turn ⏻ back on. Your custom look comes straight back, and your new real look is what everyone else sees.
 
 **🏠 In-game garage**
 In the game's own garage, **All** shows every paint and item, plus Color Lab's boxes in folders (Original / Custom, sorted by genre). **Real** is your normal garage and saves to your account. There's also a 🎲 random look button and a **Find in garage** search.
 
 **🗺 Map themes**
 75 themes for the maze floor, walls and crates, each light or dark, with matching bullets. Pick one, take turns, or get a random one every round. Laika dresses up to match.
+
+**🎨 Page themes**
+Theme the TankTrouble page itself in any map's colours: the background, header and its tabs, side boxes, the game's buttons, the lobby, the garage, the forum, news and shop pages, and the Color Lab panel. There are 74, plus 🎃 **Halloween**, 🎄 **Christmas** and 🐣 **Easter**. Match the map you're playing on, keep one, or get a new one every day (the seasonal ones come round on their dates). The maze and Laika can use it too. Forum threads and replies can follow the theme, go dark (the rest of the page keeps the theme), or stay as normal. Every theme's writing is checked to stay easy to read. Find it in the 🗺 Maze tab.
+
+**🔔 Update check**
+When a new version of Color Lab is out, it tells you what's new and how to update. You can check any time in **Settings > Help**, or switch it off there.
+
+**🔗 Look sharing**
+Color Lab users see each other's looks, in the lobby, the garage and the maze. When someone saves a new look, it pops in for everyone straight away. Click a tank with a Color Lab look and its profile has a **Real / Color Lab** switch. Only your tank's player ID and look are shared, and you can switch sharing off in **Settings > Look sharing**.
 
 **🏆 Hidden achievements**
 Color Lab's own achievements, earned in online rounds. Each one unlocks an item, and the hardest also unlock a paint.
@@ -73,6 +82,32 @@ Choose one map, take turns, or get a random theme every round.
 
 ![The Maze tab in the Color Lab panel](images/map-themes.jpg)
 
+### 🎨 Page themes
+
+The whole page in a map's colours. Here, Volcano:
+
+![The lobby with the Volcano page theme](images/page-theme-volcano.jpg)
+
+With **Use it for the maze too**, the maze and Laika match:
+
+![A local game with the Volcano page and maze theme](images/page-theme-maze.jpg)
+
+Seasonal themes: 🎃 Halloween, 🎄 Christmas and 🐣 Easter.
+
+![The Halloween page theme](images/page-theme-halloween.jpg)
+
+![The Christmas page theme](images/page-theme-christmas.jpg)
+
+![The Easter page theme](images/page-theme-easter.jpg)
+
+The forum's threads and replies can follow it too (or use a dark mode, or stay normal):
+
+![The forum with the Volcano page theme](images/page-theme-forum.jpg)
+
+Pick it in the 🗺 Maze tab: off, match the map, one theme, or a new one every day.
+
+![The Page theme settings in the Maze tab](images/page-theme-settings.jpg)
+
 ## Download
 
 **The [Releases page](https://github.com/wazzey/tanktrouble-color-lab/releases) of this repository is the only official source of Color Lab. Please download it from here only.**
@@ -83,7 +118,8 @@ Each release lists the zip's **SHA-256** checksum, which is also posted in the f
 
 | Version | File | SHA-256 |
 |---|---|---|
-| v1.0.1 (latest) | `TankTrouble-Color-Lab-v1.0.1.zip` | `5c41cce773aeaf17b7ab38bff2f163f6981cf886b6f861027649acb646adc24c` |
+| v1.1 (latest) | `TankTrouble-Color-Lab-v1.1.zip` | `48d51561866a794bf78a86a013007850e889518eff430eabeeb2d0afd7dd5187` |
+| v1.0.1 | `TankTrouble-Color-Lab-v1.0.1.zip` | `5c41cce773aeaf17b7ab38bff2f163f6981cf886b6f861027649acb646adc24c` |
 | v1.0 | `TankTrouble-Color-Lab-v1.0.zip` | `162a9646ec5084ab65ba70f8587db65319e13e6496419dc72464e4035a33a69c` |
 
 ### How to check the SHA-256
@@ -140,6 +176,9 @@ You can change these at `chrome://extensions/shortcuts`.
 - 75 map themes, each light or dark, with matching bullets, crates and shields
 - Multi-coloured bullets that spin and flip on every bounce
 - Laika dresses up to match each map
+- Look sharing: Color Lab users see each other's looks, live
+- Page themes: the TankTrouble page, buttons and lobby in any map's colours, plus Halloween, Christmas and Easter
+- Tells you when a new version is out
 - Hidden achievements that unlock extra items and paints
 - Party mode, random looks, saved presets and backups
 
@@ -150,11 +189,12 @@ Everything is visual and only on your screen:
 - **Tanks:** colours, paints and accessories on your tanks and on any tank you give a custom look
 - **Garage:** extra boxes, folders and a search panel
 - **Maps:** floor, walls, crates and decorations can use a map theme
+- **Page:** with a page theme, the background, header, side boxes, the game's buttons, the lobby pictures, the garage and the panel take its colours, on the forum, news and shop pages too (the forum's threads and replies can follow it, go dark or stay normal)
 - **Bullets:** colours can match the map. The laser and aim lines are recoloured so they stay visible on every map
 - **Laika:** Laika's tank and dog can dress up to match the map
 - **Achievements:** an extra tab with Color Lab's own hidden achievements, separate from the game's
 
-**What other players see:** the normal game. Color Lab looks are never sent to the game's server. The only exception is the garage's **Real** mode (and the dice / "Find in Real" buttons), which changes your actual tank exactly like the game's own garage does, and only with items you already own.
+**What other players see:** players without Color Lab see the normal game, and Color Lab looks are never sent to the game's server. Players with Color Lab see your Color Lab look (see **Look sharing**). The only exception is the garage's **Real** mode (and the dice / "Find in Real" buttons), which changes your actual tank exactly like the game's own garage does, and only with items you already own.
 
 ## Unreleased box
 
@@ -166,10 +206,10 @@ In the garage's **All** mode you can also see the never-released box and its pai
 Color Lab is purely cosmetic. It only changes how things look on your own screen, so it shouldn't count as cheating in any way, and it gives no advantage in the game.
 
 **How do I change my real look without losing my custom one?**
-In the garage, switch to **Real** (or pause Color Lab with ⏻), change your tank as normal, then switch back to **All** or turn ⏻ on again. Your Color Lab look is kept the whole time and is never sent to TankTrouble, so other players only ever see your real look.
+In the garage, switch to **Real** (or pause Color Lab with ⏻), change your tank as normal, then switch back to **All** or turn ⏻ on again. Your Color Lab look is kept the whole time and is never sent to TankTrouble, so players without Color Lab only ever see your real look.
 
 **Can other players see my look?**
-No. Only you see your Color Lab looks. Other players see your normal tank, unless you use the garage's **Real** mode, which changes your actual tank with items you own.
+Only players who also use Color Lab. They see your Color Lab look (you can switch this off in **Settings > Look sharing**). Everyone else sees your normal tank, unless you use the garage's **Real** mode, which changes your actual tank with items you own.
 
 **Does it need my password or account?**
 No. It never reads, keeps or sends your password, and there's no Color Lab account.
@@ -189,10 +229,12 @@ Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or op
 ## Privacy
 
 - Runs **only on tanktrouble.com**. It can't see other websites, tabs, history, cookies, passwords or downloads.
+- Apart from TankTrouble, it only talks to **Color Lab's look server** (`ttcl-share.wazzey.workers.dev`, run by me on Cloudflare), for look sharing and to check for new versions. The update check only asks the server which version is newest (the server gets that from GitHub); nothing about you is sent.
 - Browser permissions: **storage** (to save your looks) and **scripting** (so the toolbar button / Alt+C can open the panel).
 - It reads TankTrouble's own game messages in the page to recolour tanks and track achievements. Your login passes through the game normally. Color Lab never reads, keeps or sends your password.
-- **No tracking, no analytics, no account.** Nothing about you is collected or sent anywhere.
-- Everything it saves stays **on your own computer**:
+- **No tracking, no analytics, no account.**
+- **Look sharing** stores, for each of your logged-in tanks with a Color Lab look: its **player ID** and **that look**, plus a scrambled key so only your copy of Color Lab can change it. To show other tanks' looks, your copy sends the player IDs of the tanks around you. No usernames, passwords, stats or browsing are sent, and the server keeps no record of who asked for which looks. Switching off **Share my look** removes your looks from the server.
+- Everything else it saves stays **on your own computer**:
   - your looks, presets and settings;
   - the usernames of tanks you give a custom look;
   - your achievement progress;
@@ -203,8 +245,9 @@ Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or op
 ### Removing everything
 
 1. Optional: **Settings > Export** to keep a copy of your looks.
-2. Remove the extension at `chrome://extensions`.
-3. Clear tanktrouble.com's site data. Click the padlock next to the address, then go to **Site settings > Delete data**.
+2. Switch off **Settings > Look sharing > Share my look**, so your looks are removed from the look server.
+3. Remove the extension at `chrome://extensions`.
+4. Clear tanktrouble.com's site data. Click the padlock next to the address, then go to **Site settings > Delete data**.
 
 ## Credits
 
