@@ -118,7 +118,8 @@ Each release lists the zip's **SHA-256** checksum, which is also posted in the f
 
 | Version | File | SHA-256 |
 |---|---|---|
-| v1.1 (latest) | `TankTrouble-Color-Lab-v1.1.zip` | `176b8a7fbd7578598d401048bfd3a7f86f665956cc5c89a947431a01e8c0ed9a` |
+| v1.2 (latest) | `TankTrouble-Color-Lab-v1.2.zip` | `c450d654553586ce858e2e696b91548672c41bc0260fa98bfb0030ecad1a8295` |
+| v1.1 | `TankTrouble-Color-Lab-v1.1.zip` | `176b8a7fbd7578598d401048bfd3a7f86f665956cc5c89a947431a01e8c0ed9a` |
 | v1.0.1 | `TankTrouble-Color-Lab-v1.0.1.zip` | `5c41cce773aeaf17b7ab38bff2f163f6981cf886b6f861027649acb646adc24c` |
 | v1.0 | `TankTrouble-Color-Lab-v1.0.zip` | `162a9646ec5084ab65ba70f8587db65319e13e6496419dc72464e4035a33a69c` |
 
@@ -233,7 +234,7 @@ Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or op
 - Browser permissions: **storage** (to save your looks) and **scripting** (so the toolbar button / Alt+C can open the panel).
 - It reads TankTrouble's own game messages in the page to recolour tanks and track achievements. Your login passes through the game normally. Color Lab never reads, keeps or sends your password.
 - **No tracking, no analytics, no account.**
-- **Look sharing** stores, for each of your logged-in tanks with a Color Lab look: its **player ID** and **that look**, plus a scrambled key so only your copy of Color Lab can change it. To show other tanks' looks, your copy sends the player IDs of the tanks around you. No usernames, passwords, stats or browsing are sent, and the server keeps no record of who asked for which looks. Switching off **Share my look** removes your looks from the server.
+- **Look sharing** stores, for each of your logged-in tanks with a Color Lab look: its **player ID** and **that look**, plus a scrambled key so only your copy of Color Lab can change it. To show other tanks' looks, your copy sends the player IDs of the tanks around you. No usernames, passwords, stats or browsing are sent, and the server keeps no record of who asked for which looks. To stop people sharing looks for other players' tanks, the server only lets a copy of Color Lab (and an internet connection) share a few new tanks a day; for that it keeps a scrambled one-way code of your connection for a day, never next to a look. Switching off **Share my look** removes your looks from the server.
 - Everything else it saves stays **on your own computer**:
   - your looks, presets and settings;
   - the usernames of tanks you give a custom look;

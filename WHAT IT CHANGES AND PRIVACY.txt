@@ -74,6 +74,10 @@ tanks around you, and keeps a connection open so changes arrive at once.
 Nothing else is sent: no usernames, no passwords, no stats, no browsing.
 The server keeps no record of who asked for which looks. Like any website,
 Cloudflare (which runs it) sees your IP address when your browser connects.
+To stop people sharing looks for other players' tanks, a copy of Color Lab
+(and an internet connection) can only share a few new tanks a day. For that
+the server keeps a scrambled one-way code made from your connection, for one
+day, never stored next to a look.
 Switch it off in Settings > Look sharing:
 - "Share my look" off removes your logged-in tanks' looks from the server.
 - "See other players' looks" off stops asking for anyone's look.
