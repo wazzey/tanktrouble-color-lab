@@ -47,6 +47,21 @@ When a new version of Color Lab is out, it tells you what's new and how to updat
 **🔗 Look sharing**
 Color Lab users see each other's looks, in the lobby, the garage and the maze. When someone saves a new look, it pops in for everyone straight away. Click a tank with a Color Lab look and its profile has a **Real / Color Lab** switch. Only your tank's player ID and look are shared, and you can switch sharing off in **Settings > Look sharing**.
 
+**🟢 Who's online**
+A Color Lab box in the lobby shows how many Color Lab players are online. Names are opt-in: turn on **Show me as online** (and **Show which server I'm on**) in **Settings > Look sharing**. Everyone else is only counted as hidden.
+
+**💬 Message Color Lab**
+A box on the right of the lobby, laid out like the game's message laboratory. Write to me with ideas or bugs, add up to 3 screenshots, and read the replies there.
+
+**⚙ Color Lab in the game's settings box**
+The game's own ⚙ box (top right) has Color Lab's quick controls: on/off, sharing, going offline, your page theme, map, Laika and your bullets picked from pictures, plus the version, update notes and a check for updates.
+
+**👁 Easy to see on every map**
+Mines, homing missiles, lasers and aim lines whose colour is too close to the floor (like a black turret on a dark map) get a colour that stands out, and bullets get an edge where they would blend in. Picking a bullet colour that's hard to see shows a warning.
+
+**🔌 Go offline**
+One switch stops Color Lab sharing anything with its server (no look sharing, no online list, no messages) until you switch it back on. Only the update check still asks which version is newest, which sends nothing about you. Everything on your own screen keeps working.
+
 **🏆 Hidden achievements**
 Color Lab's own achievements, earned in online rounds. Each one unlocks an item, and the hardest also unlock a paint.
 
@@ -118,7 +133,8 @@ Each release lists the zip's **SHA-256** checksum, which is also posted in the f
 
 | Version | File | SHA-256 |
 |---|---|---|
-| v1.3 (latest) | `TankTrouble-Color-Lab-v1.3.zip` | `21107aa6f07bdc85ccce6e4a25873e433ddf3638e276a5cdd2885fc0bceddd4b` |
+| v1.4 (latest) | `TankTrouble-Color-Lab-v1.4.zip` | `4aad34e7e2c4ccdeb6bf999b17c7583e1fed15382b54142d59434ed2dad0ecc7` |
+| v1.3 | `TankTrouble-Color-Lab-v1.3.zip` | `21107aa6f07bdc85ccce6e4a25873e433ddf3638e276a5cdd2885fc0bceddd4b` |
 
 ### Older versions (removed)
 
@@ -134,13 +150,13 @@ Please use v1.3 or newer.
 **Windows:** open the folder with the zip, click the address bar, type `powershell` and press Enter, then run:
 
 ```
-Get-FileHash .\TankTrouble-Color-Lab-v1.3.zip
+Get-FileHash .\TankTrouble-Color-Lab-v1.4.zip
 ```
 
 **Mac:** open Terminal in the folder and run:
 
 ```
-shasum -a 256 TankTrouble-Color-Lab-v1.3.zip
+shasum -a 256 TankTrouble-Color-Lab-v1.4.zip
 ```
 
 The long code it prints must match the SHA-256 above exactly.
@@ -186,6 +202,10 @@ You can change these at `chrome://extensions/shortcuts`.
 - Look sharing: Color Lab users see each other's looks, live
 - Page themes: the TankTrouble page, buttons and lobby in any map's colours, plus Halloween, Christmas and Easter
 - Tells you when a new version is out
+- Who's online (opt-in) and a Message Color Lab box in the lobby
+- Quick controls in the game's own ⚙ settings box
+- Mines, missiles, lasers and bullets kept visible on every map
+- A Go offline switch that stops all contact with the server
 - Hidden achievements that unlock extra items and paints
 - Party mode, random looks, saved presets and backups
 
@@ -241,6 +261,7 @@ Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or op
 - It reads TankTrouble's own game messages in the page to recolour tanks and track achievements. Your login passes through the game normally. Color Lab never reads, keeps or sends your password.
 - **No tracking, no analytics, no account.**
 - **Look sharing** stores, for each of your logged-in tanks with a Color Lab look: its **player ID** and **that look**, plus a scrambled key so only your copy of Color Lab can change it. To show other tanks' looks, your copy sends the player IDs of the tanks around you. No passwords, stats or browsing are sent, and the server keeps no record of who asked for which looks. So I can deal with abuse, the server also notes each shared tank's TankTrouble name (which anyone can see in the game) next to its look. To stop people sharing looks for other players' tanks, a look is only shared once you **prove the tank is yours**: Color Lab changes one thing on your real tank for about a second (one of the paints you already wear moved to another part, or one item taken off), the server reads the tank's public details on TankTrouble to see the change, and your tank is put straight back. You do this once per tank, and Color Lab asks first. Looks can be reported from a tank's profile. The server also only lets a copy of Color Lab (and an internet connection) share a few new tanks a day; for that it keeps a scrambled one-way code of your connection for a day, never next to a look. Switching off **Share my look** removes your looks from the server.
+- **Online status:** every few minutes your copy tells the look server it's running: a scrambled code of your copy's key, its version, when it was first and last seen, which of your tanks are logged in, your TankTrouble server and whether you're idle. Other players only see you in the online list if you turn on **Show me as online**. It's deleted 60 days after your copy was last seen. **Go offline** (⚙ box or Settings) stops all of this; the server only notes once that you went offline on purpose. Full details are in `WHAT IT CHANGES AND PRIVACY.txt`.
 - **Messages** you send from **Settings > Feedback & reports** (text and any screenshots) go to my Discord with your tank's name. The text and replies are kept so you can see them in Color Lab; screenshots aren't kept.
 - Everything else it saves stays **on your own computer**:
   - your looks, presets and settings;

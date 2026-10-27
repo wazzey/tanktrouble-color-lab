@@ -37,6 +37,7 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
   if (m.op === 'watch') { // the tanks this tab can see: their look changes come down the live connection
     const ids = (Array.isArray(m.ids) ? m.ids : []).map(String).filter(x => /^\d{1,12}$/.test(x)).slice(0, 64);
     if (ids.length) liveWatch.set(sender.tab.id, new Set(ids)); else liveWatch.delete(sender.tab.id);
+    if (!liveWatch.size && live) { try { live.close(); } catch {} } // nothing left to watch: the connection closes
     liveOpen(); liveSend(); reply({ ok: true, live: !!(live && live.readyState === 1) }); return;
   }
   if (m.op === 'latest') { // the newest release (for the update pop-up), with this copy's version to compare
@@ -49,7 +50,9 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
   } else if ((m.op === 'fbsend' || m.op === 'fblist') && /^[0-9a-f]{64}$/.test(String(m.key || ''))) { // feedback to the Color Lab team, and their replies
     url = SHARE_BASE + (m.op === 'fbsend' ? '/v1/feedback' : '/v1/feedback/mine');
     opt = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m.op === 'fbsend' ? { key: m.key, text: String(m.text || '').slice(0, 1500), image: typeof m.image === 'string' ? m.image : undefined, images: Array.isArray(m.images) ? m.images.filter(x => typeof x === 'string').slice(0, 3) : undefined,
-      pids: Array.isArray(m.pids) ? m.pids.slice(0, 4) : [], about: m.about, kind: m.kind } : { key: m.key }) };
+      pids: Array.isArray(m.pids) ? m.pids.slice(0, 4) : [], about: m.about, kind: m.kind } : { key: m.key, pids: Array.isArray(m.pids) ? m.pids.map(String).filter(x => /^\d{1,12}$/.test(x)).slice(0, 4) : undefined, srv: typeof m.srv === 'string' ? m.srv.slice(0, 24) : undefined, idle: m.idle === true, show: m.show === true ? true : m.show === false ? false : undefined, shsrv: m.shsrv === true }) };
+  } else if (m.op === 'online' && /^[0-9a-f]{64}$/.test(String(m.key || ''))) { // who is online (only players who chose to be shown)
+    url = SHARE_BASE + '/v1/online'; opt = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: m.key }) };
   } else if ((m.op === 'report' || m.op === 'vstart' || m.op === 'vcheck') && pid) { // report a shared look / prove a tank is yours
     url = SHARE_BASE + (m.op === 'report' ? '/v1/report' : m.op === 'vstart' ? '/v1/verify/start' : '/v1/verify/check');
     opt = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pid, key: /^[0-9a-f]{64}$/.test(String(m.key || '')) ? m.key : undefined }) };

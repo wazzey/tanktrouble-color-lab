@@ -91,6 +91,27 @@ Switch it off in Settings > Look sharing:
 - "Share my look" off removes your logged-in tanks' looks from the server.
 - "See other players' looks" off stops asking for anyone's look.
 
+ONLINE STATUS
+Every few minutes (and when you log in or out, or go idle) your copy also tells
+the look server that it is running, so the author can see how many copies are
+in use and which version they are:
+- a scrambled copy (hash) of your copy's random key, its version, and when it
+  was first and last seen;
+- which of your tanks are logged in right now (player IDs, guests included),
+  which TankTrouble server you are playing on (for example "London"), and
+  whether you are idle (the TankTrouble tab is hidden, or nothing has been
+  clicked or typed for 5 minutes).
+The author can see all of this. Other Color Lab players see you in the Color Lab
+box on the page ONLY if you turn on Settings > Look sharing > "Show me as
+online": then they see your name and whether you are online or idle, only for
+tanks proven to be yours (never guests). Your server (for example "London") is
+shown only if you also turn on "Show which server I'm on". Otherwise you are
+only counted as "hidden". It is kept for up to 60 days after your copy was
+last seen (the logged-in tanks for 30), then deleted. Switching off
+Settings > Look sharing > "Share my look" stops the tanks, server and idle
+status from being sent and hides you; the key hash and version are still sent
+so replies to your messages can reach you.
+
 MESSAGES
 If you send a message from Settings > Feedback & reports, its text and any
 screenshots go to the author's Discord, with your tank's name. The text and
