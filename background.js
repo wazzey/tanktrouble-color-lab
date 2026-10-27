@@ -30,8 +30,9 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 
 // Shared looks: Color Lab's look server (see "Look sharing" in Settings). Only player IDs and looks go to it.
 const SHARE_BASE = 'https://ttcl-share.wazzey.workers.dev';
+const ttTabs = new Set(); // (TankTrouble tabs that have asked something: live announcements go to all of them)
 chrome.runtime.onMessage.addListener((m, sender, reply) => {
-  if (!m || m.type !== 'share' || !sender.tab) return;
+  if (!m || m.type !== 'share' || !sender.tab) return; ttTabs.add(sender.tab.id);
   const pid = /^\d{1,12}$/.test(String(m.pid || '')) ? String(m.pid) : null;
   let url, opt = {};
   if (m.op === 'watch') { // the tanks this tab can see: their look changes come down the live connection
@@ -56,6 +57,8 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
   } else if ((m.op === 'report' || m.op === 'vstart' || m.op === 'vcheck') && pid) { // report a shared look / prove a tank is yours
     url = SHARE_BASE + (m.op === 'report' ? '/v1/report' : m.op === 'vstart' ? '/v1/verify/start' : '/v1/verify/check');
     opt = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pid, key: /^[0-9a-f]{64}$/.test(String(m.key || '')) ? m.key : undefined }) };
+  } else if (m.op === 'announce') { // the Color Lab team's live announcement (nothing about you is sent)
+    url = SHARE_BASE + '/v1/announce';
   } else { reply({ ok: false }); return; }
   opt.headers = Object.assign({ 'X-TTCL-Version': chrome.runtime.getManifest().version }, opt.headers || {}); // (the server can turn away copies too old to be safe)
   fetch(url, Object.assign({ cache: 'no-store' }, opt)).then(r => { if (r.status === 426) liveOld = true; return r; }).then(r => r.json().catch(() => null).then(data => reply({ ok: r.ok, status: r.status, data }))).catch(() => reply({ ok: false, status: 0 }));
@@ -76,7 +79,9 @@ function liveOpen() {
   try { live = new WebSocket(LIVE_URL); } catch { live = null; liveLater(); return; }
   live.onopen = () => { liveRetry = 1000; liveSent = ''; liveSend(); clearInterval(livePing); livePing = setInterval(() => { try { if (live && live.readyState === 1) live.send('ping'); } catch {} }, 20000); };
   live.onmessage = (e) => {
-    if (e.data === 'pong') return; let m; try { m = JSON.parse(e.data); } catch { return; } if (!m || !/^\d{1,12}$/.test(String(m.pid))) return;
+    if (e.data === 'pong') return; let m; try { m = JSON.parse(e.data); } catch { return; }
+    if (m && m.ann && typeof m.ann === 'object') { for (const tabId of ttTabs) chrome.tabs.sendMessage(tabId, { type: 'annLive', ann: m.ann }).catch(() => ttTabs.delete(tabId)); return; } // (an announcement from the Color Lab team: every open tab shows it now)
+    if (!m || !/^\d{1,12}$/.test(String(m.pid))) return;
     for (const [tabId, ids] of liveWatch) if (ids.has(String(m.pid))) chrome.tabs.sendMessage(tabId, { type: 'shareLive', pid: String(m.pid), look: m.look || null }).catch(() => { liveWatch.delete(tabId); });
   };
   live.onclose = () => { live = null; clearInterval(livePing); liveLater(); };

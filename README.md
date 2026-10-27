@@ -59,6 +59,9 @@ The game's own ⚙ box (top right) has Color Lab's quick controls: on/off, shari
 **👁 Easy to see on every map**
 Mines, homing missiles, lasers and aim lines whose colour is too close to the floor (like a black turret on a dark map) get a colour that stands out, and bullets get an edge where they would blend in. Picking a bullet colour that's hard to see shows a warning.
 
+**📢 Announcements**
+News from me pops up in the top right corner the moment I send it, without interrupting your game (it closes by itself after 30 seconds). Every announcement is also kept in **Message Color Lab > 📢 Announcements**.
+
 **🔌 Go offline**
 One switch stops Color Lab sharing anything with its server (no look sharing, no online list, no messages) until you switch it back on. Only the update check still asks which version is newest, which sends nothing about you. Everything on your own screen keeps working.
 
@@ -133,7 +136,8 @@ Each release lists the zip's **SHA-256** checksum, which is also posted in the f
 
 | Version | File | SHA-256 |
 |---|---|---|
-| v1.4 (latest) | `TankTrouble-Color-Lab-v1.4.zip` | `4aad34e7e2c4ccdeb6bf999b17c7583e1fed15382b54142d59434ed2dad0ecc7` |
+| v1.4.1 (latest) | `TankTrouble-Color-Lab-v1.4.1.zip` | `ad11ff95193d6ff26e6fadc6afbbd90c7c08075c100f78d6436e558303368b8b` |
+| v1.4 | `TankTrouble-Color-Lab-v1.4.zip` | `4aad34e7e2c4ccdeb6bf999b17c7583e1fed15382b54142d59434ed2dad0ecc7` |
 | v1.3 | `TankTrouble-Color-Lab-v1.3.zip` | `21107aa6f07bdc85ccce6e4a25873e433ddf3638e276a5cdd2885fc0bceddd4b` |
 
 ### Older versions (removed)
@@ -150,13 +154,13 @@ Please use v1.3 or newer.
 **Windows:** open the folder with the zip, click the address bar, type `powershell` and press Enter, then run:
 
 ```
-Get-FileHash .\TankTrouble-Color-Lab-v1.4.zip
+Get-FileHash .\TankTrouble-Color-Lab-v1.4.1.zip
 ```
 
 **Mac:** open Terminal in the folder and run:
 
 ```
-shasum -a 256 TankTrouble-Color-Lab-v1.4.zip
+shasum -a 256 TankTrouble-Color-Lab-v1.4.1.zip
 ```
 
 The long code it prints must match the SHA-256 above exactly.
@@ -203,6 +207,7 @@ You can change these at `chrome://extensions/shortcuts`.
 - Page themes: the TankTrouble page, buttons and lobby in any map's colours, plus Halloween, Christmas and Easter
 - Tells you when a new version is out
 - Who's online (opt-in) and a Message Color Lab box in the lobby
+- Live announcements from me, in the corner and in Message Color Lab
 - Quick controls in the game's own ⚙ settings box
 - Mines, missiles, lasers and bullets kept visible on every map
 - A Go offline switch that stops all contact with the server

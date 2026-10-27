@@ -39,7 +39,7 @@
     } else if (d.type === 'artFile' && typeof d.name === 'string' && /^[\w.-]+$/.test(d.name)) {
       // Color Lab's own pictures, read from the extension's art folder on your PC when the page needs one
       fetch(chrome.runtime.getURL('art/' + d.name)).then(r => r.ok ? r.blob() : null).catch(() => null).then(blob => toPage({ type: 'artFile', name: d.name, blob }));
-    } else if (d.type === 'share' && (d.op === 'get' || d.op === 'put' || d.op === 'delete' || d.op === 'watch' || d.op === 'latest' || d.op === 'report' || d.op === 'vstart' || d.op === 'vcheck' || d.op === 'fbsend' || d.op === 'fblist' || d.op === 'online')) {
+    } else if (d.type === 'share' && (d.op === 'get' || d.op === 'put' || d.op === 'delete' || d.op === 'watch' || d.op === 'latest' || d.op === 'report' || d.op === 'vstart' || d.op === 'vcheck' || d.op === 'fbsend' || d.op === 'fblist' || d.op === 'online' || d.op === 'announce')) {
       // Shared looks: the extension's background page talks to Color Lab's look server, never the page itself.
       // Your tanks' looks are locked to this copy by a secret key kept here (and in the site storage backup, so a reinstall keeps it).
       const send = (key) => { try { chrome.runtime.sendMessage({ type: 'share', op: d.op, ids: d.ids, pid: d.pid, look: d.look, key, text: d.text, image: d.image, images: d.images, pids: d.pids, srv: d.srv, idle: d.idle, show: d.show, shsrv: d.shsrv, about: d.about, kind: d.kind }, (res) => { void chrome.runtime.lastError; toPage({ type: 'shareRes', rid: d.rid, res: res || null }); }); } catch { toPage({ type: 'shareRes', rid: d.rid, res: null }); } };
@@ -60,7 +60,7 @@
   });
 
   // a watched tank's look was just saved: straight to the page
-  chrome.runtime.onMessage.addListener((m) => { if (m && m.type === 'shareLive' && alive()) toPage({ type: 'shareLive', pid: m.pid, look: m.look }); });
+  chrome.runtime.onMessage.addListener((m) => { if (m && m.type === 'shareLive' && alive()) toPage({ type: 'shareLive', pid: m.pid, look: m.look }); else if (m && m.type === 'annLive' && alive()) toPage({ type: 'annLive', ann: m.ann }); });
 
   chrome.storage.local.get(KEYS, (items) => {
     data = items || {};
