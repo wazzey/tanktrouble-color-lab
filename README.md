@@ -119,23 +119,28 @@ Each release lists the zip's **SHA-256** checksum, which is also posted in the f
 | Version | File | SHA-256 |
 |---|---|---|
 | v1.3 (latest) | `TankTrouble-Color-Lab-v1.3.zip` | `21107aa6f07bdc85ccce6e4a25873e433ddf3638e276a5cdd2885fc0bceddd4b` |
-| v1.2 | `TankTrouble-Color-Lab-v1.2.zip` | `c450d654553586ce858e2e696b91548672c41bc0260fa98bfb0030ecad1a8295` |
-| v1.1 | `TankTrouble-Color-Lab-v1.1.zip` | `176b8a7fbd7578598d401048bfd3a7f86f665956cc5c89a947431a01e8c0ed9a` |
-| v1.0.1 | `TankTrouble-Color-Lab-v1.0.1.zip` | `5c41cce773aeaf17b7ab38bff2f163f6981cf886b6f861027649acb646adc24c` |
-| v1.0 | `TankTrouble-Color-Lab-v1.0.zip` | `162a9646ec5084ab65ba70f8587db65319e13e6496419dc72464e4035a33a69c` |
+
+### Older versions (removed)
+
+v1.0, v1.0.1, v1.1 and v1.2 have been removed from the Releases page and no longer work online (look sharing and messages). Your looks are kept when you update.
+
+- **v1.0 to v1.1:** made before look sharing had protection. Someone abused it to put fake looks on other players' tanks.
+- **v1.2:** added limits, but a look could still be shared for a tank that wasn't yours. From v1.3, a tank's owner has to prove the tank is theirs before its look is shared.
+
+Please use v1.3 or newer.
 
 ### How to check the SHA-256
 
 **Windows:** open the folder with the zip, click the address bar, type `powershell` and press Enter, then run:
 
 ```
-Get-FileHash .\TankTrouble-Color-Lab-v1.0.zip
+Get-FileHash .\TankTrouble-Color-Lab-v1.3.zip
 ```
 
 **Mac:** open Terminal in the folder and run:
 
 ```
-shasum -a 256 TankTrouble-Color-Lab-v1.0.zip
+shasum -a 256 TankTrouble-Color-Lab-v1.3.zip
 ```
 
 The long code it prints must match the SHA-256 above exactly.
