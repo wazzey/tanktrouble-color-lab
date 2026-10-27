@@ -1,4 +1,4 @@
-TANKTROUBLE COLOR LAB - v1.2
+TANKTROUBLE COLOR LAB - v1.3
 Made and run by wazzey. Not affiliated with TankTrouble.
 Custom colours, paints, items and map themes for TankTrouble. Cosmetic only: you and other Color Lab users see them, everyone else sees the normal game.
 
@@ -27,4 +27,4 @@ USING IT
 
 Back up your looks with Settings > Export.
 Full details of what it changes and what it stores: "WHAT IT CHANGES AND PRIVACY.txt".
-Feedback and bug reports: the forum thread or GitHub issues.
+Feedback and bug reports: Settings > Feedback & reports, the forum thread or GitHub issues.

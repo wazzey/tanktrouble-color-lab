@@ -71,16 +71,30 @@ So that Color Lab users can see each other's looks, Color Lab's look server
   only your copy can change or remove your tank's shared look.
 To show other tanks' looks, your copy sends the server the player IDs of the
 tanks around you, and keeps a connection open so changes arrive at once.
-Nothing else is sent: no usernames, no passwords, no stats, no browsing.
+Nothing else is sent: no passwords, no stats, no browsing. So the author can
+deal with abuse, the server notes each shared tank's TankTrouble name (public
+in the game) next to its look.
 The server keeps no record of who asked for which looks. Like any website,
 Cloudflare (which runs it) sees your IP address when your browser connects.
-To stop people sharing looks for other players' tanks, a copy of Color Lab
+To stop people sharing looks for other players' tanks, a look is only shared
+once you prove the tank is yours: Color Lab changes one thing on your real
+tank for about a second (a paint you already wear moved to another part, or
+one item taken off), the server reads the tank's public details on
+TankTrouble to see the change, and your tank is put straight back. Once per
+tank, and Color Lab asks first. Looks can be reported from a tank's profile.
+Also, a copy of Color Lab
 (and an internet connection) can only share a few new tanks a day. For that
 the server keeps a scrambled one-way code made from your connection, for one
-day, never stored next to a look.
+day, never stored next to a look. A banned connection's code is kept
+until the ban is lifted.
 Switch it off in Settings > Look sharing:
 - "Share my look" off removes your logged-in tanks' looks from the server.
 - "See other players' looks" off stops asking for anyone's look.
+
+MESSAGES
+If you send a message from Settings > Feedback & reports, its text and any
+screenshots go to the author's Discord, with your tank's name. The text and
+replies are kept so you can see them in Color Lab; screenshots are not kept.
 
 UPDATE CHECK
 Now and then Color Lab asks the look server which version is the newest (the
