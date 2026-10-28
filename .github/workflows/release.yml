@@ -42,7 +42,10 @@ jobs:
           npx --yes terser@5.31.0 content.js -c -m -f ascii_only=true -o "$OUT/content.js"
           cp background.js bridge.js manifest.json README.md "HOW TO INSTALL AND USE.txt" "WHAT IT CHANGES AND PRIVACY.txt" "$OUT/"
           cp -r icons art "$OUT/"
-          cd build && zip -r -X "../TankTrouble-Color-Lab-$TAG.zip" TankTrouble-Color-Lab
+          # repeatable: every file gets the tagged commit's time and goes in sorted order, so the same source always gives the same zip
+          T=$(git log -1 --format=%ct)
+          find build -exec touch -h -d "@$T" {} +
+          cd build && find TankTrouble-Color-Lab | LC_ALL=C sort | TZ=UTC zip -X -D -@ "../TankTrouble-Color-Lab-$TAG.zip"
           cd .. && sha256sum "TankTrouble-Color-Lab-$TAG.zip" | tee checksum.txt
 
       - name: Attach to the release (made if it doesn't exist yet)
