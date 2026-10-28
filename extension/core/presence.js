@@ -1,7 +1,7 @@
 import { PAGE_GAMES } from "../content/page-themes.js";
 import { tutCard, tutLayer } from "../content/tutorials.js";
 import { fbRefresh } from "./feedback.js";
-import { loggedInIds } from "./game-socket.js";
+import { loggedInIds, playingOnline } from "./game-socket.js";
 import { SHARE_SEEN, fetchShared, shareCall, shareMyLooks, shareSee, shareWatch, srvOn } from "./look-sharing.js";
 import { $ } from "./panel.js";
 import { renderSettings } from "./settings.js";
@@ -14,7 +14,7 @@ let bgSince;
 export function isIdle() {
   return document.hidden || Date.now() - lastInput > 5 * 60000;
 }
-// where the player is: in a game (local or online), in a queue, or just in the lobby
+// where the player is: in an online game, in a queue, or in the lobby (a local game counts as the lobby)
 export function ttWhere() {
   let w = "lobby";
   for (const g of [...PAGE_GAMES]) {
@@ -23,7 +23,7 @@ export function ttWhere() {
         continue;
       }
       const st = g.state.current;
-      if (st === "Game") {
+      if (st === "Game" && playingOnline()) {
         return "game";
       }
       if (st === "Lobby" && w === "lobby") {

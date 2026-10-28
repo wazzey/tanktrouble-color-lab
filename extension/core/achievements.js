@@ -4,7 +4,7 @@ import { ACH2 } from "../content/hall-of-fame.js";
 import { PUBLIC_BOXES, TROPHIES, isTrophyVal, trophyByKey } from "../content/laika-trophies.js";
 import { MAP_THEMES } from "../content/maps.js";
 import { CUSTOM_BOXES, boxOfKey } from "./custom-box-art.js";
-import { LAST_LIVE, loggedInIds, rpc } from "./game-socket.js";
+import { loggedInIds, playingOnline, rpc } from "./game-socket.js";
 import { GAME_STATE } from "./garage.js";
 import { LOOKS_SEEN } from "./laika-look.js";
 import { getOverride } from "./look-sharing.js";
@@ -54,7 +54,6 @@ function h2Unlock(pid, key) {
     unlockTrophy(pid, t);
   }
 }
-const playingOnline = () => Date.now() - LAST_LIVE < 5000;
 
 // --- lifetime numbers: read now and then (after rounds, at most every 2 minutes) ---
 let h2StatsAt = 0;

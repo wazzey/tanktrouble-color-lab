@@ -78,7 +78,7 @@ Official copies come only from the Chrome Web Store and this repository's [Relea
 | 🗺 **Map themes**         | Themes for the maze floor, walls and crates, light or dark, with matching bullets. Laika dresses up to match.                                                                     |
 | 🌙 **Page themes**       | The whole TankTrouble page in any map's colours, plus Dark, Halloween, Christmas and Easter. Forum, news and shop too.                                                            |
 | 🔗 **Look sharing**      | Color Lab players see each other's looks live in the lobby, garage and maze. Only for tanks proven to be yours.                                                                   |
-| 🟢 **Who's online**      | How many Color Lab players are online and, for those who choose to show themselves, who, and whether they're in the lobby, a queue or a game.                                     |
+| 🟢 **Who's online**      | How many Color Lab players are online and, for those who choose to show themselves, who, and whether they're in the lobby, a queue or an online game.                             |
 | 🏆 **Achievements**      | Earned in online rounds, each unlocking an extra item or paint.                                                                                                                   |
 | 💬 **Message Color Lab** | Send ideas or bugs with screenshots from the lobby, and read the replies there.                                                                                                   |
 | 👁 **Always visible**     | Mines, missiles, lasers and bullets get a colour that stands out on every map.                                                                                                    |

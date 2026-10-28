@@ -225,7 +225,8 @@ export function loggedInIds() {
   seenAccountIds.forEach((id) => out.add(id));
   return [...out];
 }
-export let LAST_LIVE = 0; // last time a game server message arrived: rounds only count online
+export let LAST_LIVE = 0; // last time the game server sent something about a game being played
+export const playingOnline = () => Date.now() - LAST_LIVE < 5000;
 
 export function startGameSocket() {
   // When you change a tank in the garage the game tells the game server (message 39, "player updated"), which
@@ -293,7 +294,11 @@ export function startGameSocket() {
           this.__ttclAt = Date.now();
         }
         onmsgDesc.set.call(this, function (ev) {
-          LAST_LIVE = Date.now(); // (Hall of Fame: rounds only count while the game server is talking)
+          // An online game's own traffic. The lobby's player counter (28), game list (57) and player updates (39) also
+          // arrive during local games, so they don't count.
+          if (typeof ev.data !== "string" || /^\{"_typeId":(?:3|4|8|9|10|15|16|22|26|29)[,}]/.test(ev.data)) {
+            LAST_LIVE = Date.now();
+          }
           // DEV: the lobby's list of this server's games (type 57): only the player IDs are kept, for the staff check
           if (DEV_BUILD && typeof ev.data === "string" && ev.data.length < 2000000) {
             const at = ev.data.indexOf('"_typeId":57');

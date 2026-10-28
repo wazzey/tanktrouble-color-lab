@@ -37,7 +37,7 @@ Each copy of Color Lab makes a random key. The server only ever keeps a one-way 
 
 ### Online status
 
-Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your tanks are logged in (guests included), which TankTrouble server you're on, whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, and whether you're in the lobby, a queue or a game. When you close your last TankTrouble tab it says so, so you show as offline at once.
+Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your tanks are logged in (guests included), which TankTrouble server you're on, whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, and whether you're in the lobby, a queue or an online game. When you close your last TankTrouble tab it says so, so you show as offline at once.
 
 The copy's key hash, version and first and last seen are kept for up to 60 days after it was last seen, and its logged-in tanks for 30 days. For each account seen logged in, the server also keeps the copy it was last seen on, that copy's version and when it was first and last seen, for up to 60 days after it was last seen. Tank names are kept for 180 days, or for as long as the tank has a shared look, a proof, a report or a removal note.
 
