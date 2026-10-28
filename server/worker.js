@@ -242,6 +242,11 @@ async function ensureTables(env) {
     env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS save_hist (pid TEXT NOT NULL, ver INTEGER NOT NULL, blob TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (pid, ver))",
     ), // (the last few versions, so a ruined save can be put back)
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS verified_kh ON verified (keyhash)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS looks_kh ON looks (keyhash)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS feedback_kh ON feedback (keyhash)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS feedback_pids_pid ON feedback_pids (pid)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS replies_fid ON replies (fid)"), // (looked up by these all the time: without them every lookup reads the whole table)
   ]);
   try {
     await env.DB.prepare("ALTER TABLE logged ADD COLUMN srv TEXT").run();
@@ -3178,6 +3183,7 @@ export default {
       env.DB.prepare("DELETE FROM seen_accts WHERE last < ?").bind(now - 60 * DAY),
       env.DB.prepare("DELETE FROM logged WHERE at < ?").bind(now - 30 * DAY),
       env.DB.prepare("DELETE FROM swept WHERE at < ?").bind(now - 90 * DAY),
+      env.DB.prepare("DELETE FROM look_history WHERE at < ?").bind(now - 30 * DAY), // (once a day, not with every look saved)
       env.DB.prepare("DELETE FROM saves WHERE at < ?").bind(now - 365 * DAY), // (a year without a single change)
       env.DB.prepare("DELETE FROM save_hist WHERE at < ? OR pid NOT IN (SELECT pid FROM saves)").bind(now - 30 * DAY),
       env.DB.prepare(
@@ -3540,7 +3546,6 @@ export default {
             String((req.cf && req.cf.country) || "").slice(0, 2) || null,
             s.slice(0, 4000),
           ),
-          env.DB.prepare("DELETE FROM look_history WHERE at < ?").bind(now - 30 * DAY),
         ]).catch(() => {}),
       ); // (when, from which copy and which country: for the admin page)
       if (env.HUB) {
