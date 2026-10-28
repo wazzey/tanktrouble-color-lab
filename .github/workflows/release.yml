@@ -13,6 +13,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      CWS_ON: ${{ secrets.CWS_EXTENSION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -38,3 +40,15 @@ jobs:
           body: |
 
             **SHA-256:** `${{ steps.build.outputs.sha256 }}` (built from ${{ github.sha }} by GitHub Actions)
+
+      # Chrome Web Store: uploads the same zip and submits it for review.
+      # Skipped until the five CWS_* secrets are added in Settings > Secrets and variables > Actions.
+      - name: Upload to the Chrome Web Store
+        if: env.CWS_ON == 'true'
+        env:
+          EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: npx --yes chrome-webstore-upload-cli@4.0.2 --source "${{ steps.build.outputs.zip }}"
