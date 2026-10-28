@@ -48,7 +48,7 @@ Do it **in the same browser** and your looks come with you:
 2. Remove the old copy at `chrome://extensions`.
 3. Add Color Lab from the Chrome Web Store, then refresh TankTrouble.
 
-Saved tanks and looks, colours, settings, themes and achievement progress are restored from the backup Color Lab keeps in TankTrouble's own site storage, and so is the look-sharing key, so your tanks stay proven. Moving to a **different browser**, or cleared tanktrouble.com's site data? Use **⬇ Export backup** in the old copy and **⬆ Import** in the new one; Color Lab asks you to prove your tanks again if it needs to.
+Saved tanks and looks, colours, settings, themes and achievement progress are restored from the backup Color Lab keeps in TankTrouble's own site storage. Your account's key is made from your account's details, so your tanks stay proven. Moving to a **different browser** or computer? Log in and your saved looks and achievements come back from **Backup** by themselves. **⬇ Export backup** and **⬆ Import** still move everything else (settings, themes, and looks you gave other players' tanks).
 
 Don't keep two copies switched on in the same browser: only one runs, and the other gets in its way.
 
@@ -73,6 +73,7 @@ Official copies come only from the Chrome Web Store and this repository's [Relea
 |                          |                                                                                                                                                                                   |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🎨 **Colour panel**      | Paint any tank's turret, base and treads with any hex colour or pattern paint, and try on items from every box. **Alt+C** opens it.                                               |
+| ☁ **Backup**             | Your saved looks and achievements are kept for your account, so they come back on any computer you log in on.                                                                     |
 | 💾 **Saved looks**       | Up to 10 looks per tank, switched in one click from the garage's **💾 Looks** button. Back everything up with **Settings > Export**.                                              |
 | 🏠 **In-game garage**    | **All** shows every paint and item plus Color Lab's own boxes, in folders. **Real** is the normal garage and saves to your account. 🎲 random look and **Find in garage** search. |
 | 🗺 **Map themes**         | Themes for the maze floor, walls and crates, light or dark, with matching bullets. Laika dresses up to match.                                                                     |
@@ -153,6 +154,9 @@ Only players who also use Color Lab (switch this off in **Settings > Look sharin
 **Does it need my password or an account?**
 No. It never reads, keeps or sends your password, and there's no Color Lab account.
 
+**Do my looks follow me to another computer?**
+Yes. Log in on any computer with Color Lab and your saved looks and achievement progress come back by themselves. They're kept on Color Lab's server, and only your account's own key can read or change them. An account that has never messaged the TankTrouble laboratory proves the tank first on a new computer (Color Lab changes one thing on it for about a second). Switch it off in **Settings > Backup**.
+
 **What does it send, and who can see it?**
 All of it is in the [privacy policy](PRIVACY.md), including what the author can see. The server's code is in [`server/`](server), so you can check.
 
@@ -188,11 +192,11 @@ If anything in Color Lab isn't allowed, or you'd like something changed or remov
 
 ## Development
 
-| Folder                                 | What it is                                                                                                                                                                                                                                                                                                                                                  |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`extension/`](extension)              | The extension. `content.js` runs in the page and starts every feature in order; [`core/`](extension/core) holds the features (storage, look sharing, the game hooks, the garage, the panel and so on) and [`content/`](extension/content) the boxes, maps, achievements and art. `bridge.js` passes messages to `background.js`, which talks to the server. |
-| [`server/`](server)                    | The look server: a Cloudflare Worker with a D1 database. Pushing to `main` deploys it. Secrets live in Cloudflare (`npx wrangler secret list`), never here.                                                                                                                                                                                                 |
-| [`scripts/build.js`](scripts/build.js) | Builds the extension with Bun.                                                                                                                                                                                                                                                                                                                              |
+| Folder                                 | What it is                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`extension/`](extension)              | The extension. `content.js` runs in the page and starts every feature in order; [`core/`](extension/core) holds the features (storage, look sharing, the game hooks, the garage, the panel and so on) and [`content/`](extension/content) the boxes, maps, achievements and art. `bridge.js` passes messages to `background.js`, which talks to the server, and with `vault.js` makes each account's key. |
+| [`server/`](server)                    | The look server: a Cloudflare Worker with a D1 database. Pushing to `main` deploys it. Secrets live in Cloudflare (`npx wrangler secret list`), never here.                                                                                                                                                                                                                                               |
+| [`scripts/build.js`](scripts/build.js) | Builds the extension with Bun.                                                                                                                                                                                                                                                                                                                                                                            |
 
 Install [Node](https://nodejs.org) 22+, then `npm ci`. That installs the pinned Bun, which does the formatting, linting and building:
 

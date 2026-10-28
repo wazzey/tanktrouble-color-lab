@@ -1,6 +1,6 @@
 # TankTrouble Color Lab: privacy policy
 
-_Last updated: 28 October 2026_
+_Last updated: 28 October 2026 (v1.4.5)_
 
 TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser extension made and run by **wazzey** ("the author"). It is not affiliated with TankTrouble. This page lists everything it collects, who can see it, how long it's kept and how to remove it. The code that does all of this is public: the extension in [`extension/`](extension) and its server in [`server/`](server).
 
@@ -12,14 +12,19 @@ TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser e
 - For tanks you give a custom look: their in-game name, player ID and any nickname you type.
 - Achievement progress (kills, wins, streaks, which days you played).
 - A backup of the above in tanktrouble.com's site storage, so your looks survive a reinstall, and a picture cache.
+- Your accounts' keys and this copy's key (see below), in the extension's own storage, which the page's scripts can't read.
 
-Color Lab reads TankTrouble's own game messages in the page so it can recolour tanks and count achievements. Your login passes through the game the normal way: Color Lab never reads, keeps or sends your password. Its browser permissions are `storage` (your looks) and `scripting` (so the toolbar button and Alt+C open the panel).
+Color Lab reads TankTrouble's own game messages in the page so it can recolour tanks and count achievements. To make your account's key it also reads, on your computer, your account's email and the number of its oldest laboratory message; neither is sent anywhere or kept. Your login passes through the game the normal way: Color Lab never reads, keeps or sends your password. Its browser permissions are `storage` (your looks) and `scripting` (so the toolbar button and Alt+C open the panel).
 
 ## On the Color Lab server
 
-### Your copy's key
+### Your keys
 
-Each copy of Color Lab makes a random key. The server only ever keeps a one-way hash of it, which ties your shared looks, messages and online status to your copy without naming you.
+Each account you log in with gets its own key, made on your computer from the account's email, player ID and oldest laboratory message, so every computer you use makes the same one. The server only keeps a one-way hash of it, which ties your shared look, proofs, backup and messages to your account. TankTrouble's own website can read those details while you're logged in, so a script running on tanktrouble.com could work the key out too, the same way Color Lab does. An account without an email, or that has never sent a message to the laboratory, uses your copy's random key instead, so on a new computer (or if that key is lost) it proves the tank again before its backup comes back.
+
+Each copy of Color Lab also makes a random key for its online status and its own messages. The server only keeps a one-way hash of it.
+
+If your email changes, a computer that still has the old key moves your account to the new one by itself. A new computer asks you to prove the tank instead.
 
 ### Look sharing
 
@@ -27,6 +32,12 @@ Each copy of Color Lab makes a random key. The server only ever keeps a one-way 
 - A history of look changes (the look, when, and the approximate country of the connection as Cloudflare reports it), kept for 30 days to deal with abuse.
 - To show other tanks' looks, your copy sends the player IDs of the tanks around you. The server keeps no record of who asked for which looks.
 - Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day.
+
+### Backup
+
+With **Settings > Backup** on (it is unless you switch it off), each logged-in account's saved looks (including any nickname you gave the tank) and achievement progress are sent to the server. It keeps the backup, its version number and when it was made, and the last 5 earlier versions for up to 30 days so a ruined backup can be put back. Only the account's key can read or change it. This sends the account's player ID even with Share my look off. A backup is deleted after a year without a change, or at once with **Delete my backup**.
+
+A connection that sends wrong keys for an account is noted with that account's player ID for a day, and stopped after 10.
 
 ### Limits and abuse
 
@@ -45,7 +56,7 @@ Turning off **Settings > Look sharing > Share my look** removes your tanks' look
 
 ### Messages
 
-A message sent from **Message Color Lab** goes to the author's private Discord with its text, any screenshots and your logged-in tanks' names. Cloudflare's AI ([Workers AI](https://developers.cloudflare.com/workers-ai/)) reads up to the first 800 characters to tag it (bug, idea, question and so on). The text and the replies are kept so you can see them in Color Lab, until you ask for them to be removed; screenshots aren't kept.
+A message sent from **Message Color Lab** goes to the author's private Discord with its text, any screenshots and your logged-in tanks' names. It's sent with the key of the account you send it as, so the conversation shows on any computer you use that account on. Cloudflare's AI ([Workers AI](https://developers.cloudflare.com/workers-ai/)) reads up to the first 800 characters to tag it (bug, idea, question and so on). The text and the replies are kept so you can see them in Color Lab, until you ask for them to be removed; screenshots aren't kept.
 
 ### Announcements and updates
 
@@ -57,12 +68,13 @@ Like any website, Cloudflare (which runs the server) sees your IP address when y
 
 **Other Color Lab players** see your look on your proven tanks. They see you in the online list only if you turn on **Settings > Look sharing > Show me as online** (your name, and whether you're online or idle and in the lobby, a queue or a game), and your TankTrouble server only if you also turn on **Show which server I'm on**. Otherwise you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
 
-**The author** sees everything the server keeps, on its admin page and in the author's own copy of Color Lab. That includes every online copy whatever its settings (invisible ones too), guests' names, accounts not yet allowed to share, each copy's version, server, idle and away minutes and last seen, the look history and reports, and the messages. It's used to run the server, deal with abuse and answer messages, and isn't shared with anyone.
+**The author** sees everything the server keeps, on its admin page and in the author's own copy of Color Lab. That includes every online copy whatever its settings (invisible ones too), guests' names, accounts not yet allowed to share, each copy's version, server, idle and away minutes and last seen, the look history and reports, and the messages. That includes the backups. It's used to run the server, deal with abuse and answer messages, and isn't shared with anyone.
 
 ## Your choices and deleting your data
 
 - **Share my look** off removes your tanks' looks from the server and stops sending your tanks, server and idle status.
 - **See other players' looks** off stops asking for anyone's look.
+- **Backup** off stops sending your backup. **Delete my backup** removes it from the server.
 - To remove everything: switch off Share my look, remove the extension at `chrome://extensions`, then clear tanktrouble.com's site data (padlock > Site settings > Delete data).
 - To ask for any data to be removed, open an issue at https://github.com/wazzey/tanktrouble-color-lab/issues or message Color Lab from the extension.
 

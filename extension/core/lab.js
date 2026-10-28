@@ -6,9 +6,11 @@ import {
   fbMe,
   fbReadImage,
   fbRefresh,
+  fbSender,
   fbSetImage,
   fbShowImages,
   fbWords,
+  populateSendAs,
 } from "./feedback.js";
 import { loggedInIds } from "./game-socket.js";
 import { shareCall } from "./look-sharing.js";
@@ -302,12 +304,15 @@ export function labDraw() {
       '<h2>Send a message to Color Lab</h2><div class="sub">Got ideas, found a bug, need help or just love Color Lab? Let us know!</div>' +
       '<textarea id="labText" maxlength="1500" placeholder="Message"></textarea>' +
       '<div class="pv" id="labPv" style="text-align:left"></div><div class="row"><button class="medium grey" data-k="pic">📎 Screenshots (up to 3)</button><span id="labMsg"></span><span id="labCount">0/5 words</span></div>' +
-      '<button class="medium" data-k="send">Send message</button>';
+      '<select id="labAs" hidden></select><button class="medium" data-k="send">Send message</button>';
   }
   h += "</div>";
   const keep = D("labText") ? D("labText").value : "";
   L.innerHTML = h;
   const ta = D("labText");
+  if (D("labAs")) {
+    populateSendAs(D("labAs"));
+  }
   if (ta) {
     ta.value = keep;
     const cnt = () => {
@@ -413,6 +418,7 @@ export function labDraw() {
         text,
         images: fbImages.length ? fbImages.slice(0, 3) : undefined,
         pids: loggedInIds().filter((id) => /^\d+$/.test(id)),
+        as: fbSender(),
         kind: "feedback",
       }).catch(() => null);
       if (r && r.ok) {

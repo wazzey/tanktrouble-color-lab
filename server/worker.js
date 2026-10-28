@@ -236,6 +236,12 @@ async function ensureTables(env) {
     env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS proofs (pid TEXT NOT NULL, keyhash TEXT NOT NULL, part TEXT NOT NULL, kind TEXT NOT NULL, want TEXT NOT NULL, back TEXT NOT NULL, stage INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (pid, keyhash))",
     ),
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS saves (pid TEXT PRIMARY KEY, ver INTEGER NOT NULL, blob TEXT NOT NULL, at INTEGER NOT NULL)",
+    ), // (an account's backup: its saved looks and achievement progress)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS save_hist (pid TEXT NOT NULL, ver INTEGER NOT NULL, blob TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (pid, ver))",
+    ), // (the last few versions, so a ruined save can be put back)
   ]);
   try {
     await env.DB.prepare("ALTER TABLE logged ADD COLUMN srv TEXT").run();
@@ -1070,6 +1076,165 @@ async function sendFeedback(env, req, ctx) {
   }
   return json({ ok: true, id: fid });
 }
+// ---------- an account's backup: its saved looks and achievement progress ----------
+// Each account has its own key, worked out on the player's computer from the account's email, player ID and oldest
+// laboratory message, so every computer the player uses gets the same one. Reading or changing the backup needs the key.
+const MAX_SAVE = 44000,
+  SAVE_GAP_MS = 50000,
+  SAVE_KEEP = 5,
+  WRONG_KEYS = 10;
+async function account(env, req, ctx) {
+  let b;
+  try {
+    const t = await req.text();
+    if (t.length > MAX_SAVE + 1000) {
+      return json({ error: "too big" }, 413);
+    }
+    b = JSON.parse(t);
+  } catch {
+    return json({ error: "bad json" }, 400);
+  }
+  const pid = PID.test(String((b && b.pid) || "")) ? String(b.pid) : null;
+  if (!b || typeof b.key !== "string" || !KEY.test(b.key) || !pid) {
+    return json({ error: "bad request" }, 400);
+  }
+  await ensureTables(env);
+  const kh = await sha256(b.key),
+    old = typeof b.old === "string" && KEY.test(b.old) ? await sha256(b.old) : null,
+    ih = await ipHash(env, req),
+    now = Date.now(),
+    op = String(b.op || "");
+  if (
+    await env.DB.prepare("SELECT 1 FROM banned WHERE hash IN (?, ?, ?)")
+      .bind(kh, old || kh, ih)
+      .first()
+  ) {
+    return json({ error: "not allowed" }, 403);
+  }
+  if (await onHold(env, kh, old || kh, ih)) {
+    return json({ error: "on hold: the owner of Color Lab will check this copy" }, 403);
+  } // (a banned or held copy can't move its tanks to a new key either)
+  const owner = await env.DB.prepare("SELECT keyhash FROM verified WHERE pid = ?").bind(pid).first(),
+    right = owner && (owner.keyhash === kh || (op === "move" && owner.keyhash === old));
+  if (owner && !right) {
+    // a wrong key for a proven account: a connection that keeps trying is stopped for the day, and the owner is told
+    const tries = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who = ? AND pid = ? AND at > ?")
+      .bind("w:" + ih, "w" + pid, now - DAY)
+      .first();
+    if (tries && tries.n >= WRONG_KEYS) {
+      return json({ error: "too many wrong keys today" }, 429);
+    }
+    await env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, ?, ?)")
+      .bind("w:" + ih, "w" + pid, now)
+      .run();
+    if (tries && tries.n + 1 === WRONG_KEYS) {
+      ctx.waitUntil(
+        (async () =>
+          alert(
+            env,
+            "pattern",
+            "A connection tried " + WRONG_KEYS + " wrong keys for " + (await tankName(env, pid)) + " today (guessing?)",
+          ))(),
+      );
+    }
+    return json({ error: "prove this tank is yours first" }, 403);
+  }
+  if (!owner) {
+    return json({ error: "prove this tank is yours first" }, 403);
+  }
+  if (op === "move") {
+    // the account's key changed (a copy from before account keys, or the email changed): the copy that has the old key
+    // moves the tank over to the new one, so it stays proven
+    if (owner.keyhash !== kh) {
+      await env.DB.batch([
+        env.DB.prepare("UPDATE verified SET keyhash = ?, at = ? WHERE pid = ?").bind(kh, now, pid),
+        env.DB.prepare("UPDATE looks SET keyhash = ? WHERE pid = ? AND keyhash = ?").bind(kh, pid, old),
+        env.DB.prepare("UPDATE hidden SET keyhash = ? WHERE pid = ? AND keyhash = ?").bind(kh, pid, old),
+      ]);
+    }
+    return json({ ok: true });
+  }
+  const cur = await env.DB.prepare("SELECT ver, blob, at FROM saves WHERE pid = ?").bind(pid).first();
+  if (op === "get") {
+    if (b.ver != null && cur && Number(b.ver) !== cur.ver) {
+      const h = await env.DB.prepare("SELECT ver, blob, at FROM save_hist WHERE pid = ? AND ver = ?")
+        .bind(pid, Number(b.ver) || 0)
+        .first();
+      return h ? json({ ok: true, save: h }) : json({ error: "gone" }, 404);
+    }
+    return json({ ok: true, save: cur || null });
+  }
+  if (op === "hist") {
+    const rows =
+      (await env.DB.prepare("SELECT ver, at FROM save_hist WHERE pid = ? ORDER BY ver DESC").bind(pid).all()).results ||
+      [];
+    return json({ ok: true, current: cur ? { ver: cur.ver, at: cur.at } : null, older: rows });
+  }
+  if (op === "delete") {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM saves WHERE pid = ?").bind(pid),
+      env.DB.prepare("DELETE FROM save_hist WHERE pid = ?").bind(pid),
+    ]);
+    return json({ ok: true });
+  }
+  if (op === "put") {
+    let blob = null;
+    try {
+      const o = typeof b.blob === "string" && b.blob.length <= MAX_SAVE ? JSON.parse(b.blob) : null;
+      blob = o && typeof o === "object" && !Array.isArray(o) ? b.blob : null;
+    } catch {}
+    if (!blob) {
+      return json({ error: "bad save" }, 400);
+    }
+    const ver = (cur ? cur.ver : 0) + 1;
+    if (Number(b.base) !== (cur ? cur.ver : 0) || Number(b.ver) !== ver) {
+      return json({ error: "changed", ver: cur ? cur.ver : 0 }, 409);
+    } // (another computer saved first: this one takes that in and tries again)
+    if (cur && now - cur.at < SAVE_GAP_MS) {
+      return json({ error: "too fast", wait: SAVE_GAP_MS - (now - cur.at) }, 429);
+    }
+    const steps = [];
+    if (cur) {
+      steps.push(
+        env.DB.prepare("INSERT OR REPLACE INTO save_hist (pid, ver, blob, at) VALUES (?, ?, ?, ?)").bind(
+          pid,
+          cur.ver,
+          cur.blob,
+          cur.at,
+        ),
+        env.DB.prepare(
+          "DELETE FROM save_hist WHERE pid = ?1 AND ver NOT IN (SELECT ver FROM save_hist WHERE pid = ?1 ORDER BY ver DESC LIMIT ?2)",
+        ).bind(pid, SAVE_KEEP),
+      );
+    } // (the last few versions are kept, so a ruined backup can be put back)
+    steps.push(
+      env.DB.prepare("INSERT OR REPLACE INTO saves (pid, ver, blob, at) VALUES (?, ?, ?, ?)").bind(pid, ver, blob, now),
+    );
+    await env.DB.batch(steps);
+    return json({ ok: true, ver, at: now });
+  }
+  if (op === "messages") {
+    // the account's conversations with Color Lab, from whichever computer they were sent
+    return json({ ok: true, items: await feedbackOf(env, kh) });
+  }
+  return json({ error: "bad op" }, 400);
+}
+async function feedbackOf(env, kh) {
+  // messages sent with this key, and older ones sent by an account it has proven (so they follow the player to another computer)
+  const items =
+    (
+      await env.DB.prepare(
+        "SELECT f.id, f.who, f.text, f.at FROM feedback f WHERE f.keyhash = ?1 OR f.id IN (SELECT fp.fid FROM feedback_pids fp JOIN verified v ON v.pid = fp.pid WHERE v.keyhash = ?1) ORDER BY f.id DESC LIMIT 50",
+      )
+        .bind(kh)
+        .all()
+    ).results || [];
+  for (const it of items) {
+    it.replies =
+      (await env.DB.prepare("SELECT text, at FROM replies WHERE fid = ? ORDER BY at").bind(it.id).all()).results || [];
+  }
+  return items;
+}
 async function listFeedback(env, req) {
   // a player's own messages and your replies (by their copy's key, so only they see them)
   let b;
@@ -1112,19 +1277,7 @@ async function listFeedback(env, req) {
       await env.DB.prepare("UPDATE presence SET off = 0 WHERE kh = ? AND off = 1").bind(kh).run();
     }
   } catch {} // (back online clears it)
-  // this copy's messages, and those sent by any account this copy has proven (so they follow the player to another computer)
-  const items =
-    (
-      await env.DB.prepare(
-        "SELECT f.id, f.who, f.text, f.at FROM feedback f WHERE f.keyhash = ? OR f.id IN (SELECT fp.fid FROM feedback_pids fp JOIN verified v ON v.pid = fp.pid WHERE v.keyhash = ?) ORDER BY f.id DESC LIMIT 50",
-      )
-        .bind(kh, kh)
-        .all()
-    ).results || [];
-  for (const it of items) {
-    it.replies =
-      (await env.DB.prepare("SELECT text, at FROM replies WHERE fid = ? ORDER BY at").bind(it.id).all()).results || [];
-  }
+  const items = await feedbackOf(env, kh);
   const main = await env.DB.prepare("SELECT pid FROM verified WHERE keyhash = ? ORDER BY at LIMIT 1").bind(kh).first(),
     me = main
       ? ((await env.DB.prepare("SELECT name FROM names WHERE pid = ?").bind(String(main.pid)).first()) || {}).name
@@ -2908,6 +3061,8 @@ export default {
       env.DB.prepare("DELETE FROM seen_accts WHERE last < ?").bind(now - 60 * DAY),
       env.DB.prepare("DELETE FROM logged WHERE at < ?").bind(now - 30 * DAY),
       env.DB.prepare("DELETE FROM swept WHERE at < ?").bind(now - 90 * DAY),
+      env.DB.prepare("DELETE FROM saves WHERE at < ?").bind(now - 365 * DAY), // (a year without a single change)
+      env.DB.prepare("DELETE FROM save_hist WHERE at < ? OR pid NOT IN (SELECT pid FROM saves)").bind(now - 30 * DAY),
       env.DB.prepare(
         "DELETE FROM names WHERE at < ? AND pid NOT IN (SELECT pid FROM looks) AND pid NOT IN (SELECT pid FROM verified) AND pid NOT IN (SELECT pid FROM swept) AND pid NOT IN (SELECT pid FROM reports)",
       ).bind(now - 180 * DAY),
@@ -2933,6 +3088,7 @@ export default {
         url.pathname === "/v1/live" ||
         url.pathname.startsWith("/v1/verify") ||
         url.pathname === "/v1/report" ||
+        url.pathname === "/v1/account" ||
         url.pathname.startsWith("/v1/feedback"))
     ) {
       const v = req.headers.get("x-ttcl-version") || url.searchParams.get("v") || "0",
@@ -3284,6 +3440,15 @@ export default {
     }
     if (url.pathname === "/discord" && req.method === "POST") {
       return discordInteraction(env, req, ctx);
+    }
+    if (url.pathname === "/v1/account" && req.method === "POST") {
+      if (await isBlocked(env, req)) {
+        return json({ error: "shut out for an hour for flooding" }, 429);
+      }
+      if (await slowDown(env, req, "write", ctx)) {
+        return json({ error: "slow down" }, 429);
+      }
+      return account(env, req, ctx);
     }
     if (url.pathname === "/v1/bye" && req.method === "POST") {
       // the last TankTrouble tab of a copy was closed: it shows as offline at once

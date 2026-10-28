@@ -32,6 +32,7 @@ import "./content/custom-boxes.js";
 import "./content/tank-icon.js";
 import "./content/tutorials.js";
 import { startAccessories } from "./core/accessories.js";
+import { startAccountSync } from "./core/account-sync.js";
 import { startAchievements } from "./core/achievements.js";
 import { startAnnouncements } from "./core/announcements.js";
 import { startCustomBoxArt } from "./core/custom-box-art.js";
@@ -91,5 +92,6 @@ if (!window.__ttColorLab) {
   startPresence();
   startTutorialRun();
   startOnline();
+  startAccountSync();
   window.__ttColorLab = { toggle: () => setOpen(!panel.classList.contains("open")), refresh: () => refreshLoggedIn() };
 }

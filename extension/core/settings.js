@@ -2,6 +2,7 @@ import { GX_PAINT, isPat, patId } from "../content/colours.js";
 import { CUSTOM_ART, paintLabel } from "../content/custom-boxes.js";
 import { MAZE_TILE } from "../content/maze-patterns.js";
 import { toCss } from "../content/registries.js";
+import { populateBackup, readSupportId } from "./account-sync.js";
 import { CUSTOM_BOXES, boxAvailable, boxEnabled, getCustomArt } from "./custom-box-art.js";
 import { fbRefresh } from "./feedback.js";
 import { loggedInIds, refreshSoon, refreshTanks } from "./game-socket.js";
@@ -200,6 +201,25 @@ export function renderSettings() {
       shareMyLooks(true);
     };
     r1.append(pv);
+    const sid = document.createElement("button");
+    sid.className = "small grey";
+    sid.textContent = "📋 Copy my support ID";
+    sid.title =
+      "A short code for this copy of Color Lab. If you need help, paste it in your message so the Color Lab team can find your copy. It can't be used to get into anything";
+    sid.onclick = async () => {
+      const id = await readSupportId();
+      if (!id) {
+        toast("Couldn't get it, try again", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(id);
+        toast("Copied your support ID: " + id);
+      } catch {
+        toast("Your support ID: " + id);
+      }
+    };
+    r1.append(sid);
     if (DEV_BUILD) {
       const ad = document.createElement("button");
       ad.className = "small grey";
@@ -222,6 +242,7 @@ export function renderSettings() {
       : "Only proven tanks are shared";
     sh.appendChild(sm);
   }
+  populateBackup($("setBackup"), row);
   {
     const sa = $("setAch");
     sa.innerHTML = "";

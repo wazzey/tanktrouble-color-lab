@@ -208,6 +208,24 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pid, key: /^[0-9a-f]{64}$/.test(String(m.key || "")) ? m.key : undefined }),
     };
+  } else if (m.op === "account" && /^[0-9a-f]{64}$/.test(String(m.key || "")) && m.acct && typeof m.acct === "object") {
+    // an account's saved looks and achievements (already encrypted by bridge.js), and moving it to a new key
+    const a = m.acct;
+    url = SHARE_BASE + "/v1/account";
+    opt = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key: m.key,
+        op: String(a.op || ""),
+        pid: String(a.pid || ""),
+        old: typeof a.old === "string" ? a.old : undefined,
+        ver: Number.isInteger(a.ver) ? a.ver : undefined,
+        base: Number.isInteger(a.base) ? a.base : undefined,
+        blob: typeof a.blob === "string" ? a.blob : undefined,
+        fresh: a.fresh === true ? true : undefined,
+      }),
+    };
   } else if (m.op === "announce") {
     // the Color Lab team's live announcement (nothing about you is sent)
     url = SHARE_BASE + "/v1/announce";

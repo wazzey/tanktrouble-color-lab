@@ -343,7 +343,7 @@ function guestLocal(id) {
   GUEST_LOCAL.add(String(id));
   toast("Guest tanks use Color Lab on your screen only. Log in to share your look with other players");
 }
-function needProof(ids) {
+export function needProof(ids) {
   ids = ids.filter((id) => !(SETTINGS.proven || {})[id] && !GUEST_LOCAL.has(String(id)));
   if (!ids.length || proveAsking) {
     return;

@@ -2,8 +2,8 @@
 // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
 // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
 // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-export const TUT_VER = 14,
-  TUT_LABEL = "v1.4.4";
+export const TUT_VER = 15,
+  TUT_LABEL = "v1.4.5";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
   [
@@ -278,6 +278,22 @@ export const WHATS_NEW = [
     "🔓",
     "<b>Open source</b>: Color Lab and its server are on GitHub for anyone to read, with a clearer privacy policy",
   ],
+  [
+    15,
+    "☁",
+    "<b>Backup</b>: your saved looks and achievements are kept for your account, so they come back on any computer you log in on. ⚙ Settings > Backup",
+  ],
+  [
+    15,
+    "🔑",
+    "<b>Your account's own key</b>: Color Lab now uses one key for each account, made on your computer from your account's details. If the account has messaged the TankTrouble laboratory, a new browser picks up your looks and messages by itself, with no proving",
+  ],
+  [
+    15,
+    "📨",
+    "<b>Messages</b> follow the account you send them as, on any computer. With two accounts logged in, pick which one sends",
+  ],
+  [15, "📋", "<b>Copy my support ID</b> in ⚙ Settings > Look sharing helps the Color Lab team find your copy"],
 ];
 // What a brand-new user sees (instead of every older version's notes): what Color Lab has, in short
 export const V1_OVERVIEW = [

@@ -1,6 +1,8 @@
 // TankTrouble Color Lab — storage bridge.
 // Runs in the extension's isolated world (where chrome.storage is available) and loads/saves data for
 // content.js, which runs inside the page. Only the keys below can be read or written.
+import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
+
 (() => {
   const KEYS = [
     "tt_custom_colors",
@@ -74,6 +76,135 @@
     return o;
   };
 
+  // ---- keys: the copy's random key, and each account's own key (vault.js). Neither is given to the page ----
+  const PID = /^\d{1,12}$/;
+  let copyKeyWait = null;
+  const readCopyKey = () =>
+    copyKeyWait ||
+    (copyKeyWait = new Promise((res) => {
+      chrome.storage.local.get("ttcl_share_key", (it) => {
+        let key = it && it.ttcl_share_key;
+        try {
+          const old = localStorage.getItem("ttcl_share_key");
+          if (!key && old) {
+            key = old;
+          }
+          localStorage.removeItem("ttcl_share_key");
+        } catch {} // (older versions also kept it in the site storage)
+        if (!key || !/^[0-9a-f]{64}$/.test(key)) {
+          const b = new Uint8Array(32);
+          crypto.getRandomValues(b);
+          key = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+        }
+        chrome.storage.local.set({ ttcl_share_key: key });
+        res(key);
+      });
+    }));
+  const callAccount = (key, acct) =>
+    new Promise((res) => {
+      try {
+        chrome.runtime.sendMessage({ type: "share", op: "account", key, acct }, (r) => {
+          void chrome.runtime.lastError;
+          res(r || { ok: false, status: 0 });
+        });
+      } catch {
+        res({ ok: false, status: 0 });
+      }
+    });
+  const accountWait = {};
+  const readAccount = (pid) => {
+    // the account's key, or null without one. Worked out again every 10 minutes (sooner after a failed move)
+    const c = accountWait[pid];
+    if (c && Date.now() < c.until) {
+      return c.wait;
+    }
+    const wait = readAccountNow(pid);
+    accountWait[pid] = { until: Date.now() + 10 * 60000, wait };
+    wait.then((a) => {
+      if (a && !a.moved) {
+        accountWait[pid].until = Date.now() + 2 * 60000;
+      }
+    });
+    return wait;
+  };
+  async function readAccountNow(pid) {
+    const vault = await readVault(),
+      had = vault[pid],
+      details = await readDetails(pid);
+    let entry = had;
+    if (details && (!had || had.fp !== details.fp)) {
+      // a new account here, or its email or oldest lab message changed: a new key, and the tank moves over to it from
+      // the old key (the account's previous key, or the copy's random key), so it stays proven
+      entry = { k: await readAccountKey(details.secret, pid), fp: details.fp, old: had ? had.k : null, moved: false };
+    }
+    if (!entry) {
+      return null;
+    }
+    if (!entry.moved) {
+      const r = await callAccount(entry.k, { op: "move", pid, old: entry.old || (await readCopyKey()) });
+      entry.moved = r.ok || r.status === 403; // (403: the old key never proved it, so there's nothing to move)
+    }
+    vault[pid] = entry;
+    await applyVault(vault);
+    return { key: entry.k, moved: entry.moved };
+  }
+  const keyFor = async (d) => {
+    // a tank's own look and proof use its account's key; a message is sent with the key of the account it's sent as
+    const pid = ["put", "delete", "vstart", "vcheck"].includes(d.op) ? d.pid : d.op === "fbsend" ? d.as : null;
+    if (PID.test(String(pid || ""))) {
+      const a = await readAccount(String(pid));
+      if (a) {
+        return a.key;
+      }
+    }
+    return readCopyKey();
+  };
+  async function accountOp(d) {
+    // the page's requests about an account's backup. The page gets the backup, never a key
+    // (an account that has never messaged the laboratory uses the copy's random key: proven again on a new computer)
+    const pid = String(d.pid),
+      a = await readAccount(pid),
+      key = a ? a.key : await readCopyKey();
+    if (d.act === "pull") {
+      const r = await callAccount(key, { op: "get", pid, ver: Number.isInteger(d.ver) ? d.ver : undefined });
+      if (!r.ok) {
+        return { status: r.status, error: r.data && r.data.error };
+      }
+      const save = r.data.save;
+      if (!save) {
+        return { none: true };
+      }
+      let saved = null;
+      try {
+        saved = JSON.parse(save.blob);
+      } catch {}
+      return saved ? { data: saved, ver: save.ver, at: save.at } : { none: true };
+    }
+    if (d.act === "push") {
+      const base = Number(d.base) || 0;
+      const r = await callAccount(key, {
+        op: "put",
+        pid,
+        base,
+        ver: base + 1,
+        blob: JSON.stringify(d.data),
+      });
+      return {
+        ok: !!r.ok,
+        status: r.status,
+        ver: r.data && r.data.ver,
+        at: r.data && r.data.at,
+        wait: r.data && r.data.wait,
+        error: r.data && r.data.error,
+      };
+    }
+    if (["hist", "delete", "messages"].includes(d.act)) {
+      const r = await callAccount(key, { op: d.act, pid });
+      return { ok: !!r.ok, status: r.status, data: r.data };
+    }
+    return { error: "bad act" };
+  }
+
   window.addEventListener("message", (e) => {
     const d = e.data;
     if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toExt") {
@@ -118,6 +249,25 @@
           p.catch(() => {});
         }
       } catch {}
+    } else if (d.type === "supportId") {
+      // the start of this copy's key hash, as the owner's admin page shows it (it can't be used to get into anything)
+      readCopyKey()
+        .then((key) => crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)))
+        .then((h) =>
+          toPage({
+            type: "supportIdRes",
+            rid: d.rid,
+            id: [...new Uint8Array(h)]
+              .slice(0, 5)
+              .map((x) => x.toString(16).padStart(2, "0"))
+              .join(""),
+          }),
+        )
+        .catch(() => toPage({ type: "supportIdRes", rid: d.rid, id: null }));
+    } else if (d.type === "acct" && PID.test(String(d.pid || ""))) {
+      accountOp(d)
+        .catch(() => ({ error: "failed" }))
+        .then((res) => toPage({ type: "acctRes", rid: d.rid, res }));
     } else if (d.type === "artFile" && typeof d.name === "string" && /^[\w.-]+$/.test(d.name)) {
       // Color Lab's own pictures, read from the extension's art folder on your PC when the page needs one
       fetch(chrome.runtime.getURL("art/" + d.name))
@@ -141,7 +291,7 @@
         (DEV_BUILD && (d.op === "inbox" || d.op === "alerts" || d.op === "fdraft")))
     ) {
       // Shared looks: the extension's background page talks to Color Lab's look server, never the page itself.
-      // Your tanks' looks are locked to this copy by a secret key kept here (and in the site storage backup, so a reinstall keeps it).
+      // Your tanks' looks are locked to your account's key, or this copy's own key, both kept here.
       const send = (key) => {
         try {
           chrome.runtime.sendMessage(
@@ -182,24 +332,9 @@
       if (d.op === "get" || d.op === "watch" || d.op === "latest") {
         send(null);
       } else {
-        chrome.storage.local.get("ttcl_share_key", (it) => {
-          let key = it && it.ttcl_share_key;
-          try {
-            if (!key) {
-              key = localStorage.getItem("ttcl_share_key");
-            }
-          } catch {}
-          if (!key || !/^[0-9a-f]{64}$/.test(key)) {
-            const b = new Uint8Array(32);
-            crypto.getRandomValues(b);
-            key = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-          }
-          chrome.storage.local.set({ ttcl_share_key: key });
-          try {
-            localStorage.setItem("ttcl_share_key", key);
-          } catch {}
-          send(key);
-        });
+        keyFor(d)
+          .catch(() => readCopyKey())
+          .then(send);
       }
     } else if (DEV_BUILD && d.type === "devReload") {
       // (reload the extension from the page while testing)

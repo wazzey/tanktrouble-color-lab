@@ -1,4 +1,5 @@
-import { loggedInIds } from "./game-socket.js";
+import { backupOn, readAccountMessages } from "./account-sync.js";
+import { loggedInIds, lookupById } from "./game-socket.js";
 import { shareCall, shareMine } from "./look-sharing.js";
 import { $, panel, toast } from "./panel.js";
 import { isAway, isIdle, quietFor, ttWhere } from "./presence.js";
@@ -191,7 +192,11 @@ export async function fbRefresh(seen) {
     return;
   }
   const before = fbItems.reduce((n, it) => n + it.replies.length, 0);
-  fbItems = r.data.items;
+  const byId = new Map();
+  for (const it of r.data.items.concat(await readAccountMessages().catch(() => []))) {
+    byId.set(it.id, it);
+  } // (and those sent as your logged-in accounts from other computers)
+  fbItems = [...byId.values()].sort((a, b) => b.id - a.id);
   fbMe = r.data.me || fbMe;
   const now = fbItems.reduce((n, it) => n + it.replies.length, 0);
   if ((now > before && before > 0) || (now > (SETTINGS.fbSeen || 0) && !seen && !fbRefresh.told)) {
@@ -206,6 +211,9 @@ export async function fbRefresh(seen) {
     saveSettings();
   }
   fbRender();
+  if ($("fbAs")) {
+    populateSendAs($("fbAs"));
+  }
 }
 export function fbFast() {
   // just after sending: look for a reply every 20 seconds for 15 minutes (then every 5 minutes again)
@@ -219,6 +227,40 @@ export function fbFast() {
       fbRefresh(!!(panel.classList.contains("open") && !$("paneSet").hidden));
     } catch {}
   }, 20000);
+}
+// With several accounts logged in, a message is sent as the one picked here, and the conversation follows that account
+export const fbSender = () => {
+  if (!shareMine() && !backupOn()) {
+    return undefined;
+  } // (sharing and backup both off: sent with this copy's own key, so no account is named to the server by it)
+  const ids = loggedInIds().filter((id) => /^\d+$/.test(id));
+  return ids.includes(SETTINGS.sendAs) ? SETTINGS.sendAs : ids[0];
+};
+export function populateSendAs(sel) {
+  const ids = loggedInIds().filter((id) => /^\d+$/.test(id));
+  sel.hidden = ids.length < 2;
+  if (ids.length < 2) {
+    return;
+  }
+  sel.innerHTML = "";
+  for (const id of ids) {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = "Send as tank " + id;
+    sel.appendChild(o);
+    lookupById(id)
+      .then((d) => {
+        if (d && d.username) {
+          o.textContent = "Send as " + d.username;
+        }
+      })
+      .catch(() => {});
+  }
+  sel.value = fbSender();
+  sel.onchange = () => {
+    SETTINGS.sendAs = sel.value;
+    saveSettings();
+  };
 }
 export function fbOpen(aboutId) {
   fbAbout = aboutId || null;
@@ -279,6 +321,7 @@ export function startFeedback() {
       text,
       images: fbImages.length ? fbImages.slice(0, 3) : undefined,
       pids: loggedInIds().filter((id) => /^\d+$/.test(id)),
+      as: fbSender(),
       about: fbAbout || undefined,
       kind: fbAbout ? "report" : "feedback",
     }).catch(() => null);

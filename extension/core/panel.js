@@ -517,6 +517,8 @@ select:focus{border-color:#427fff}
     <div class="row setbtns"><span style="font-size:13px;color:#ddd">Your race number</span><input type="text" id="raceNo" maxlength="3" placeholder="e.g. 44" style="width:70px"><button class="small" id="raceNoSet">Add</button></div>
     <div class="sublbl">Achievements</div>
     <div class="setlist" id="setAch"></div>
+    <div class="sublbl">Backup</div>
+    <div class="setlist" id="setBackup"></div>
     <div class="sublbl">Look sharing</div>
     <small class="mzsub">Color Lab users see each other's looks. Only your tank's player ID and its look are shared, nothing else</small>
     <div class="setlist" id="setShare"></div>
@@ -525,7 +527,7 @@ select:focus{border-color:#427fff}
     <div style="font:bold 14px Arial;color:#eee;text-align:center;margin:6px 0 2px">Send a message to Color Lab</div>
     <small class="mzsub" style="text-align:center;display:block">Found a bug, have an idea, or someone misusing Color Lab? List as many things as you like in one message. Lightshot or other image links work too</small>
     <div id="fbBox" style="margin:4px 0 6px"><textarea id="fbText" maxlength="1500" placeholder="Briefly describe what's going on, in at least 5 words (Ctrl+V pastes a screenshot)" style="width:100%;min-height:62px;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px;font:12px Arial;resize:vertical"></textarea>
-      <div class="row setbtns" style="gap:6px;align-items:center;flex-wrap:wrap"><button class="small grey" id="fbPic">📎 Add screenshots (up to 3)</button><input type="file" id="fbFile" accept="image/png,image/jpeg" multiple hidden><span id="fbPrev"></span><button class="small" id="fbSend">📨 Send message</button><small id="fbMsg" style="color:#aaa"></small></div>
+      <div class="row setbtns" style="gap:6px;align-items:center;flex-wrap:wrap"><button class="small grey" id="fbPic">📎 Add screenshots (up to 3)</button><input type="file" id="fbFile" accept="image/png,image/jpeg" multiple hidden><span id="fbPrev"></span><select id="fbAs" hidden style="background:#111;color:#eee;border:1px solid #444;border-radius:4px"></select><button class="small" id="fbSend">📨 Send message</button><small id="fbMsg" style="color:#aaa"></small></div>
       <small class="mzsub" id="fbAboutLbl" hidden></small>
       <small class="mzsub">Sent to the Color Lab team with your tank's name. A screenshot may show player names and chat. 15 messages a day. If you reach the limit, reply on the Color Lab forum thread</small></div>
     <div class="sublbl">Tanks in the game</div>
