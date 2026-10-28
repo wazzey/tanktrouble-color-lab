@@ -4237,8 +4237,8 @@
       "wheel",
       (ev) => {
         try {
-          const st = cv.__ttclSt,
-            gm = st && st.game;
+          const canvasState = cv.__ttclSt,
+            gm = canvasState && canvasState.game;
           if (!gm) {
             return;
           }
@@ -4252,7 +4252,7 @@
           if (!dir) {
             return;
           }
-          for (const sc of [st.accessoryScroller, st.boxScroller]) {
+          for (const sc of [canvasState.accessoryScroller, canvasState.boxScroller]) {
             if (!sc || !sc.exists || !sc.visible || !sc.hitZone || !sc.currentItems || !sc.currentItems.length) {
               continue;
             }
@@ -6553,9 +6553,9 @@
             0.7 * (Math.cos((a + b) * 2) + Math.cos((a - b) * 2)) +
             0.5 * (Math.cos(a * 5 + Math.cos(b * 2)) + Math.cos(b * 5 + Math.cos(a * 2))),
           l = Math.pow(Math.max(0, 1 - Math.abs(s) * 2.2), 2) * 34,
-          w = (Math.cos(a) + Math.cos(b)) * 4,
+          wave = (Math.cos(a) + Math.cos(b)) * 4,
           n = (mapNoise(x, y, 1) - 0.5) * 8;
-        return [l * 0.55 + n + w, l * 0.9 + n + w, l * 0.85 + n + w];
+        return [l * 0.55 + n + wave, l * 0.9 + n + wave, l * 0.85 + n + wave];
       }),
     space: (g, w, h) =>
       mapFloorField(g, w, h, [24, 76, 88], (a, b, x, y) => {
@@ -7807,7 +7807,7 @@
       g.restore();
     }
   }
-  const star = (g, n, R, r, cx = 32, cy = 32, rot = -Math.PI / 2) => {
+  const drawStar = (g, n, R, r, cx = 32, cy = 32, rot = -Math.PI / 2) => {
     g.beginPath();
     for (let i = 0; i < n * 2; i++) {
       const t = rot + (i * Math.PI) / n,
@@ -7816,7 +7816,7 @@
     }
     g.closePath();
   };
-  const sym = (g, glyph, k, cx, cy, size, ink) => {
+  const drawSymbol = (g, glyph, k, cx, cy, size, ink) => {
     if (!glyph) {
       return;
     }
@@ -7871,7 +7871,7 @@
       g.strokeStyle = "rgba(0,0,0,.25)";
       g.lineWidth = 1.5;
       g.stroke();
-      sym(g, gl, k, 32, 40, 24, "#2a1a3a");
+      drawSymbol(g, gl, k, 32, 40, 24, "#2a1a3a");
     },
     arcade: (g, gl, k, d) => {
       // an arcade cabinet: marquee, screen with the weapon, joystick and buttons
@@ -7900,7 +7900,7 @@
       g.strokeStyle = "#00e5ff";
       g.lineWidth = 2;
       g.strokeRect(14, 14, 36, 28);
-      sym(g, gl, k, 32, 28, 24, "#fff200");
+      drawSymbol(g, gl, k, 32, 28, 24, "#fff200");
       g.fillStyle = "#1a1033";
       g.fillRect(11, 46, 42, 12);
       g.fillStyle = "#e02020";
@@ -7955,7 +7955,7 @@
       g.beginPath();
       g.arc(32, 25, 13.5, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 25, 20, "#7a2a45");
+      drawSymbol(g, gl, k, 32, 25, 20, "#7a2a45");
       g.fillStyle = "rgba(255,255,255,.8)";
       g.beginPath();
       g.ellipse(22, 14, 4, 2, -0.7, 0, 7);
@@ -7994,7 +7994,7 @@
       g.beginPath();
       g.arc(32, 32, 14.5, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 32, 21, "#111214");
+      drawSymbol(g, gl, k, 32, 32, 21, "#111214");
     },
     sakura: (g, gl, k, d) => {
       // a paper lantern (chochin) with its tassel
@@ -8023,7 +8023,7 @@
       g.beginPath();
       g.arc(32, 30, 14, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 30, 20, "#5a1e24");
+      drawSymbol(g, gl, k, 32, 30, 20, "#5a1e24");
     },
     safari: (g, gl, k, d) => {
       // a hand drum: hide top, zigzag band, rope ties
@@ -8059,12 +8059,12 @@
       g.beginPath();
       g.arc(28, 28, 8, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 32, 24, "#3b2310");
+      drawSymbol(g, gl, k, 32, 32, 24, "#3b2310");
     },
     steampunk: (g, gl, k, d) => {
       // a brass pressure gauge on a gear
       g.fillStyle = "#6e4a1e";
-      star(g, 12, 31, 27);
+      drawStar(g, 12, 31, 27);
       g.fill();
       g.fillStyle = "#b5893a";
       g.beginPath();
@@ -8094,7 +8094,7 @@
         g.lineTo(32 + Math.cos(t) * 18.5, 32 + Math.sin(t) * 18.5);
         g.stroke();
       }
-      sym(g, gl, k, 32, 33, 22, "#3b2a1e");
+      drawSymbol(g, gl, k, 32, 33, 22, "#3b2a1e");
     },
     kingdom: (g, gl, k, d) => {
       // a royal shield under a crown
@@ -8137,12 +8137,12 @@
       g.beginPath();
       g.arc(32, 35, 15, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 35, 21, "#3a1050");
+      drawSymbol(g, gl, k, 32, 35, 21, "#3a1050");
     },
     wildwest: (g, gl, k) => {
       // a sheriff's star
       g.fillStyle = "#c99a2e";
-      star(g, 5, 31, 16);
+      drawStar(g, 5, 31, 16);
       g.fill();
       g.strokeStyle = "#7a5a14";
       g.lineWidth = 2;
@@ -8161,7 +8161,7 @@
       g.strokeStyle = "#7a5a14";
       g.lineWidth = 2;
       g.stroke();
-      sym(g, gl, k, 32, 33, 22, "#3e2410");
+      drawSymbol(g, gl, k, 32, 33, 22, "#3e2410");
     },
     tropical: (g, gl, k) => {
       // a life ring with its rope
@@ -8190,7 +8190,7 @@
       g.beginPath();
       g.arc(32, 32, 17, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 32, 24, "#0b3a4a");
+      drawSymbol(g, gl, k, 32, 32, 24, "#0b3a4a");
     },
     mech: (g, gl, k, d) => {
       // a power cell with a hazard-striped ring
@@ -8228,7 +8228,7 @@
       g.beginPath();
       g.arc(32, 32, 17, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 32, 24, "#212529");
+      drawSymbol(g, gl, k, 32, 32, 24, "#212529");
     },
     casino: (g, gl, k, d) => {
       // a poker chip
@@ -8259,7 +8259,7 @@
       g.beginPath();
       g.arc(32, 32, 17, 0, 7);
       g.fill();
-      sym(g, gl, k, 32, 32, 24, "#111111");
+      drawSymbol(g, gl, k, 32, 32, 24, "#111111");
     },
     graffiti: (g, gl, k, d) => {
       // a fresh paint splat, dripping
@@ -8290,7 +8290,7 @@
       g.strokeStyle = "#111";
       g.lineWidth = 2;
       g.stroke();
-      sym(g, gl, k, 32, 30, 24, "#111111");
+      drawSymbol(g, gl, k, 32, 30, 24, "#111111");
     },
   };
   const SWEET_COLS = ["#ff5c8a", "#5ad1c3", "#ffd23f", "#8a5cff", "#ff8a00", "#2dff6e"];
@@ -8806,9 +8806,9 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
           }
           const orig = o.__ttclFill,
             c = /^#[0-9a-f]{6}$/i.test(orig) ? pgRgb(orig) : null;
-          const want = P && P.dark && c && lumRgb(c) < 0.45 ? "#ececec" : orig;
-          if (o.fill !== want) {
-            o.fill = want;
+          const wantColour = P && P.dark && c && lumRgb(c) < 0.45 ? "#ececec" : orig;
+          if (o.fill !== wantColour) {
+            o.fill = wantColour;
           }
           if (typeof o.stroke === "string") {
             if (o.__ttclStroke == null) {
@@ -8816,7 +8816,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
             }
             const so = o.__ttclStroke,
               sc = /^#[0-9a-f]{6}$/i.test(so) ? pgRgb(so) : null; // (a light outline round it goes dark too, e.g. "Telegraphing code...")
-            const ws = want !== orig && sc && lumRgb(sc) > 0.6 ? "#1a1a1a" : so;
+            const ws = wantColour !== orig && sc && lumRgb(sc) > 0.6 ? "#1a1a1a" : so;
             if (o.stroke !== ws) {
               o.stroke = ws;
             }
@@ -9866,7 +9866,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       g.strokeStyle = "#c9a24a";
       g.lineWidth = 2;
       g.stroke();
-      sym(g, gl, k, 32, 42, 21, "#14161c");
+      drawSymbol(g, gl, k, 32, 42, 21, "#14161c");
     };
   }
   // ===== barcode decals and more suits (Agent box) =====
@@ -12061,7 +12061,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         g.shadowColor = "#ff2d55";
         g.shadowBlur = w === 9 ? 12 : 0;
         g.beginPath();
-        pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+        pts.forEach(([pointX, pointY], i) => (i ? g.lineTo(pointX, pointY) : g.moveTo(pointX, pointY)));
         g.stroke();
       }
       g.restore();
@@ -20795,7 +20795,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
   setTimeout(() => h2StatsCheck(true), 12000);
 
   // --- rounds: the game's own round events (online games only) ---
-  let R = null;
+  let roundState = null;
   const h2Hooked = new WeakSet();
   const lookSig = (pid) => {
     const o = getOverride(pid);
@@ -20824,8 +20824,8 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
   function h2Event(gc, ev, data) {
     const mine = new Set(loggedInIds()),
       now = Date.now();
-    if (ev === "round created" || (ev === "round started" && !R)) {
-      R = {
+    if (ev === "round created" || (ev === "round started" && !roundState)) {
+      roundState = {
         start: now,
         players: new Set(),
         kills: {},
@@ -20841,32 +20841,32 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         looks: {},
       };
     }
-    if (!R) {
+    if (!roundState) {
       return;
     }
     if (ev === "round ended") {
       mapPickNext();
     } // Laika dresses for the next map now, between rounds
     if (ev === "round started") {
-      R.start = now;
-      R.online = R.online || playingOnline();
-      R.theme = mapTheme || null;
+      roundState.start = now;
+      roundState.online = roundState.online || playingOnline();
+      roundState.theme = mapTheme || null;
     } else if (ev === "tank created" && data && data.getPlayerId) {
       const pid = String(data.getPlayerId());
-      R.players.add(pid);
+      roundState.players.add(pid);
       if (mine.has(pid)) {
-        R.spawn[pid] = [data.getX(), data.getY()];
-        R.far[pid] = 0;
-        R.looks[pid] = lookSig(pid);
+        roundState.spawn[pid] = [data.getX(), data.getY()];
+        roundState.far[pid] = 0;
+        roundState.looks[pid] = lookSig(pid);
       }
     } else if (ev === "projectile maze collision" && data && data.projectile) {
       const id = data.projectile.getId();
-      R.bounces[id] = (R.bounces[id] || 0) + 1;
+      roundState.bounces[id] = (roundState.bounces[id] || 0) + 1;
     } else if (ev === "projectile shield collision" && data && data.projectile && data.shieldA) {
       const owner = String(data.shieldA.getPlayerId()),
         from = String(data.projectile.getPlayerId());
-      if (mine.has(owner) && from !== owner && R.online) {
-        const n = (R.blocks[owner] = (R.blocks[owner] || 0) + 1);
+      if (mine.has(owner) && from !== owner && roundState.online) {
+        const n = (roundState.blocks[owner] = (roundState.blocks[owner] || 0) + 1);
         if (n >= 10) {
           h2Unlock(owner, "aw-riotshield");
         }
@@ -20878,13 +20878,13 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       }
     } else if (ev === "collectible destroyed" && data && data.getPlayerId) {
       const pid = String(data.getPlayerId());
-      if (!mine.has(pid) || !R.online) {
+      if (!mine.has(pid) || !roundState.online) {
         return;
       }
       const col = gc.getCollectible && gc.getCollectible(data.getCollectibleId()),
         type = col && col.getType ? col.getType() : -1;
       if (type >= 0 && type <= 8) {
-        const n = (R.crates[pid] = (R.crates[pid] || 0) + 1);
+        const n = (roundState.crates[pid] = (roundState.crates[pid] || 0) + 1);
         if (n >= 10) {
           h2Unlock(pid, "aw-crates");
         }
@@ -20901,25 +20901,25 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       );
     } else if (ev === "round ended" && data && data.getPlayerIds) {
       h2RoundEnd(data.getPlayerIds().map(String), mine, now);
-      R = null;
+      roundState = null;
     }
   }
   function h2Kill(gc, killer, victim, type, did, mine, now) {
-    if (!R.online) {
+    if (!roundState.online) {
       return;
     }
     const proj = gc.getProjectile && gc.getProjectile(did),
-      bounces = R.bounces[did] || 0,
+      bounces = roundState.bounces[did] || 0,
       alive = proj && proj.getTimeAlive ? proj.getTimeAlive() : 0;
     if (mine.has(victim)) {
-      R.died[victim] = now;
+      roundState.died[victim] = now;
       if (killer === victim && type === -1 && (bounces >= 8 || (!bounces && alive >= 9))) {
         h2Unlock(victim, "aw-boomerang");
       }
-      if (now - R.start <= 3000) {
+      if (now - roundState.start <= 3000) {
         const p = h2(victim);
         p.fv = p.fv || [];
-        const sig = R.looks[victim] || lookSig(victim);
+        const sig = roundState.looks[victim] || lookSig(victim);
         if (!p.fv.includes(sig)) {
           p.fv.push(sig);
           if (p.fv.length > 40) {
@@ -20934,7 +20934,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     if (!mine.has(killer)) {
       return;
     }
-    const K = R.kills[killer] || (R.kills[killer] = []);
+    const K = roundState.kills[killer] || (roundState.kills[killer] = []);
     K.push({ t: now, type, did, victim });
     const others = K.filter((k) => k.victim !== killer);
     if (killer !== victim) {
@@ -20981,7 +20981,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     saveStats();
   }
   function h2RoundEnd(winners, mine, now) {
-    const played = [...mine].filter((pid) => R.players.has(pid));
+    const played = [...mine].filter((pid) => roundState.players.has(pid));
     if (!played.length) {
       return;
     }
@@ -20991,8 +20991,8 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     for (const pid of played) {
       const p = h2(pid),
         won = winners.includes(pid),
-        n = R.players.size,
-        died = !!R.died[pid];
+        n = roundState.players.size,
+        died = !!roundState.died[pid];
       // silly ones count in any game you play
       if (d.getHours() >= 2 && d.getHours() < 5) {
         p.night = (p.night || 0) + 1;
@@ -21022,8 +21022,8 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       if (run >= 7) {
         h2Unlock(pid, "aw-calendar");
       }
-      if (R.theme) {
-        p.maps = Object.assign(p.maps || {}, { [R.theme]: 1 });
+      if (roundState.theme) {
+        p.maps = Object.assign(p.maps || {}, { [roundState.theme]: 1 });
         if (Object.keys(MAP_THEMES).every((k) => p.maps[k])) {
           h2Unlock(pid, "aw-suitcase");
         }
@@ -21061,18 +21061,18 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       {
         const mineL = LOOKS_SEEN[pid];
         if (mineL) {
-          for (const other of R.players) {
+          for (const other of roundState.players) {
             if (other !== pid && LOOKS_SEEN[other] === mineL) {
               h2Unlock(pid, "aw-bracelets");
             }
           }
         }
       }
-      if (!R.online) {
+      if (!roundState.online) {
         continue;
       }
       if (won && n >= 5) {
-        const vs = new Set((R.kills[pid] || []).filter((k) => k.victim !== pid).map((k) => k.victim));
+        const vs = new Set((roundState.kills[pid] || []).filter((k) => k.victim !== pid).map((k) => k.victim));
         if (vs.size >= n - 1) {
           h2Unlock(pid, "aw-ace");
         }
@@ -21082,18 +21082,18 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         if (
           n >= 6 &&
           !died &&
-          new Set((R.kills[pid] || []).filter((k) => k.victim !== pid).map((k) => k.victim)).size >= n - 1
+          new Set((roundState.kills[pid] || []).filter((k) => k.victim !== pid).map((k) => k.victim)).size >= n - 1
         ) {
           h2Unlock(pid, "aw-sparklecrown");
         }
-        if (n >= 3 && now - R.start <= 5000) {
+        if (n >= 3 && now - roundState.start <= 5000) {
           h2Unlock(pid, "aw-stopwatch");
         }
         p.clutch = n >= 4 ? (p.clutch || 0) + 1 : 0;
         if (p.clutch >= 10) {
           h2Unlock(pid, "aw-aura-heartbeat");
         }
-        p.casino = R.theme === "casino" ? (p.casino || 0) + 1 : 0;
+        p.casino = roundState.theme === "casino" ? (p.casino || 0) + 1 : 0;
         if (p.casino >= 3) {
           h2Unlock(pid, "aw-slots");
         }
@@ -21123,23 +21123,23 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
   }
   // how far your tank wanders (Wall Hugger): checked a few times a second during a round
   setInterval(() => {
-    if (!R || !R.online) {
+    if (!roundState || !roundState.online) {
       return;
     }
     const gc = GAME_STATE && GAME_STATE.gameController;
     if (!gc || !gc.getTank) {
       return;
     }
-    for (const pid in R.spawn) {
+    for (const pid in roundState.spawn) {
       const t = gc.getTank(pid);
       if (!t || !t.getX) {
         continue;
       }
-      const [x0, y0] = R.spawn[pid],
+      const [x0, y0] = roundState.spawn[pid],
         dd = Math.hypot(t.getX() - x0, t.getY() - y0);
-      R.seen[pid] = (R.seen[pid] || 0) + 1;
-      if (dd > (R.far[pid] || 0)) {
-        R.far[pid] = dd;
+      roundState.seen[pid] = (roundState.seen[pid] || 0) + 1;
+      if (dd > (roundState.far[pid] || 0)) {
+        roundState.far[pid] = dd;
       }
     }
   }, 250);
@@ -22228,13 +22228,13 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     });
   }
   // simple repeatable noise so every copy of the art looks the same
-  const hash = (x, y, s) => {
+  const noiseHash = (x, y, s) => {
     let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
     h = ((h ^ (h >>> 13)) * 1274126177) | 0;
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   };
   const lerp = (a, b, t) => a + (b - a) * t;
-  function ramp(stops, t) {
+  function sampleRamp(stops, t) {
     t = Math.max(0, Math.min(1, t));
     for (let i = 1; i < stops.length; i++) {
       if (t <= stops[i][0]) {
@@ -22246,7 +22246,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     }
     return stops[stops.length - 1][1];
   }
-  const hx = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const hexChannels = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   function paintBone(img, key, W, H) {
     const c = document.createElement("canvas");
     c.width = W;
@@ -22297,32 +22297,32 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       bh = Math.max(1, y1 - y0),
       sc = (bw / 126) * (W === H ? 0.6 : 1); // 126 px = bone width at 640
     const metal = [
-      [0, hx("#050608")],
-      [0.35, hx("#1b1f29")],
-      [0.6, hx("#3d4555")],
-      [0.82, hx("#8d97ab")],
-      [0.94, hx("#dfe6f2")],
-      [1, hx("#ffffff")],
+      [0, hexChannels("#050608")],
+      [0.35, hexChannels("#1b1f29")],
+      [0.6, hexChannels("#3d4555")],
+      [0.82, hexChannels("#8d97ab")],
+      [0.94, hexChannels("#dfe6f2")],
+      [1, hexChannels("#ffffff")],
     ];
     const sheen = [
-      [0, hx("#ff2d55")],
-      [0.5, hx("#8a2cff")],
-      [1, hx("#00c8ff")],
+      [0, hexChannels("#ff2d55")],
+      [0.5, hexChannels("#8a2cff")],
+      [1, hexChannels("#00c8ff")],
     ];
     const neb = [
-      [0, hx("#05020f")],
-      [0.3, hx("#220a4d")],
-      [0.52, hx("#6a1fb0")],
-      [0.72, hx("#d43c9c")],
-      [0.88, hx("#53c8f5")],
-      [1, hx("#e9fbff")],
+      [0, hexChannels("#05020f")],
+      [0.3, hexChannels("#220a4d")],
+      [0.52, hexChannels("#6a1fb0")],
+      [0.72, hexChannels("#d43c9c")],
+      [0.88, hexChannels("#53c8f5")],
+      [1, hexChannels("#e9fbff")],
     ];
     const nova = [
-      [0, hx("#ffffff")],
-      [0.25, hx("#fff4b8")],
-      [0.5, hx("#ffb703")],
-      [0.75, hx("#fb5607")],
-      [1, hx("#d4006a")],
+      [0, hexChannels("#ffffff")],
+      [0.25, hexChannels("#fff4b8")],
+      [0.5, hexChannels("#ffb703")],
+      [0.75, hexChannels("#fb5607")],
+      [1, hexChannels("#d4006a")],
     ];
     const cx = (x0 + x1) / 2,
       cy = (y0 + y1) / 2,
@@ -22340,22 +22340,22 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         let r, gg, b;
         if (key === "dimitrium") {
           // dark brushed metal with a red-violet-blue sheen across it
-          const brush = (hash(0, Math.floor(y / Math.max(1, sc)), 7) - 0.5) * 0.04;
-          [r, gg, b] = ramp(metal, L * 1.05 + brush);
-          const s = ramp(sheen, u * 0.8 + v * 0.2),
+          const brush = (noiseHash(0, Math.floor(y / Math.max(1, sc)), 7) - 0.5) * 0.04;
+          [r, gg, b] = sampleRamp(metal, L * 1.05 + brush);
+          const s = sampleRamp(sheen, u * 0.8 + v * 0.2),
             w = Math.sin(Math.PI * Math.min(1, L * 1.1)) * 0.22;
           r = lerp(r, s[0], w);
           gg = lerp(gg, s[1], w);
           b = lerp(b, s[2], w);
         } else if (key === "dimitri-bone") {
           // Dimitrium: the colours of the game's own Dimitrium crystal, mapped dark-to-light onto the bone
-          [r, gg, b] = ramp(
+          [r, gg, b] = sampleRamp(
             DIMITRIUM_RAMP || [
-              [0, hx("#03200a")],
-              [0.35, hx("#0b7a1c")],
-              [0.6, hx("#1fd23c")],
-              [0.8, hx("#7dff8a")],
-              [1, hx("#eaffea")],
+              [0, hexChannels("#03200a")],
+              [0.35, hexChannels("#0b7a1c")],
+              [0.6, hexChannels("#1fd23c")],
+              [0.8, hexChannels("#7dff8a")],
+              [1, hexChannels("#eaffea")],
             ],
             L,
           );
@@ -22376,8 +22376,8 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
             0.22 * Math.sin(u * 9.1 + v * 3.3) +
             0.18 * Math.sin(u * 3.7 - v * 7.9 + 1.3) +
             0.12 * Math.sin((u + v) * 15.7 + 2.1);
-          [r, gg, b] = ramp(neb, n * (0.35 + 0.85 * L));
-          const st = hash(Math.floor(x / Math.max(1, sc)), Math.floor(y / Math.max(1, sc)), 3);
+          [r, gg, b] = sampleRamp(neb, n * (0.35 + 0.85 * L));
+          const st = noiseHash(Math.floor(x / Math.max(1, sc)), Math.floor(y / Math.max(1, sc)), 3);
           if (L > 0.25 && st > 0.985) {
             const k = (st - 0.985) / 0.015;
             r = lerp(r, 255, k);
@@ -22387,7 +22387,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         } else {
           // white-hot core fading out to orange and magenta at the edges
           const dist = Math.min(1, Math.hypot((x - cx) / (bw / 2), (y - cy) / (bh / 2)) * 0.85);
-          [r, gg, b] = ramp(nova, dist * 0.8 + (1 - L) * 0.45);
+          [r, gg, b] = sampleRamp(nova, dist * 0.8 + (1 - L) * 0.45);
           const glint = Math.pow(L, 6) * 0.6;
           r = lerp(r, 255, glint);
           gg = lerp(gg, 255, glint);
@@ -22670,10 +22670,10 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     sg.fillStyle = neb;
     sg.fillRect(0, 0, W, H);
     for (let k = 0; k < 90; k++) {
-      const x = 120 + hash(k, 1, 7) * 390,
-        y = 105 + hash(k, 2, 7) * 270,
-        r = 0.6 + Math.pow(hash(k, 3, 7), 3) * 2;
-      sg.fillStyle = "rgba(255,255,255," + (0.45 + hash(k, 4, 7) * 0.5) + ")";
+      const x = 120 + noiseHash(k, 1, 7) * 390,
+        y = 105 + noiseHash(k, 2, 7) * 270,
+        r = 0.6 + Math.pow(noiseHash(k, 3, 7), 3) * 2;
+      sg.fillStyle = "rgba(255,255,255," + (0.45 + noiseHash(k, 4, 7) * 0.5) + ")";
       sg.beginPath();
       sg.arc(x, y, r, 0, 7);
       sg.fill();
@@ -26390,10 +26390,10 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
             if (xx < 0 || yy < 0 || xx >= GW || yy >= GH) {
               continue;
             }
-            const k = yy * GW + xx;
-            if (cell[k] && !lab[k]) {
-              lab[k] = n;
-              st.push(k);
+            const cellIndex = yy * GW + xx;
+            if (cell[cellIndex] && !lab[cellIndex]) {
+              lab[cellIndex] = n;
+              st.push(cellIndex);
             }
           }
         }
@@ -26403,12 +26403,12 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     if (!comps.length) {
       return;
     }
-    const big = Math.max(...comps.map((c) => c.area)),
-      keep = comps.filter((c) => c.area >= big * 0.2);
-    const x0 = Math.min(...keep.map((c) => c.a0)) * 4,
-      y0 = Math.min(...keep.map((c) => c.b0)) * 4,
-      x1 = Math.max(...keep.map((c) => c.a1)) * 4 + 3,
-      y1 = Math.max(...keep.map((c) => c.b1)) * 4 + 3;
+    const big = Math.max(...comps.map((component) => component.area)),
+      keep = comps.filter((component) => component.area >= big * 0.2);
+    const x0 = Math.min(...keep.map((component) => component.a0)) * 4,
+      y0 = Math.min(...keep.map((component) => component.b0)) * 4,
+      x1 = Math.max(...keep.map((component) => component.a1)) * 4 + 3,
+      y1 = Math.max(...keep.map((component) => component.b1)) * 4 + 3;
     const bw = x1 - x0 + 1,
       bh = y1 - y0 + 1,
       u = W / 560;
@@ -28684,7 +28684,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         return c;
       };
     const rmp = (stops, t) =>
-      ramp(
+      sampleRamp(
         stops.map(([p, c]) => [p, c]),
         t,
       );
@@ -29670,13 +29670,13 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
   // gunmetal with gold edges for the Arsenal box (from the Standard box)
   function arsenalPixel(d, i) {
     const l = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255;
-    const c = ramp(
+    const c = sampleRamp(
       [
-        [0, hx("#0d0e10")],
-        [0.35, hx("#2e3238")],
-        [0.6, hx("#5b616b")],
-        [0.8, hx("#c9a24a")],
-        [1, hx("#fff1b8")],
+        [0, hexChannels("#0d0e10")],
+        [0.35, hexChannels("#2e3238")],
+        [0.6, hexChannels("#5b616b")],
+        [0.8, hexChannels("#c9a24a")],
+        [1, hexChannels("#fff1b8")],
       ],
       l,
     );
@@ -29696,13 +29696,13 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
             : spectralPixel;
   function firePixel(d, i) {
     const l = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255;
-    const c = ramp(
+    const c = sampleRamp(
       [
-        [0, hx("#140200")],
-        [0.35, hx("#7a1000")],
-        [0.6, hx("#ff4a00")],
-        [0.8, hx("#ffb100")],
-        [1, hx("#fff6c0")],
+        [0, hexChannels("#140200")],
+        [0.35, hexChannels("#7a1000")],
+        [0.6, hexChannels("#ff4a00")],
+        [0.8, hexChannels("#ffb100")],
+        [1, hexChannels("#fff6c0")],
       ],
       l,
     );
@@ -29712,12 +29712,12 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
   }
   function chromePixel(d, i) {
     const l = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255;
-    const c = ramp(
+    const c = sampleRamp(
       [
-        [0, hx("#101216")],
-        [0.4, hx("#5b626e")],
-        [0.7, hx("#c3c9d3")],
-        [1, hx("#ffffff")],
+        [0, hexChannels("#101216")],
+        [0.4, hexChannels("#5b626e")],
+        [0.7, hexChannels("#c3c9d3")],
+        [1, hexChannels("#ffffff")],
       ],
       Math.min(1, l * 1.25),
     );
@@ -35837,10 +35837,10 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     ["base", "Base", "baseColour"],
     ["treads", "Treads", "treadColour"],
   ];
-  const host = document.createElement("div");
-  host.id = "tt-color-lab-host";
-  host.style.cssText = `position:fixed;left:${GUI_POS.x}px;top:${GUI_POS.y}px;z-index:2147483000;`;
-  const root = host.attachShadow({ mode: "open" });
+  const panelHost = document.createElement("div");
+  panelHost.id = "tt-color-lab-host";
+  panelHost.style.cssText = `position:fixed;left:${GUI_POS.x}px;top:${GUI_POS.y}px;z-index:2147483000;`;
+  const root = panelHost.attachShadow({ mode: "open" });
 
   root.innerHTML = `
 <style>
@@ -36156,13 +36156,13 @@ select:focus{border-color:#427fff}
   const $ = (id) => root.getElementById(id);
   const panel = $("panel"),
     nameEl = $("name"),
-    who = $("who");
+    whoEl = $("who");
   let resolved = null; // {playerId, username, data} — data is the tank's REAL details from the server
   let selPart = "turret";
-  const rows = {};
+  const partRows = {};
 
   // Keep the game from reacting to keys while typing in the panel
-  ["keydown", "keyup", "keypress"].forEach((t) => host.addEventListener(t, (e) => e.stopPropagation()));
+  ["keydown", "keyup", "keypress"].forEach((t) => panelHost.addEventListener(t, (e) => e.stopPropagation()));
 
   // Toasts live in their own tiny element (only on the page while showing), so Alt+V feedback
   // works with the panel closed.
@@ -36230,15 +36230,15 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     });
     const mz = r.querySelector(".mz input");
     mz.addEventListener("click", (ev) => ev.stopPropagation());
-    rows[key] = { r, pick, txt, field, label, pat: r.querySelector(".pat"), mz };
+    partRows[key] = { r, pick, txt, field, label, pat: r.querySelector(".pat"), mz };
     $("parts").appendChild(r);
     $("hexrow").insertBefore(txt, $("copyReal"));
   });
   function selectPart(key) {
     selPart = key;
     PARTS.forEach(([k]) => {
-      rows[k].r.classList.toggle("sel", k === key);
-      rows[k].txt.hidden = k !== key;
+      partRows[k].r.classList.toggle("sel", k === key);
+      partRows[k].txt.hidden = k !== key;
     });
   }
   selectPart("turret");
@@ -36254,17 +36254,17 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   // Load a saved look (colours + accessories) into the form
   function setForm(src) {
     PARTS.forEach(([k]) => {
-      rows[k].mz.checked = !(src && src.maze && src.maze[k] === false);
+      partRows[k].mz.checked = !(src && src.maze && src.maze[k] === false);
       setPart(k, src ? src[k] : null);
     });
     setFormAcc(src && src.acc);
   }
   function getForm() {
     const o = {};
-    PARTS.forEach(([k]) => (o[k] = normVal(rows[k].txt.value)));
+    PARTS.forEach(([k]) => (o[k] = normVal(partRows[k].txt.value)));
     const mz = {};
     PARTS.forEach(([k]) => {
-      if (isPat(o[k]) && !rows[k].mz.checked) {
+      if (isPat(o[k]) && !partRows[k].mz.checked) {
         mz[k] = false;
       }
     });
@@ -36282,15 +36282,15 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   };
   function setPart(k, v) {
     const n = normVal(v);
-    rows[k].txt.value = n ? showVal(n) : "";
-    rows[k].txt.classList.remove("bad");
+    partRows[k].txt.value = n ? showVal(n) : "";
+    partRows[k].txt.classList.remove("bad");
     paintChip(k);
   }
   // Chip swatch shows the colour in use (typed one, else the tank's real one); patterns show their art
   let iconMap = null; // pattern icon URLs, once the asset map has loaded
   const chipAsked = new Set();
   function paintChip(k) {
-    const row = rows[k],
+    const row = partRows[k],
       v = normVal(row.txt.value) || realVal(row.field);
     row.pick.value = toCss(v) || "#808080";
     row.pat.hidden = !isPat(v);
@@ -36316,11 +36316,11 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         c = d && d[field];
       // The tank's real colour shows as the placeholder, i.e. what a blank part will look like
       // Empty box = keep the tank's current colour, so show that colour as the hint
-      rows[k].txt.placeholder = !c
-        ? `${rows[k].label} hex, e.g. #ff8800`
+      partRows[k].txt.placeholder = !c
+        ? `${partRows[k].label} hex, e.g. #ff8800`
         : c.type === "numeric"
-          ? `${rows[k].label} ${k === "treads" ? "are" : "is"} #${normHex(c.numericValue).slice(2)} now`
-          : `${rows[k].label} ${k === "treads" ? "are" : "is"} a pattern now`;
+          ? `${partRows[k].label} ${k === "treads" ? "are" : "is"} #${normHex(c.numericValue).slice(2)} now`
+          : `${partRows[k].label} ${k === "treads" ? "are" : "is"} a pattern now`;
       paintChip(k);
     });
   }
@@ -37408,7 +37408,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     nameEl.value = resolved.username;
     nameEl.classList.add("good");
     nameEl.classList.remove("bad");
-    setStatus(who, ""); // the green outline says it's found
+    setStatus(whoEl, ""); // the green outline says it's found
     refreshRealLabels();
     renderList();
     schedulePreview();
@@ -37425,13 +37425,13 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     setForm(d);
     resolved = { playerId: id, username: d.playerName || id, data: null };
     nameEl.value = resolved.username;
-    setStatus(who, "Loading tank…");
+    setStatus(whoEl, "Loading tank…");
     renderList();
     schedulePreview();
     try {
       await setResolved(await lookupById(id));
     } catch {
-      setStatus(who, "✓ " + resolved.username, "ok");
+      setStatus(whoEl, "✓ " + resolved.username, "ok");
     }
   }
 
@@ -37441,7 +37441,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     nameEl.classList.remove("good", "bad");
     setForm(null);
     refreshRealLabels();
-    setStatus(who, "");
+    setStatus(whoEl, "");
     schedulePreview();
     updateSaveLabel();
   }
@@ -37449,18 +37449,18 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   async function resolveName() {
     const n = nameEl.value.trim();
     if (!n) {
-      setStatus(who, "Type a tank name first", "err");
+      setStatus(whoEl, "Type a tank name first", "err");
       return null;
     }
     if (resolved && resolved.data && resolved.username.toLowerCase() === n.toLowerCase()) {
       return resolved;
     }
-    setStatus(who, "Looking up…");
+    setStatus(whoEl, "Looking up…");
     try {
       const data = await lookupByName(n);
       await setResolved(data);
       const saved = PLAYER_COLOR_MAP[resolved.playerId];
-      if (saved && !PARTS.some(([k]) => rows[k].txt.value.trim())) {
+      if (saved && !PARTS.some(([k]) => partRows[k].txt.value.trim())) {
         setForm(saved);
         schedulePreview();
       }
@@ -37471,7 +37471,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       nameEl.classList.remove("good");
       refreshRealLabels();
       schedulePreview();
-      setStatus(who, "✗ " + (e && e.message ? e.message : "Not found"), "err");
+      setStatus(whoEl, "✗ " + (e && e.message ? e.message : "Not found"), "err");
       return null;
     }
   }
@@ -37480,7 +37480,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     nameEl.classList.remove("good", "bad");
     if (resolved && resolved.username.toLowerCase() !== nameEl.value.trim().toLowerCase()) {
       resolved = null;
-      setStatus(who, "");
+      setStatus(whoEl, "");
       refreshRealLabels();
       renderList();
       schedulePreview();
@@ -37497,31 +37497,31 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   $("me").onclick = async () => {
     const ids = loggedInIds();
     if (!ids.length) {
-      return setStatus(who, "✗ No tanks on this page yet — add a tank or guest first, or type the name", "err");
+      return setStatus(whoEl, "✗ No tanks on this page yet — add a tank or guest first, or type the name", "err");
     }
     const cur = resolved ? ids.indexOf(resolved.playerId) : -1;
     const id = ids[(cur + 1) % ids.length]; // press again to cycle through multiple logged-in tanks
-    setStatus(who, "Finding your tank…");
+    setStatus(whoEl, "Finding your tank…");
     try {
       await setResolved(await lookupById(id));
       const saved = PLAYER_COLOR_MAP[id];
       setForm(saved || null);
       if (ids.length > 1) {
         setStatus(
-          who,
+          whoEl,
           `✓ ${resolved.username}  (${ids.indexOf(id) + 1}/${ids.length} — press Me again for the next tank)`,
           "ok",
         );
       }
       schedulePreview();
     } catch (e) {
-      setStatus(who, "✗ " + ((e && e.message) || "Lookup failed"), "err");
+      setStatus(whoEl, "✗ " + ((e && e.message) || "Lookup failed"), "err");
     }
   };
 
   $("copyReal").onclick = () => {
     if (!resolved || !resolved.data) {
-      return setStatus(who, "Find a tank first", "err");
+      return setStatus(whoEl, "Find a tank first", "err");
     }
     PARTS.forEach(([k, , field]) => setPart(k, realVal(field)));
     const real = {};
@@ -37670,7 +37670,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   async function saveForm(saveAsNew) {
     const btn = $("save"),
       st = $("saveStatus");
-    const bad = PARTS.find(([k]) => rows[k].txt.value.trim() && !normVal(rows[k].txt.value));
+    const bad = PARTS.find(([k]) => partRows[k].txt.value.trim() && !normVal(partRows[k].txt.value));
     if (bad) {
       return setStatus(st, `✗ ${bad[1]} isn't a valid hex or pattern`, "err");
     }
@@ -37814,7 +37814,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       }
       const a = document.activeElement,
         tag = ((a && a.tagName) || "").toLowerCase();
-      if (a && a !== host && (a.isContentEditable || tag === "input" || tag === "textarea")) {
+      if (a && a !== panelHost && (a.isContentEditable || tag === "input" || tag === "textarea")) {
         return;
       } // typing in game chat
       e.preventDefault();
@@ -37935,8 +37935,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   function setOpen(open) {
     panel.classList.toggle("open", open);
     if (open) {
-      if (document.body && !host.isConnected) {
-        document.body.appendChild(host);
+      if (document.body && !panelHost.isConnected) {
+        document.body.appendChild(panelHost);
       }
       renderSources();
       renderPalette();
@@ -37951,7 +37951,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       applyShown();
       loggedInIds().forEach(collectBoxes);
     } else {
-      host.remove();
+      panelHost.remove();
       freePreviewMemory();
     }
   }
@@ -38189,7 +38189,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     $("helpBtn").classList.toggle("grey", !helpOpen);
   }
   // ---------- settings page: what shows in the panel and the garage ----------
-  const shown = (k) => !(SETTINGS.hide && SETTINGS.hide[k]);
+  const isShown = (k) => !(SETTINGS.hide && SETTINGS.hide[k]);
   const SET_ITEMS = {
     setPanel: [
       ["rnd", "🎲 Random and its ▾ options", "Random looks and where they come from"],
@@ -38541,7 +38541,10 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
           const pr = document.createElement("div");
           pr.className = "mzpaint";
           const sel = document.createElement("select");
-          for (const k of [...Object.keys(PAGE_SPECIAL), ...mapThemeList().filter((k) => k !== "standard")]) {
+          for (const k of [
+            ...Object.keys(PAGE_SPECIAL),
+            ...mapThemeList().filter((themeKey) => themeKey !== "standard"),
+          ]) {
             const o = document.createElement("option");
             o.value = k;
             o.textContent = "Page theme: " + pageThemeName(k);
@@ -38630,7 +38633,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     // map
     const mode = SETTINGS.mapMode || "game",
       sm = sec("Map", "Floors, walls, crates and bullets - only on your screen");
-    for (const [sk, st, ssub] of [
+    for (const [sk, sectionTitle, ssub] of [
       [
         "halloween",
         "🎃 Keep the game's Halloween maze",
@@ -38646,7 +38649,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         r = document.createElement("div");
       r.className = "setrow";
       r.innerHTML = '<span class="tog' + (on ? " on" : "") + '"></span><span><span></span><small></small></span>';
-      r.children[1].children[0].textContent = st;
+      r.children[1].children[0].textContent = sectionTitle;
       r.children[1].children[1].textContent = ssub + (gameSeasonNow() === sk ? " (on now)" : "");
       r.onclick = () => {
         SETTINGS.keepSeason = Object.assign({}, SETTINGS.keepSeason, { [sk]: !on });
@@ -38758,8 +38761,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
             if (pick) {
               SETTINGS.mapFixed = k;
             } else {
-              const cur = mapThemeList().filter(inPool),
-                nx = on ? cur.filter((x) => x !== k) : [...new Set([...cur, k])];
+              const poolThemes = mapThemeList().filter(inPool),
+                nx = on ? poolThemes.filter((x) => x !== k) : [...new Set([...poolThemes, k])];
               if (!nx.length) {
                 return toast("Keep at least one map", true);
               }
@@ -38868,7 +38871,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     o0.textContent = "A Color Lab paint…";
     ps.appendChild(o0);
     for (const k of Object.keys(GX_PAINT)
-      .filter((k) => k.startsWith("pt-"))
+      .filter((paintKey) => paintKey.startsWith("pt-"))
       .sort((a, b) => GX_PAINT[a].name.localeCompare(GX_PAINT[b].name))) {
       const o = document.createElement("option");
       o.value = "p:" + k;
@@ -38915,8 +38918,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       const host = $(id);
       host.innerHTML = "";
       for (const [k, t, sub] of SET_ITEMS[id]) {
-        row(host, shown(k), t, sub, () => {
-          SETTINGS.hide = Object.assign({}, SETTINGS.hide, { [k]: shown(k) });
+        row(host, isShown(k), t, sub, () => {
+          SETTINGS.hide = Object.assign({}, SETTINGS.hide, { [k]: isShown(k) });
           saveSettings();
           applyShown();
           renderSettings();
@@ -39178,14 +39181,14 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         el.style.display = on ? "" : "none";
       }
     };
-    vis($("rndAll"), shown("rnd"));
-    vis($("rndOpts"), shown("rnd"));
-    if (!shown("rnd")) {
+    vis($("rndAll"), isShown("rnd"));
+    vis($("rndOpts"), isShown("rnd"));
+    if (!isShown("rnd")) {
       $("rndBox").hidden = true;
     } else {
       $("rndBox").hidden = !SETTINGS.rndOpen;
     }
-    vis($("party"), shown("party"));
+    vis($("party"), isShown("party"));
     const tools = $("rndAll").parentNode;
     vis(
       tools,
@@ -39193,14 +39196,14 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     );
     $("hexrow")
       .querySelectorAll("input")
-      .forEach((i) => vis(i, shown("hex")));
-    vis($("palToggle").parentNode, shown("swatches"));
-    if (!shown("swatches")) {
+      .forEach((i) => vis(i, isShown("hex")));
+    vis($("palToggle").parentNode, isShown("swatches"));
+    if (!isShown("swatches")) {
       $("swatches").hidden = true;
     }
     // garage
-    vis(document.querySelector(".garage form .ttcl-gdice"), shown("gdice"));
-    vis(document.querySelector(".garage form .ttcl-gpower"), shown("gpower"));
+    vis(document.querySelector(".garage form .ttcl-gdice"), isShown("gdice"));
+    vis(document.querySelector(".garage form .ttcl-gpower"), isShown("gpower"));
     try {
       renderGarageSearch();
       renderGarageMaze();
@@ -39299,7 +39302,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     });
   }
   const syncRndBox = () => {
-    $("rndBox").hidden = !SETTINGS.rndOpen || !shown("rnd");
+    $("rndBox").hidden = !SETTINGS.rndOpen || !isShown("rnd");
     $("rndOpts").classList.toggle("on", !!SETTINGS.rndOpen);
     $("rndOpts").classList.toggle("grey", !SETTINGS.rndOpen);
   };
@@ -39350,8 +39353,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     if (window.innerHeight - GUI_POS.y < 380) {
       GUI_POS.y = Math.max(0, window.innerHeight - 380);
     } // room for a usable panel below its top
-    host.style.left = GUI_POS.x + "px";
-    host.style.top = GUI_POS.y + "px";
+    panelHost.style.left = GUI_POS.x + "px";
+    panelHost.style.top = GUI_POS.y + "px";
     panel.style.maxHeight = Math.max(200, window.innerHeight - GUI_POS.y - 10) + "px"; // its bottom never goes off the screen (it scrolls inside instead)
   }
 
@@ -39383,7 +39386,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     savePos();
   });
   window.addEventListener("resize", () => {
-    if (host.isConnected) {
+    if (panelHost.isConnected) {
       keepOnScreen();
     }
   });
@@ -42769,8 +42772,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         staffGameKey = gc;
         staffTold = new Set();
       }
-      if (R && R.online) {
-        for (const pid of R.players) {
+      if (roundState && roundState.online) {
+        for (const pid of roundState.players) {
           if (mine.has(pid) || staffTold.has(pid)) {
             continue;
           }

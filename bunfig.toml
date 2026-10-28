@@ -24,6 +24,7 @@ no-self-compare = "error"
 no-throw-literal = "error"
 no-unused-vars = ["error", { args = "none" }]
 no-var = "error"
+no-shadow = "error"
 prefer-const = "error"
 # TankTrouble's own objects use underscore names (_typeId and the like)
 no-underscore-dangle = "off"
@@ -42,5 +43,3 @@ no-await-in-loop = "off"
 "unicorn/no-array-reverse" = "off"
 # a Set is copied before looping so the loop can remove from it
 "unicorn/no-useless-spread" = "off"
-# short names (r, m, k) are reused in nested callbacks throughout; to be cleaned up separately
-no-shadow = "off"

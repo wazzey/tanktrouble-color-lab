@@ -710,7 +710,10 @@ async function forumWatch(env) {
         fresh = Date.now() / 1000 - 30 * 60; // (first check of a thread: only replies from the last 30 minutes, so old ones aren't posted)
       const title = d.thread && d.thread.header ? String(d.thread.header).slice(0, 80) : "thread " + th;
       for (const x of reps
-        .filter((x) => (seen ? x.id > since : x.created > fresh) && (showMine || !owners.includes(String(x.creator))))
+        .filter(
+          (reply) =>
+            (seen ? reply.id > since : reply.created > fresh) && (showMine || !owners.includes(String(reply.creator))),
+        )
         .slice(-5)) {
         // (your own replies, from any of your accounts, come too: marked as yours, with no ping and no Reply button. FORUM_SHOW_MINE = "0" hides them)
         const mine = owners.includes(String(x.creator)),
@@ -1008,7 +1011,7 @@ async function sendFeedback(env, req, ctx) {
     return json({ error: MAX_IMAGES + " screenshots at most" }, 400);
   }
   const imgs = [];
-  for (const [n, d] of raw.entries()) {
+  for (const [index, d] of raw.entries()) {
     const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(d);
     if (!m) {
       return json({ error: "screenshots must be PNG or JPEG" }, 400);
@@ -1017,7 +1020,11 @@ async function sendFeedback(env, req, ctx) {
     if (bin.length > MAX_IMAGE) {
       return json({ error: "a screenshot is too big (2 MB at most)" }, 413);
     }
-    imgs.push({ bin, type: "image/" + m[1], name: "screenshot" + (n + 1) + "." + (m[1] === "png" ? "png" : "jpg") });
+    imgs.push({
+      bin,
+      type: "image/" + m[1],
+      name: "screenshot" + (index + 1) + "." + (m[1] === "png" ? "png" : "jpg"),
+    });
   }
   const pids = (Array.isArray(b.pids) ? b.pids : [])
       .map(String)
@@ -1056,7 +1063,7 @@ async function sendFeedback(env, req, ctx) {
   };
   const fd = new FormData();
   fd.append("payload_json", JSON.stringify(payload));
-  imgs.forEach((im, n) => fd.append("files[" + n + "]", new Blob([im.bin], { type: im.type }), im.name));
+  imgs.forEach((im, index) => fd.append("files[" + index + "]", new Blob([im.bin], { type: im.type }), im.name));
   const r = await discordPost(env, "/channels/" + env.REPORT_CHANNEL_ID + "/messages", { method: "POST", body: fd });
   if (!r.ok) {
     return json({ error: "couldn't reach Discord, try again later" }, 502);
@@ -1718,7 +1725,7 @@ async function discordInteraction(env, req, ctx) {
     const link = "https://tanktrouble.com/forum?threadId=" + th + "&id=" + rid + (did ? "#ttcl-draft=" + did : "");
     if (i.application_id && i.token && ctx) {
       ctx.waitUntil(
-        new Promise((r) => setTimeout(r, 800))
+        new Promise((resolve) => setTimeout(resolve, 800))
           .then(() =>
             fetch("https://discord.com/api/v10/webhooks/" + i.application_id + "/" + i.token, {
               method: "POST",
@@ -2616,7 +2623,7 @@ function popupNotes(n) {
 let annCache = null; // (the owner's message, kept for 30 seconds in this server copy)
 let bcastCache = null; // (the live announcement, kept for 20 seconds in this server copy)
 async function latestRelease(env, ctx) {
-  // a release GitHub just told us about (the webhook) wins over the hour-long cache, so the update pop-up shows straight away
+  // the release GitHub told us about (the webhook) wins unless GitHub has a newer one, so the update pop-up shows at once with its notes
   let told = null;
   try {
     await ensureTables(env);
@@ -2634,7 +2641,7 @@ async function latestRelease(env, ctx) {
     try {
       tag = JSON.parse(body).tag;
     } catch {}
-    return new Response(told && verAbove(told.tag, tag) ? told.body : body, {
+    return new Response(told && !verAbove(tag, told.tag) ? told.body : body, {
       headers: Object.assign({ "Content-Type": "application/json" }, CORS),
     });
   }
@@ -2671,7 +2678,7 @@ async function latestRelease(env, ctx) {
       }
     } catch {}
   }
-  if (told && (!out.tag || verAbove(told.tag, out.tag))) {
+  if (told && !verAbove(out.tag, told.tag)) {
     return new Response(told.body, { headers: Object.assign({ "Content-Type": "application/json" }, CORS) });
   }
   const body = JSON.stringify(out);
@@ -2861,7 +2868,7 @@ export default {
               .first()) || {}
           ).n || 0,
         since = now - DAY;
-      const ev =
+      const eventCounts =
         (await env.DB.prepare("SELECT kind, COUNT(*) AS n FROM events WHERE at > ? GROUP BY kind").bind(since).all())
           .results || [];
       await alert(
@@ -2890,7 +2897,7 @@ export default {
                 ")"
               : "no guest looks") +
             (out.length ? "; banned accounts: " + out.join(", ") : ""),
-          "events: " + (ev.length ? ev.map((e) => e.kind + " " + e.n).join(", ") : "none"),
+          "events: " + (eventCounts.length ? eventCounts.map((e) => e.kind + " " + e.n).join(", ") : "none"),
         ].join(" · "),
       );
     } catch {}
@@ -2898,6 +2905,7 @@ export default {
       env.DB.prepare("DELETE FROM alerted WHERE at < ?").bind(now - 2 * DAY),
       env.DB.prepare("DELETE FROM copies WHERE at < ?").bind(now - 7 * DAY),
       env.DB.prepare("DELETE FROM presence WHERE last < ?").bind(now - 60 * DAY),
+      env.DB.prepare("DELETE FROM seen_accts WHERE last < ?").bind(now - 60 * DAY),
       env.DB.prepare("DELETE FROM logged WHERE at < ?").bind(now - 30 * DAY),
       env.DB.prepare("DELETE FROM swept WHERE at < ?").bind(now - 90 * DAY),
       env.DB.prepare(
@@ -3434,8 +3442,8 @@ export default {
                 .split(";")
                 .filter(Boolean)
                 .map((x) => {
-                  const [pid, g, ...nm] = x.split("|");
-                  return { pid, guest: g === "1", name: nm.join("|") || null };
+                  const [pid, g, ...nameParts] = x.split("|");
+                  return { pid, guest: g === "1", name: nameParts.join("|") || null };
                 }),
               ver: r.ver,
               on: now - r.last < ONLINE_MS,
@@ -3828,15 +3836,15 @@ export default {
       }; // (who wears the Color Lab badge: TEAM_BADGES under [vars], as JSON like this, changes it for every v1.4.2+ copy)
       try {
         if (env.TEAM_BADGES) {
-          const t = JSON.parse(env.TEAM_BADGES),
+          const teamBadges = JSON.parse(env.TEAM_BADGES),
             ok = {};
-          for (const k of Object.keys(t).slice(0, 20)) {
-            if (/^\d{1,12}$/.test(k) && Array.isArray(t[k])) {
+          for (const k of Object.keys(teamBadges).slice(0, 20)) {
+            if (/^\d{1,12}$/.test(k) && Array.isArray(teamBadges[k])) {
               ok[k] = [
-                String(t[k][0] || "Color Lab").slice(0, 24),
-                String(t[k][1] || "").slice(0, 80),
-                t[k][2] === "dev" ? "dev" : "",
-                String(t[k][3] || "DEV").slice(0, 12),
+                String(teamBadges[k][0] || "Color Lab").slice(0, 24),
+                String(teamBadges[k][1] || "").slice(0, 80),
+                teamBadges[k][2] === "dev" ? "dev" : "",
+                String(teamBadges[k][3] || "DEV").slice(0, 12),
               ];
             }
           }
