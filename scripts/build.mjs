@@ -17,21 +17,25 @@ import { minify } from 'terser';
 import { zipSync } from 'fflate';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const FOLDER = 'TankTrouble-Color-Lab';            // the folder inside the zip
+const FOLDER = 'TankTrouble-Color-Lab'; // the folder inside the zip
 const SCRIPTS = ['content.js', 'background.js', 'bridge.js'];
-const MINIFY = ['content.js'];                      // the big one is minified; the small ones ship as written
+const MINIFY = ['content.js']; // the big one is minified; the small ones ship as written
 const FILES = ['manifest.json', 'README.md', 'HOW TO INSTALL AND USE.txt', 'WHAT IT CHANGES AND PRIVACY.txt'];
 const FOLDERS = ['icons', 'art'];
 const TERSER = { compress: true, mangle: true, format: { ascii_only: true } };
 
 const args = process.argv.slice(2);
-const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
+const flag = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : undefined;
+};
 
 async function listFiles(dir) {
   const out = [];
   for (const e of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
     const rel = path.posix.join(dir, e.name);
-    if (e.isDirectory()) out.push(...await listFiles(rel)); else if (e.isFile()) out.push(rel);
+    if (e.isDirectory()) out.push(...(await listFiles(rel)));
+    else if (e.isFile()) out.push(rel);
   }
   return out;
 }
@@ -43,13 +47,19 @@ function checkSyntax(file) {
 // every file gets the time of the commit being built (or a fixed date outside git), so rebuilding never changes the zip
 function buildTime() {
   if (process.env.SOURCE_DATE_EPOCH) return new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000);
-  try { return new Date(Number(execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: ROOT }).toString().trim()) * 1000); }
-  catch { return new Date('2026-01-01T00:00:00Z'); }
+  try {
+    return new Date(Number(execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: ROOT }).toString().trim()) * 1000);
+  } catch {
+    return new Date('2026-01-01T00:00:00Z');
+  }
 }
 
 async function main() {
   for (const f of SCRIPTS) checkSyntax(f);
-  if (args.includes('--check')) { console.log('Syntax OK'); return; }
+  if (args.includes('--check')) {
+    console.log('Syntax OK');
+    return;
+  }
 
   const manifest = JSON.parse(await readFile(path.join(ROOT, 'manifest.json'), 'utf8'));
   const version = manifest.version;
@@ -67,7 +77,8 @@ async function main() {
   for (const f of FILES) files[f] = await readFile(path.join(ROOT, f));
   for (const d of FOLDERS) for (const f of await listFiles(d)) files[f] = await readFile(path.join(ROOT, f));
 
-  const mtime = buildTime(), entries = {};
+  const mtime = buildTime(),
+    entries = {};
   for (const name of Object.keys(files).sort()) entries[FOLDER + '/' + name] = [files[name], { mtime, level: 9 }];
   const zip = zipSync(entries);
 
@@ -76,10 +87,16 @@ async function main() {
   await writeFile(out, zip);
   const sha = createHash('sha256').update(zip).digest('hex');
   const contentSha = createHash('sha256').update(files['content.js']).digest('hex');
-  console.log(`Built ${path.relative(ROOT, out)} (${Object.keys(files).length} files, ${(zip.length / 1048576).toFixed(2)} MB)`);
+  console.log(
+    `Built ${path.relative(ROOT, out)} (${Object.keys(files).length} files, ${(zip.length / 1048576).toFixed(2)} MB)`,
+  );
   console.log(`SHA-256 zip:        ${sha}`);
   console.log(`SHA-256 content.js: ${contentSha}`);
-  if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, `zip=${out}\nsha256=${sha}\n`, { flag: 'a' });
+  if (process.env.GITHUB_OUTPUT)
+    await writeFile(process.env.GITHUB_OUTPUT, `zip=${out}\nsha256=${sha}\n`, { flag: 'a' });
 }
 
-main().catch((e) => { console.error(e.message || e); process.exit(1); });
+main().catch((e) => {
+  console.error(e.message || e);
+  process.exit(1);
+});

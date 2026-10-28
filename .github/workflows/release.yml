@@ -23,6 +23,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Build
         id: build
         run: npm run build -- --tag "${{ github.ref_name }}"

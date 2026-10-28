@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "check": "node scripts/build.mjs --check",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "format": "prettier --write content.js background.js bridge.js scripts/build.mjs",
+    "format:check": "prettier --check content.js background.js bridge.js scripts/build.mjs"
   },
   "devDependencies": {
     "fflate": "0.8.2",
+    "prettier": "3.3.3",
     "terser": "5.31.0"
   },
   "engines": {
