@@ -175,6 +175,20 @@
     e.acc = p.acc || null;
     e.maze = p.maze || null;
   }
+  const presetSig = (x) =>
+    !x
+      ? ''
+      : JSON.stringify([
+          x.turret || null,
+          x.base || null,
+          x.treads || null,
+          Object.entries(x.acc || {})
+            .map(([k, v]) => k + '=' + v)
+            .sort(),
+          Object.entries(x.maze || {})
+            .map(([k, v]) => k + '=' + v)
+            .sort(),
+        ]); // two looks are the same when this matches
   const hasLook = (p) => !!(p && (p.turret || p.base || p.treads || (p.acc && Object.keys(p.acc).length)));
 
   // ---------- colour helpers ----------
@@ -1437,9 +1451,10 @@
   let shareRid = 0;
   const shareWait = {};
   let srvManual = false; // logged out fully: Color Lab stays off the look server until someone logs in, or Connect is pressed in ⚙ Settings (this visit only)
+  const incognito = () => !DEV_BUILD && document.documentElement.dataset.ttclIncog === '1'; // an Incognito window: Color Lab works, but never goes online
   const srvOn = () => {
     try {
-      if (SETTINGS.goOffline === true) return false;
+      if (SETTINGS.goOffline === true || incognito()) return false;
       /* (the player chose to go offline: nothing is sent to the server) */ if (!DEV_BUILD) return true;
     } catch {
       return true;
@@ -1714,9 +1729,25 @@
           ev.stopPropagation();
           const pid = bar.dataset.pid;
           if (rp.dataset.sure !== '1') {
-            rp.dataset.sure = '1';
-            rp.title = 'Click again to report it';
-            rp.style.boxShadow = '0 0 0 3px #ffd400';
+            // (asks first: a report can't be taken back)
+            if (row.querySelector('.ttclRq')) return;
+            const q = document.createElement('div');
+            q.className = 'ttclRq';
+            q.style.cssText = 'flex-basis:100%;font:12px Arial;text-align:center;margin-top:4px';
+            q.innerHTML =
+              'Report this shared look? <button class="small" data-a="y">Report</button> <button class="small grey" data-a="n">Cancel</button>';
+            q.onclick = (e2) => {
+              e2.stopPropagation();
+              const a2 = e2.target.closest('button');
+              if (!a2) return;
+              q.remove();
+              if (a2.dataset.a === 'y') {
+                rp.dataset.sure = '1';
+                rp.onclick(ev);
+              }
+            };
+            row.style.flexWrap = 'wrap';
+            row.appendChild(q);
             return;
           }
           rp.textContent = '…';
@@ -1761,7 +1792,19 @@
       let t = '';
       try {
         const c = window.__ttclWhere ? window.__ttclWhere(id) : null;
-        if (c) t = (c.on ? '🟢 Online' : '⚪ Seen ' + c.ago) + (c.srv ? ' · ' + c.srv : '');
+        if (c)
+          t =
+            (c.on
+              ? (c.away ? '🔵 Away' : c.idle ? '🟡 Idle' : '🟢 Online') +
+                ((c.away || c.idle) && c.qmins != null ? ' ' + c.qmins + ' min' : '') +
+                (c.wh === 'game'
+                  ? ' · in a game'
+                  : c.wh === 'queue'
+                    ? ' · in a queue'
+                    : c.wh === 'lobby'
+                      ? ' · in the lobby'
+                      : '')
+              : '⚪ Seen ' + c.ago) + (c.srv ? ' · ' + c.srv : '');
       } catch {}
       if (inf.textContent !== t) inf.textContent = t;
       inf.style.display = t ? '' : 'none';
@@ -2808,7 +2851,7 @@
     picCacheDirty = false,
     picCacheTimer = 0;
   // ART_REV changes only when Color Lab's pictures change (not on every update), so saved pictures survive updates
-  const ART_REV = 'art-2026-10-26-v1b'; // (m: drops pictures saved blank while an item's picture file hadn't loaded)
+  const ART_REV = 'art-2026-10-28-v1e'; // (m: drops pictures saved blank while an item's picture file hadn't loaded)
   const picCacheRev = () => ART_REV + '|' + ((ASSET_MAP && ASSET_MAP.turret) || '');
   const BOX_ART_REV = {
     agent: 'pic-items-3',
@@ -3106,6 +3149,7 @@
           }
           delete bgPending[key];
           picCacheSave();
+          gsPicSoon();
           if (had.length) setTimeout(() => garageArtReady(key), 300);
           // the garage's big tank was already drawn with the stand-in: tanks wearing it are redrawn now it's ready
           if (had.some((p) => p.big)) {
@@ -3280,13 +3324,38 @@
               : '#2b2f5a';
     kg.fillRect(0, 0, 640, 384);
     const back = GX_ACC[key] && GX_ACC[key].slot === 'back';
-    if (back) {
-      tg.drawImage(frame, 0, 0, 640, 384);
+    // the item's own outline, and how much of it the tank would cover
+    const fc = document.createElement('canvas');
+    fc.width = 640;
+    fc.height = 384;
+    fc.getContext('2d').drawImage(frame, 0, 0, 640, 384);
+    const fd = readPixels(fc),
+      td = readPixels(tank);
+    let fx0 = 640,
+      fy0 = 384,
+      fx1 = -1,
+      fy1 = -1,
+      fn = 0,
+      hid = 0;
+    for (let y = 0; y < 384; y++)
+      for (let x = 0; x < 640; x++) {
+        const i = (y * 640 + x) * 4 + 3;
+        if (fd[i] > 20) {
+          fn++;
+          if (td[i] > 20) hid++;
+          if (x < fx0) fx0 = x;
+          if (x > fx1) fx1 = x;
+          if (y < fy0) fy0 = y;
+          if (y > fy1) fy1 = y;
+        }
+      }
+    if (back && fn && hid / fn < 0.5) {
+      tg.drawImage(fc, 0, 0);
       tg.drawImage(tank, 0, 0);
     } else {
       tg.drawImage(tank, 0, 0);
-      tg.drawImage(frame, 0, 0, 640, 384);
-    }
+      tg.drawImage(fc, 0, 0);
+    } // (a back item the tank would mostly hide, e.g. a boombox or hood, goes on top so it shows)
     const eyes = /^ew-|^hk-visor$|^sk-kanzashi$/.test(key),
       head = () => {
         const h = document.createElement('canvas');
@@ -3295,7 +3364,28 @@
         h.getContext('2d').drawImage(t, 185, 92, 190, 150, 0, 0, 190, 150);
         return h;
       };
-    const crop = aura ? t : eyes ? head() : cropCanvas(t),
+    // a small item hanging off the tank (e.g. sneakers on the barrel): zoom in on the item, with a bit of tank around it
+    const near = () => {
+      const w = fx1 - fx0 + 1,
+        h = fy1 - fy0 + 1,
+        m = Math.max(w, h) * 0.35,
+        x0 = Math.max(0, Math.floor(fx0 - m)),
+        y0 = Math.max(0, Math.floor(fy0 - m)),
+        x1 = Math.min(640, Math.ceil(fx1 + m)),
+        y1 = Math.min(384, Math.ceil(fy1 + m)),
+        c = document.createElement('canvas');
+      c.width = x1 - x0;
+      c.height = y1 - y0;
+      c.getContext('2d').drawImage(t, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+      return cropCanvas(c);
+    };
+    const full = !aura && !eyes ? cropCanvas(t) : null,
+      small =
+        full &&
+        fx1 >= 0 &&
+        (fx1 - fx0 + 1) * (fy1 - fy0 + 1) <
+          full.width * full.height * (GX_ACC[key] && GX_ACC[key].slot === 'barrel' ? 0.45 : 0.3);
+    const crop = aura ? t : eyes ? head() : small ? near() : full,
       ic = document.createElement('canvas');
     ic.width = ic.height = 120;
     const k = Math.min(116 / crop.width, 116 / crop.height) * (aura ? 1.05 : 1);
@@ -3434,7 +3524,8 @@
     }
     if (create) e.enabled = true;
     fn(e.presets[e.active]);
-    syncActive(e);
+    delete e.presets[e.active].fresh;
+    syncActive(e); // (changed: it's its own look now)
     saveToStorage();
     removedIds.delete(id);
     try {
@@ -3579,6 +3670,10 @@
     renderGarageMaze();
     const rp = document.getElementById('ttcl-grnd');
     if (rp) rp.remove();
+    const gs = document.getElementById('ttcl-gsearch');
+    if (gs && gs.dataset.f === 'looks') renderGarageSearch(); // (that tank's own looks)
+    const gl = document.getElementById('ttcl-glooks');
+    if (gl && gl._redraw) gl._redraw();
   }
   function keepGarageTank(st) {
     // the garage restarting (after Real / All) opens the first tank again: go back to the one you had open
@@ -7467,6 +7562,7 @@
   }
   // Seasonal page themes (not maps): their own colours, a light pattern on the background, and a map the maze can use with them
   const PAGE_SPECIAL = {
+    dark: { name: '🌙 Dark', floor: '#15171c', wall: '#262a33', acc: '#4f8cff', maze: 'space', deco: () => '' }, // a plain dark page (pick it under One theme)
     halloween: {
       name: '🎃 Halloween',
       floor: '#1a1022',
@@ -7839,6 +7935,13 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
             c = /^#[0-9a-f]{6}$/i.test(orig) ? pgRgb(orig) : null;
           const want = P && P.dark && c && lumRgb(c) < 0.45 ? '#ececec' : orig;
           if (o.fill !== want) o.fill = want;
+          if (typeof o.stroke === 'string') {
+            if (o.__ttclStroke == null) o.__ttclStroke = o.stroke;
+            const so = o.__ttclStroke,
+              sc = /^#[0-9a-f]{6}$/i.test(so) ? pgRgb(so) : null; // (a light outline round it goes dark too, e.g. "Telegraphing code...")
+            const ws = want !== orig && sc && lumRgb(sc) > 0.6 ? '#1a1a1a' : so;
+            if (o.stroke !== ws) o.stroke = ws;
+          }
         }
         const ch = o.children;
         if (ch) for (let i = 0; i < ch.length; i++) walk(ch[i], d + 1);
@@ -16564,6 +16667,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         ['paint', 'Paints', 'Paints only'],
         ['fav', '★', 'Your favourites'],
         ['flags', '🏳 Flags', 'The Flags box (flags for the back)'],
+        ['looks', '💾 Looks', "This tank's saved looks (presets): switch looks with one click"],
       ]) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -16619,6 +16723,9 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     ttChip(sw, SETTINGS.on, 'linear-gradient(#5a5a5a,#2a2a2a)');
     sw.style.boxShadow = '0 0 0 1px #fff';
     if (min) return;
+    const looks = p.dataset.f === 'looks';
+    p.querySelector('.q').style.display = p.querySelector('.bx').style.display = looks ? 'none' : '';
+    if (looks) return renderGarageLooks(p);
     // box picker: every box in this garage, grouped
     const boxes = [...new Set(GARAGE_INDEX.map((r) => r.box))],
       sel = p.querySelector('.bx'),
@@ -16709,6 +16816,241 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     }
     drawGarageRows(p);
   }
+  // 💾 Looks: the open tank's presets (the same ones as the panel's Saved tab). Click one to wear it; the garage then
+  // edits that look. + New look copies what the tank wears now into a new preset, so the old one stays as it was.
+  function renderGarageLooks(p) {
+    const redraw = p._redraw || renderGarageSearch;
+    const list = p.querySelector('.r');
+    list.innerHTML = '';
+    p._qk = null;
+    p._hits = [];
+    const id = selPid(),
+      e = id && PLAYER_COLOR_MAP[id],
+      note = (t) => {
+        const d = document.createElement('div');
+        d.style.cssText = 'opacity:.7;padding:2px 2px 6px;font-size:11px';
+        d.textContent = t;
+        list.appendChild(d);
+      };
+    if (!id) return note('Open a tank first');
+    if (!garageAllOn(id)) note('Looks are your Color Lab looks: switch to All to see them on the garage tank.');
+    const changed = (msg) => {
+      saveToStorage();
+      try {
+        afterPresetChange(id, e);
+      } catch {}
+      garageRedraw();
+      if (msg) toast(msg);
+      redraw();
+    };
+    (e ? e.presets : []).forEach((pr, i) => {
+      const on = i === e.active,
+        row = document.createElement('div');
+      row.style.cssText =
+        'display:flex;align-items:center;gap:6px;padding:4px;margin-bottom:3px;border-radius:6px;cursor:pointer;box-sizing:border-box;border:2px solid ' +
+        (on ? '#427fff' : 'transparent') +
+        ';background:' +
+        (on ? 'rgba(66,127,255,.18)' : 'rgba(255,255,255,.04)');
+      row.onmouseenter = () => {
+        if (!on) row.style.background = 'rgba(66,127,255,.12)';
+      };
+      row.onmouseleave = () => {
+        if (!on) row.style.background = 'rgba(255,255,255,.04)';
+      };
+      const dots = document.createElement('div');
+      dots.style.cssText = 'flex:none;display:flex;gap:2px';
+      for (const k of ['turret', 'base', 'treads']) {
+        const d = document.createElement('i');
+        const v = pr[k],
+          pat = v && isPat(v) ? patId(v) : null,
+          url = pat ? (GX_PAINT[pat] ? gxPaintIcon(pat) : iconMap && iconMap['icon' + pat]) : null;
+        d.style.cssText =
+          'width:14px;height:14px;border-radius:50%;border:1px solid #555;background:' +
+          (url
+            ? '#222 center/cover url(' + lightUrl(url) + ')'
+            : toCss(v) || 'repeating-linear-gradient(45deg,#333 0 3px,#222 3px 6px)');
+        d.title = k[0].toUpperCase() + k.slice(1) + (v ? '' : ": the game's own");
+        dots.appendChild(d);
+      }
+      const items = Object.values(pr.acc || {}).filter((v) => v && v !== '0').length;
+      const tx = document.createElement('div');
+      tx.style.cssText = 'flex:1;min-width:0;line-height:14px';
+      tx.innerHTML =
+        '<div style="font:14px TankTrouble,Arial,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div><div style="font-size:10px;opacity:.65"></div>';
+      tx.children[0].textContent = (on ? '✓ ' : '') + pr.name;
+      tx.children[0].title = 'Click to wear · double-click to rename';
+      tx.children[1].textContent = pr.fresh
+        ? 'copy: change something in the garage to keep it'
+        : (hasLook(pr) ? (items ? items + ' item' + (items > 1 ? 's' : '') : 'no items') : "the game's own look") +
+          (on ? ' · wearing now' : '');
+      row.append(dots, tx);
+      row.onclick = (ev) => {
+        if (ev.detail > 1 || on) return;
+        clearTimeout(row._t);
+        row._t = setTimeout(() => {
+          // a "+ New look" copy that was never changed goes again when you switch away (no duplicate looks)
+          const cur = e.presets[e.active];
+          if (cur && cur.fresh && e.presets.some((q) => q !== cur && presetSig(q) === presetSig(cur)))
+            e.presets.splice(e.active, 1);
+          e.active = Math.max(0, e.presets.indexOf(pr));
+          syncActive(e);
+          changed('Wearing ' + pr.name);
+        }, 230);
+      };
+      tx.children[0].ondblclick = (ev) => {
+        ev.stopPropagation();
+        clearTimeout(row._t);
+        const nm = tx.children[0],
+          inp = document.createElement('input');
+        inp.value = pr.name;
+        inp.maxLength = 30;
+        inp.style.cssText =
+          'width:100%;box-sizing:border-box;background:#000;color:#fff;border:1px solid #427fff;border-radius:4px;font:13px Arial';
+        nm.textContent = '';
+        nm.appendChild(inp);
+        inp.focus();
+        inp.select();
+        let done = false;
+        const fin = (keep) => {
+          if (done) return;
+          done = true;
+          if (keep && inp.value.trim()) {
+            pr.name = inp.value.trim();
+            saveToStorage();
+            try {
+              renderList();
+              updateSaveLabel();
+            } catch {}
+          }
+          redraw();
+        };
+        inp.onkeydown = (k) => {
+          k.stopPropagation();
+          if (k.key === 'Enter') fin(true);
+          else if (k.key === 'Escape') fin(false);
+        };
+        inp.onblur = () => fin(true);
+        inp.onclick = (k) => k.stopPropagation();
+      };
+      if (e.presets.length > 1) {
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.textContent = '✕';
+        del.title = 'Delete this look';
+        del.style.cssText =
+          'flex:none;background:none;border:0;color:#f66;font:bold 13px Arial;cursor:pointer;padding:0 4px';
+        del.onclick = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          uiConfirm('Delete look', 'Delete the look "' + pr.name + '"?', 'Delete', true).then((ok) => {
+            if (!ok) return;
+            e.presets.splice(i, 1);
+            if (e.active >= e.presets.length || e.active === i) e.active = 0;
+            else if (e.active > i) e.active--;
+            syncActive(e);
+            changed();
+          });
+        };
+        row.appendChild(del);
+      }
+      list.appendChild(row);
+    });
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.textContent = '+ New look';
+    add.title = 'Copies what this tank wears now into a new look and switches to it, so the one before stays as it was';
+    ttChip(add, true);
+    add.style.cssText += ';width:100%;margin-top:4px;font-size:15px;padding:4px';
+    const curP = e && e.presets[e.active],
+      cant =
+        curP && curP.fresh
+          ? 'Change something on this copy first'
+          : !e || !hasLook(curP)
+            ? "This tank wears the game's own look: change something first"
+            : '';
+    if (cant) {
+      add.disabled = true;
+      add.style.opacity = '.5';
+      add.style.cursor = 'default';
+      add.title = cant;
+    }
+    add.onclick = (ev) => {
+      ev.preventDefault();
+      if (cant) return;
+      let x = e;
+      if (!x) {
+        garageLocal(id, () => {}, true);
+        x = PLAYER_COLOR_MAP[id];
+        if (!x) return;
+      }
+      if (x.presets.length >= MAX_PRESETS)
+        return toast('Up to ' + MAX_PRESETS + ' looks per tank: delete one first', true);
+      const cur = x.presets[x.active],
+        copy = JSON.parse(JSON.stringify(cur));
+      let n = x.presets.length + 1;
+      while (x.presets.some((q) => q.name === 'Look ' + n)) n++;
+      copy.name = 'Look ' + n;
+      copy.fresh = true;
+      x.presets.push(copy);
+      x.active = x.presets.length - 1;
+      syncActive(x);
+      saveToStorage();
+      try {
+        afterPresetChange(id, x);
+      } catch {}
+      toast('New look: ' + copy.name + ' (change it in the garage)');
+      redraw();
+    };
+    list.appendChild(add);
+    if (!e || !hasLook(e.presets[e.active]))
+      note(
+        'No saved looks yet: change something on this tank in the garage (All view), then + New look makes a second one to switch between.',
+      );
+    else if (e.presets.length < 2) note('Make a second look with + New look, then switch between them here.');
+  }
+  function garageLooksPanel(btn) {
+    let p = document.getElementById('ttcl-glooks');
+    if (p) {
+      p.remove();
+      return;
+    }
+    p = document.createElement('div');
+    p.id = 'ttcl-glooks';
+    p.style.cssText =
+      'position:fixed;z-index:2147482500;width:280px;font:12px Arial,sans-serif;color:#eee;background:rgba(0,0,0,.92);border:3px solid #427fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden';
+    p.innerHTML =
+      '<div style="display:flex;align-items:center;padding:5px 8px;background:linear-gradient(#427fff,#0014ab)"><span style="flex:1;font:17px TankTrouble,Arial,sans-serif">💾 Looks</span><span class="x" title="Close" style="cursor:pointer;font:bold 15px Arial;padding:0 4px">✕</span></div><div class="r" style="padding:7px;max-height:320px;overflow:auto"></div>';
+    document.body.appendChild(p);
+    p.querySelector('.x').onclick = () => p.remove();
+    p._redraw = () => {
+      renderGarageLooks(p);
+      const r = btn.getBoundingClientRect();
+      p.style.left = Math.max(8, Math.min(innerWidth - 294, r.left + r.width / 2 - 140)) + 'px';
+      p.style.top = Math.max(8, r.top - p.offsetHeight - 8) + 'px';
+    };
+    p._redraw();
+  }
+  setInterval(() => {
+    const p = document.getElementById('ttcl-glooks');
+    if (p && !garageOpen()) p.remove();
+  }, 500);
+  let gsPicT = 0;
+  function gsPicSoon() {
+    if (gsPicT) return;
+    gsPicT = setTimeout(() => {
+      gsPicT = 0;
+      const p = document.getElementById('ttcl-gsearch'),
+        sp = p && p.querySelector('.r .sp');
+      if (!sp) return;
+      let n = 0;
+      for (const el of [...sp.children])
+        if (el._noPic && el._r && GARAGE_PICS['i:' + el._r.key]) {
+          el.remove();
+          n++;
+        }
+      if (n) drawGarageRows(p);
+    }, 300);
+  } // (rows whose pictures just got drawn)
   const GS_HDR = 24;
   const GS_ROW = 36;
   function garageRow(r) {
@@ -16731,6 +17073,12 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       ';background:#2a2d38 center/contain no-repeat;border:1px solid #444';
     if (i2.col) ic.style.background = i2.col;
     else if (i2.url) ic.style.backgroundImage = 'url(' + lightUrl(i2.url) + ')';
+    else if (r.custom) {
+      row._noPic = true;
+      try {
+        bgAdd(r.key, true);
+      } catch {}
+    } // (not drawn yet: next in line)
     const tx = document.createElement('div');
     tx.style.cssText = 'flex:1;min-width:0;line-height:14px';
     tx.innerHTML =
@@ -16961,6 +17309,12 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       );
       cog.style.marginLeft = '-4px';
       cog.style.minWidth = '24px';
+      mk(
+        'ttcl-glooksb',
+        '💾 Looks',
+        'Your saved looks for this tank: switch with one click, or make a new one (Color Lab)',
+        (x) => garageLooksPanel(x),
+      );
     }
     syncGarageButton(b);
     renderGarageMaze();
@@ -17489,8 +17843,8 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
   const usableTrophies = () => TROPHIES.filter((t) => trophyUsable(t.key));
 
   // ---------- Hall of Fame achievements (lifetime stats, match moments, silly ones) ----------
-  // Hidden like the Laika trophies: the game's own pop-up says something was unlocked, the reward appears in the
-  // Hall of Fame box, and the 🏆 list in the panel shows every one (unearned ones as ???).
+  // The game's own pop-up says something was unlocked, the reward appears in the
+  // Hall of Fame box, and the 🏆 list in the panel shows every one (unearned ones locked, with how to get them).
   // None of them copy one of the game's own achievements (checked against its list: e.g. it has Lucky Shot for a 13-bounce
   // kill, Pacifist for 10 wins without firing, Lord of Destruction for 10,000 kills — so ours start at 25,000 kills).
   // kind: 'stat' (lifetime numbers from your account), 'event' (counted in online rounds), 'fun' (Color Lab and calendar things)
@@ -17501,18 +17855,18 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       id: '9501',
       kind: 'stat',
       name: 'Gold Hoarder',
-      text: 'Had 10,000 gold at once.',
-      need: 10000,
-      of: (s) => s.gold,
+      text: 'Earned 50,000 gold (counted from v1.4.2 on).',
+      need: 50000,
+      gain: 'gold',
     },
     {
       key: 'aw-crystalcrown',
       id: '9502',
       kind: 'stat',
       name: 'Diamond Hands',
-      text: 'Had 100 Dimitriums at once.',
-      need: 100,
-      of: (s) => s.diamonds,
+      text: 'Earned 500 Dimitriums (counted from v1.4.2 on).',
+      need: 500,
+      gain: 'diamonds',
     },
     {
       key: 'aw-bronzelaurel',
@@ -17522,6 +17876,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       text: 'Won 100 rounds.',
       need: 100,
       of: (s) => s.victories,
+      retired: true,
     },
     {
       key: 'aw-victoryflag',
@@ -17531,6 +17886,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       text: 'Won 1,000 rounds.',
       need: 1000,
       of: (s) => s.victories,
+      retired: true,
     },
     {
       key: 'aw-aura-legend',
@@ -17549,6 +17905,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       text: 'Destroyed 25,000 tanks.',
       need: 25000,
       of: (s) => s.kills,
+      retired: true,
     },
     {
       key: 'aw-warcape',
@@ -17598,9 +17955,9 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       id: '9512',
       kind: 'stat',
       name: 'Own Worst Enemy',
-      text: 'Destroyed yourself 1,000 times.',
-      need: 1000,
-      of: (s) => s.suicides,
+      text: 'Destroyed yourself 5,000 times (counted from v1.4.2 on).',
+      need: 5000,
+      gain: 'suicides',
     },
     {
       key: 'aw-beret',
@@ -17610,6 +17967,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       text: 'Reached rank 50.',
       need: 50,
       of: (s) => s.rank,
+      retired: true,
     },
     // moments in online rounds
     { key: 'aw-scope', id: '9520', kind: 'event', name: 'Light Speed', text: 'Destroyed 3 tanks with one laser shot.' },
@@ -17618,7 +17976,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       id: '9521',
       kind: 'event',
       name: 'Heat Seeker',
-      text: 'Destroyed 2 tanks with homing missiles in one round.',
+      text: 'Destroyed 3 tanks with homing missiles in one round.',
     },
     {
       key: 'aw-detector',
@@ -17639,50 +17997,50 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       id: '9524',
       kind: 'event',
       name: 'Shotgun Wedding',
-      text: 'Destroyed 2 tanks with one shotgun blast.',
+      text: 'Destroyed 3 tanks with one shotgun blast.',
     },
     {
       key: 'aw-riotshield',
       id: '9525',
       kind: 'event',
       name: 'Bodyguard',
-      text: 'Blocked 5 enemy shots with your shield in one round.',
+      text: 'Blocked 10 enemy shots with your shield in one round.',
     },
-    { key: 'aw-crates', id: '9526', kind: 'event', name: 'Crate Goblin', text: 'Picked up 5 crates in one round.' },
+    { key: 'aw-crates', id: '9526', kind: 'event', name: 'Crate Goblin', text: 'Picked up 10 crates in one round.' },
     {
       key: 'aw-sparklecrown',
       id: '9527',
       kind: 'event',
       name: 'Last Tank Standing',
-      text: 'Won a round of 6 or more tanks with 3 kills in it.',
+      text: 'Destroyed all 5 (or more) other tanks in a round yourself and survived.',
     },
     {
       key: 'aw-stopwatch',
       id: '9528',
       kind: 'event',
       name: 'Speed Run',
-      text: 'Won a round within 10 seconds of it starting.',
+      text: 'Won a round of 3 or more tanks within 5 seconds of it starting.',
     },
     {
       key: 'aw-aura-heartbeat',
       id: '9529',
       kind: 'event',
       name: 'Clutch',
-      text: 'Won 3 rounds in a row, each against 3 or more tanks.',
+      text: 'Won 10 rounds in a row, each against 3 or more tanks.',
     },
     {
       key: 'aw-itcounts',
       id: '9530',
       kind: 'event',
       name: 'Kamikaze',
-      text: 'Took out an enemy and yourself with the same shot.',
+      text: 'Took out an enemy and yourself with the same shot, 10 times.',
     },
     {
       key: 'aw-boomerang',
       id: '9531',
       kind: 'event',
       name: 'Boomerang',
-      text: 'Destroyed by your own bullet after it bounced 5 times.',
+      text: 'Destroyed by your own bullet after it bounced 8 times.',
     },
     {
       key: 'aw-blanket',
@@ -17690,6 +18048,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       kind: 'event',
       name: 'Wall Hugger',
       text: 'Won a round without ever going more than 2 tiles from where you started.',
+      retired: true,
     },
     {
       key: 'aw-phoenix',
@@ -17697,14 +18056,15 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       kind: 'event',
       name: 'Comeback Kid',
       text: 'Won a round straight after being destroyed in 5 rounds in a row.',
+      retired: true,
     },
-    { key: 'aw-aura-bubble', id: '9534', kind: 'event', name: 'Untouchable', text: 'Survived 25 rounds in a row.' },
+    { key: 'aw-aura-bubble', id: '9534', kind: 'event', name: 'Untouchable', text: 'Survived 50 rounds in a row.' },
     {
       key: 'aw-bankmedal',
       id: '9535',
       kind: 'event',
       name: 'Ricochet Royalty',
-      text: 'Destroyed 25 tanks with bullets that had bounced 3 or more times.',
+      text: 'Destroyed 100 tanks with bullets that had bounced 3 or more times.',
     },
     {
       key: 'aw-sixbounce',
@@ -17725,7 +18085,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       id: '9538',
       kind: 'event',
       name: 'Iron Wall',
-      text: 'Blocked 50 enemy shots with your shield in total.',
+      text: 'Blocked 200 enemy shots with your shield in total.',
     },
     // silly ones
     {
@@ -17747,7 +18107,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       id: '9542',
       kind: 'fun',
       name: 'Night Owl',
-      text: 'Played a round between 2 and 5 in the morning.',
+      text: 'Played 25 rounds between 2 and 5 in the morning.',
     },
     { key: 'aw-calendar', id: '9543', kind: 'fun', name: 'Loyal Tank', text: 'Played on 7 days in a row.' },
     {
@@ -19117,8 +19477,22 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
           gold: c ? +(c.gold ?? 0) : 0,
           diamonds: c ? +(c.diamonds ?? 0) : 0,
         };
-        h2(pid).stats = s;
-        for (const a of ACH2) if (a.kind === 'stat' && (a.test ? a.test(s) : a.of(s) >= a.need)) h2Unlock(pid, a.key);
+        const hp = h2(pid);
+        hp.stats = s;
+        // 'gain' ones count only what's added from now on: every rise since the last check (spending gold doesn't take any away)
+        hp.gain = hp.gain || {};
+        hp.last = hp.last || {};
+        for (const k of ['gold', 'diamonds', 'suicides']) {
+          if (hp.last[k] != null && s[k] > hp.last[k]) hp.gain[k] = (hp.gain[k] || 0) + (s[k] - hp.last[k]);
+          hp.last[k] = s[k];
+        }
+        for (const a of ACH2)
+          if (
+            a.kind === 'stat' &&
+            !a.retired &&
+            (a.test ? a.test(s) : a.gain ? (hp.gain[a.gain] || 0) >= a.need : a.of(s) >= a.need)
+          )
+            h2Unlock(pid, a.key);
       } catch {}
     }
     saveStats();
@@ -19189,10 +19563,10 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         from = String(data.projectile.getPlayerId());
       if (mine.has(owner) && from !== owner && R.online) {
         const n = (R.blocks[owner] = (R.blocks[owner] || 0) + 1);
-        if (n >= 5) h2Unlock(owner, 'aw-riotshield');
+        if (n >= 10) h2Unlock(owner, 'aw-riotshield');
         const p = h2(owner);
         p.blocked = (p.blocked || 0) + 1;
-        if (p.blocked >= 50) h2Unlock(owner, 'aw-ironwall');
+        if (p.blocked >= 200) h2Unlock(owner, 'aw-ironwall');
       }
     } else if (ev === 'collectible destroyed' && data && data.getPlayerId) {
       const pid = String(data.getPlayerId());
@@ -19201,7 +19575,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         type = col && col.getType ? col.getType() : -1;
       if (type >= 0 && type <= 8) {
         const n = (R.crates[pid] = (R.crates[pid] || 0) + 1);
-        if (n >= 5) h2Unlock(pid, 'aw-crates');
+        if (n >= 10) h2Unlock(pid, 'aw-crates');
       }
     } else if (ev === 'tank killed' && data && data.getVictimPlayerId)
       h2Kill(
@@ -19225,7 +19599,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       alive = proj && proj.getTimeAlive ? proj.getTimeAlive() : 0;
     if (mine.has(victim)) {
       R.died[victim] = now;
-      if (killer === victim && type === -1 && (bounces >= 5 || (!bounces && alive >= 6)))
+      if (killer === victim && type === -1 && (bounces >= 8 || (!bounces && alive >= 9)))
         h2Unlock(victim, 'aw-boomerang');
       if (now - R.start <= 3000) {
         const p = h2(victim);
@@ -19244,16 +19618,16 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
     const others = K.filter((k) => k.victim !== killer);
     if (killer !== victim) {
       if (type === 0 && others.filter((k) => k.did === did).length >= 3) h2Unlock(killer, 'aw-scope');
-      if (others.filter((k) => k.type === 3).length >= 2) h2Unlock(killer, 'aw-radar');
+      if (others.filter((k) => k.type === 3).length >= 3) h2Unlock(killer, 'aw-radar');
       if (others.filter((k) => k.type === 4).length >= 3) h2Unlock(killer, 'aw-detector');
       if (type === 5 && others.filter((k) => k.type === 5 && now - k.t <= 3000).length >= 4)
         h2Unlock(killer, 'aw-smokebarrel');
-      if (type === 2 && others.filter((k) => k.type === 2 && now - k.t <= 400).length >= 2) h2Unlock(killer, 'aw-rose');
+      if (type === 2 && others.filter((k) => k.type === 2 && now - k.t <= 400).length >= 3) h2Unlock(killer, 'aw-rose');
       if (type === -1 && bounces >= 6) h2Unlock(killer, 'aw-sixbounce');
       if (type === -1 && bounces >= 3) {
         const p = h2(killer);
         p.rico = (p.rico || 0) + 1;
-        if (p.rico >= 25) h2Unlock(killer, 'aw-bankmedal');
+        if (p.rico >= 100) h2Unlock(killer, 'aw-bankmedal');
       }
     }
     // the same shot (or within half a second, one weapon) took out an enemy and yourself
@@ -19262,7 +19636,12 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         (k) =>
           k.victim !== killer && self && (k.did === self.did || Math.abs(k.t - self.t) <= 500) && k.type === self.type,
       );
-    if (self && enemy) h2Unlock(killer, 'aw-itcounts');
+    if (self && enemy && !self.kami) {
+      self.kami = 1;
+      const p = h2(killer);
+      p.kami = (p.kami || 0) + 1;
+      if (p.kami >= 10) h2Unlock(killer, 'aw-itcounts');
+    } // (counted once per shot)
     saveStats();
   }
   function h2RoundEnd(winners, mine, now) {
@@ -19277,7 +19656,10 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         n = R.players.size,
         died = !!R.died[pid];
       // silly ones count in any game you play
-      if (d.getHours() >= 2 && d.getHours() < 5) h2Unlock(pid, 'aw-nightcap');
+      if (d.getHours() >= 2 && d.getHours() < 5) {
+        p.night = (p.night || 0) + 1;
+        if (p.night >= 25) h2Unlock(pid, 'aw-nightcap');
+      }
       p.days = (p.days || [])
         .filter((x) => x !== day)
         .concat([day])
@@ -19336,13 +19718,15 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       } // Ace: every other tank in the round was yours
       // round streaks
       if (won) {
-        if (n >= 6 && (R.kills[pid] || []).filter((k) => k.victim !== pid).length >= 3)
+        if (
+          n >= 6 &&
+          !died &&
+          new Set((R.kills[pid] || []).filter((k) => k.victim !== pid).map((k) => k.victim)).size >= n - 1
+        )
           h2Unlock(pid, 'aw-sparklecrown');
-        if (n >= 2 && now - R.start <= 10000) h2Unlock(pid, 'aw-stopwatch');
+        if (n >= 3 && now - R.start <= 5000) h2Unlock(pid, 'aw-stopwatch');
         p.clutch = n >= 4 ? (p.clutch || 0) + 1 : 0;
-        if (p.clutch >= 3) h2Unlock(pid, 'aw-aura-heartbeat');
-        if ((p.deadRun || 0) >= 5) h2Unlock(pid, 'aw-phoenix');
-        if (R.far[pid] != null && (R.seen[pid] || 0) >= 12 && R.far[pid] <= 20 && n >= 2) h2Unlock(pid, 'aw-blanket'); // (only when we really watched the tank: 3 s or more)
+        if (p.clutch >= 10) h2Unlock(pid, 'aw-aura-heartbeat');
         p.casino = R.theme === 'casino' ? (p.casino || 0) + 1 : 0;
         if (p.casino >= 3) h2Unlock(pid, 'aw-slots');
       } else {
@@ -19351,7 +19735,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
       }
       p.deadRun = died ? (p.deadRun || 0) + 1 : 0;
       p.alive = died ? 0 : (p.alive || 0) + 1;
-      if (p.alive >= 25) h2Unlock(pid, 'aw-aura-bubble');
+      if (p.alive >= 50) h2Unlock(pid, 'aw-aura-bubble');
     }
     {
       let saved = 0;
@@ -27397,7 +27781,7 @@ button:is(.small,.medium,.large):not(.warning):not(:disabled){background:linear-
         '0x3a6ea5',
       ],
     },
-    // achievement rewards (Achievements tab in the panel lists them all, unearned ones as ???); the box appears once one is earned
+    // achievement rewards (Achievements tab in the panel lists them all, unearned ones locked, with how to get them); the box appears once one is earned
     {
       id: 'hall',
       name: 'Achievements',
@@ -33602,6 +33986,7 @@ select:focus{border-color:#427fff}
 .savebar{margin-top:10px;gap:6px}
 .savebar .big{margin-top:0;flex:1}
 .savebar #addPreset{flex:0 0 auto;line-height:36px}
+#save:disabled,#addPreset:disabled{opacity:.55;cursor:default;filter:saturate(.6)}
 .tog{flex:0 0 26px;width:26px;height:14px;border-radius:7px;background:#555;position:relative;cursor:pointer;transition:background .15s}
 .tog::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:left .15s}
 .tog.on{background:#31e000}.tog.on::after{left:14px}
@@ -33623,7 +34008,7 @@ select:focus{border-color:#427fff}
       <button class="tab on" id="tabPaint" title="Paint a tank">🎨<span class="tlbl"> Paint</span></button>
       <button class="tab" id="tabSaved" title="Your saved tanks">💾<span class="tlbl"> Saved</span><span class="count" id="savedCount">0</span></button>
       <button class="tab" id="tabMaze" title="Maze: map themes, bullets and patterns in the maze">🗺<span class="tlbl"> Maze</span></button>
-      <button class="tab" id="tabAch" title="Color Lab achievements: what you've earned (the rest stay hidden as ???)">🏆<span class="tlbl"> Awards</span></button>
+      <button class="tab" id="tabAch" title="Color Lab achievements: what you've earned, and how to get the rest">🏆<span class="tlbl"> Awards</span></button>
     </div>
     <span class="row">
       <button class="small on" id="power" title="Custom colours on / off">⏻</button>
@@ -33747,7 +34132,7 @@ select:focus{border-color:#427fff}
     <div id="fbBox" style="margin:4px 0 6px"><textarea id="fbText" maxlength="1500" placeholder="Briefly describe what's going on, in at least 5 words (Ctrl+V pastes a screenshot)" style="width:100%;min-height:62px;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px;font:12px Arial;resize:vertical"></textarea>
       <div class="row setbtns" style="gap:6px;align-items:center;flex-wrap:wrap"><button class="small grey" id="fbPic">📎 Add screenshots (up to 3)</button><input type="file" id="fbFile" accept="image/png,image/jpeg" multiple hidden><span id="fbPrev"></span><button class="small" id="fbSend">📨 Send message</button><small id="fbMsg" style="color:#aaa"></small></div>
       <small class="mzsub" id="fbAboutLbl" hidden></small>
-      <small class="mzsub">Sent to Color Lab's Discord with your tank's name. A screenshot may show player names and chat. 15 messages a day. If you reach the limit, reply on the Color Lab forum thread</small></div>
+      <small class="mzsub">Sent to the Color Lab team with your tank's name. A screenshot may show player names and chat. 15 messages a day. If you reach the limit, reply on the Color Lab forum thread</small></div>
     <div class="sublbl">Tanks in the game</div>
     <div class="row setbtns"><button class="small" id="refresh" title="Redraw your logged-in tanks now and check they're shared (Shift-click: every custom tank in the game)">🔄 Refresh my tanks</button></div>
     <div class="sublbl">Help</div>
@@ -33935,6 +34320,9 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   function schedulePreview() {
     clearTimeout(pvTimer);
     pvTimer = setTimeout(renderPreview, 30);
+    try {
+      updateSaveLabel();
+    } catch {}
   }
   async function renderPreview() {
     const seq = ++pvSeq,
@@ -34787,9 +35175,42 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     else refreshTanks([id]);
   }
   // Save button names the preset it writes to, once a tank has more than one
+  // Save is greyed out ("✓ Saved") while the form matches the look already saved and on the tank; + Preset is greyed
+  // out while the form matches any saved preset, so the same look can't be saved twice. Change anything and both come back.
+  function formLook() {
+    const f = getForm();
+    return {
+      turret: f.turret,
+      base: f.base,
+      treads: f.treads,
+      acc: Object.keys(formAcc).length ? formAcc : null,
+      maze: f.maze,
+    };
+  }
   function updateSaveLabel() {
-    const d = resolved && PLAYER_COLOR_MAP[resolved.playerId];
-    $('save').textContent = d && d.presets.length > 1 ? 'Save · ' + d.presets[d.active].name : 'Save';
+    const d = resolved && PLAYER_COLOR_MAP[resolved.playerId],
+      s = $('save'),
+      a = $('addPreset');
+    if (!s || s.textContent === 'Saving…') return;
+    const f = formLook(),
+      sig = presetSig(f),
+      cur = d && d.presets[d.active],
+      named = d && d.presets.length > 1 ? ' · ' + cur.name : '';
+    const same = !!(cur && hasLook(cur) && presetSig(cur) === sig),
+      dup = d && d.presets.find((p) => hasLook(p) && presetSig(p) === sig);
+    s.textContent = (same ? '✓ Saved' : 'Save') + named;
+    s.disabled = same;
+    s.title = same
+      ? 'This look is saved and on the tank. Change something to save again.'
+      : 'Save this look' + (named ? ' over the preset "' + cur.name + '"' : '') + ' and put it on the tank';
+    if (a) {
+      a.disabled = !!dup || !hasLook(f);
+      a.title = dup
+        ? 'Already saved as "' + dup.name + '". Change something to save it as a new preset.'
+        : !hasLook(f)
+          ? 'Pick a colour or item first'
+          : 'Save this look as an extra preset for this tank (the one you have stays as it is)';
+    }
   }
 
   async function setResolved(data) {
@@ -35027,6 +35448,17 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       (PLAYER_COLOR_MAP[p.playerId] = normEntry({ nickname: p.username, playerName: p.username }));
     e.playerName = p.username;
     const cols = { turret: f.turret, base: f.base, treads: f.treads, acc, maze: f.maze };
+    const dup = e.presets.find((q) => hasLook(q) && presetSig(q) === presetSig(cols));
+    if (dup && (saveAsNew || dup === e.presets[e.active])) {
+      updateSaveLabel();
+      return setStatus(
+        st,
+        dup === e.presets[e.active] && !saveAsNew
+          ? '✓ Already saved: change something to save again'
+          : `✗ Already saved as "${dup.name}"`,
+        dup === e.presets[e.active] && !saveAsNew ? '' : 'err',
+      );
+    }
     if (saveAsNew && hasLook(e.presets[e.active]) && e.presets.length >= MAX_PRESETS)
       return setStatus(st, `✗ Up to ${MAX_PRESETS} presets per tank: delete one first (Saved tab)`, 'err');
     if (saveAsNew && hasLook(e.presets[e.active])) {
@@ -35264,7 +35696,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   $('tabSaved').onclick = () => showTab('saved');
   $('tabMaze').onclick = () => showTab('maze');
   $('tabAch').onclick = () => showTab('ach');
-  // 🏆 every Color Lab achievement: earned ones with their reward, the rest as ??? (they're secret until you get them)
+  // 🏆 every Color Lab achievement: earned ones with their reward, the rest locked but shown with how to get them
   const achArtTried = new Set();
   function renderAch() {
     const host = $('achBody');
@@ -35275,8 +35707,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         for (const pid in STATS.unlocked) if (STATS.unlocked[pid] && STATS.unlocked[pid][t.id]) return pid;
         return null;
       };
-    const all = TROPHIES,
-      got = all.filter(earnedBy);
+    const all = TROPHIES.filter((t) => !(t.ach && t.ach.retired) || earnedBy(t)),
+      got = all.filter(earnedBy); // (retired achievements only show for those who earned them)
     const hd = document.createElement('div');
     hd.className = 'achhd';
     hd.innerHTML = '<b></b><small class="mzsub"></small>';
@@ -35313,15 +35745,15 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         } else {
           const q = document.createElement('span');
           q.className = 'achq';
-          q.textContent = who ? '…' : '?';
+          q.textContent = who ? '…' : '🔒';
           r.appendChild(q);
           if (who) want.push(t.key);
         }
         const tx = document.createElement('span');
         tx.className = 'achtx';
         tx.innerHTML = '<b></b><span></span>';
-        tx.children[0].textContent = who ? t.name : '???';
-        tx.children[1].textContent = who ? t.text : '';
+        tx.children[0].textContent = t.name;
+        tx.children[1].textContent = t.text;
         r.appendChild(tx);
 
         host.appendChild(r);
@@ -36082,11 +36514,11 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       );
       row(
         sh,
-        SETTINGS.showOnline === true,
-        'Show me as online',
-        'Other Color Lab players see your name in the Color Lab box, online or idle. Off: you only count as hidden',
+        SETTINGS.invisible === true,
+        '👻 Invisible',
+        "Other Color Lab players don't see you at all: not in the list and not in the online count (the Color Lab team can still see you're connected)",
         () => {
-          SETTINGS.showOnline = !(SETTINGS.showOnline === true);
+          SETTINGS.invisible = !(SETTINGS.invisible === true);
           saveSettings();
           renderSettings();
           fbRefresh(false);
@@ -36097,7 +36529,25 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
           }, 2500);
         },
       );
-      if (SETTINGS.showOnline === true)
+      if (SETTINGS.invisible !== true)
+        row(
+          sh,
+          SETTINGS.showOnline === true,
+          'Show me as online',
+          'Other Color Lab players see your name in the Color Lab box, online or idle. Off: you only count as hidden',
+          () => {
+            SETTINGS.showOnline = !(SETTINGS.showOnline === true);
+            saveSettings();
+            renderSettings();
+            fbRefresh(false);
+            setTimeout(() => {
+              try {
+                onlineFetch();
+              } catch {}
+            }, 2500);
+          },
+        );
+      if (SETTINGS.showOnline === true && SETTINGS.invisible !== true)
         row(
           sh,
           SETTINGS.showServer === true,
@@ -36308,6 +36758,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     const r = await shareCall({ op: 'latest' }).catch(() => null);
     b.disabled = false;
     b.textContent = '🔔 Check for updates';
+    if (r && r.store) return toast('The Chrome Web Store keeps Color Lab up to date for you (v' + r.current + ')');
     if (!r || !r.ok || !r.data || !r.data.tag) return toast("Couldn't reach the update check. Try again later", true);
     if (!verNewer(r.data.tag, r.current)) return toast('You have the newest version (v' + r.current + ')');
     setOpen(false);
@@ -36463,8 +36914,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
   // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
   // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-  const TUT_VER = 12,
-    TUT_LABEL = 'v1.4.1';
+  const TUT_VER = 13,
+    TUT_LABEL = 'v1.4.2';
   const WHATS_NEW = [
     // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
     [
@@ -36705,6 +37156,25 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       '⚡',
       'Faster page loading, bigger arrows on sections you can open and close, labels on the map options and tab names in the panel',
     ],
+    [
+      13,
+      '💾',
+      '<b>Looks</b>: the 💾 Looks button in the garage switches between your saved looks in one click, and <b>+ New look</b> starts another',
+    ],
+    [
+      13,
+      '✅',
+      "<b>Saving</b> is clearer: Save shows <b>✓ Saved</b> until you change something, and the same look can't be saved twice as a preset",
+    ],
+    [13, '🌙', '<b>Dark</b> page theme for the site, forum, news and shop'],
+    [13, '🏆', "<b>Achievements</b> aren't secret any more: every name and goal shows, and some goals are fairer"],
+    [
+      13,
+      '🟢',
+      "<b>Online list</b>: shows who's idle and whether they're in the lobby, a queue or a game. Away or idle for 15+ minutes counts as offline",
+    ],
+    [13, '🕶', '<b>Incognito windows</b>: Color Lab still works there, but stays offline'],
+    [13, '🔧', '<b>Fixed</b>: the Streetwear sneakers, boombox and hood are easy to see in the garage'],
     [12, '📢', "<b>Announcements</b>: news from the Color Lab team now pops up the moment it's sent"],
     [
       12,
@@ -36760,7 +37230,10 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       if (WAS_USER && !DEV_BUILD) whatsNew(0);
       else tutChoose(true);
     } else if ((TUTS.ver || 0) < TUT_VER) whatsNew(TUTS.ver || 0);
+    else if (EXT_VER && TUTS.extVer && TUTS.extVer !== EXT_VER) toast('Color Lab updated to v' + EXT_VER + ' ✨');
+    if (EXT_VER && (!TUTS || TUTS.extVer !== EXT_VER)) setTimeout(() => tutSave({ extVer: EXT_VER }), 500); // (the version this browser has now seen)
   }
+  const EXT_VER = document.documentElement.dataset.ttclVer || ''; // this copy's version (set by bridge.js)
   const TUT_CSS = `#ttcl-tut{position:fixed;inset:0;z-index:2147483600;pointer-events:none;font:13px/1.45 Arial,sans-serif;color:#fff}
 #ttcl-tut .spot{position:fixed;border:3px solid #427fff;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 0 2px #fff,0 0 22px #427fff;transition:all .25s;pointer-events:none}
 #ttcl-tut .dim{position:fixed;inset:0;background:rgba(0,0,0,.55);pointer-events:auto}
@@ -37038,14 +37511,12 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       const x = new URL(String(u || ''));
       if (x.protocol !== 'https:') return null;
       const ok =
-        (x.hostname === 'github.com' && /^\/wazzey\//.test(x.pathname)) ||
-        /(^|\.)tanktrouble\.com$/.test(x.hostname) ||
-        ['discord.gg', 'discord.com'].includes(x.hostname);
+        (x.hostname === 'github.com' && /^\/wazzey\//.test(x.pathname)) || /(^|\.)tanktrouble\.com$/.test(x.hostname);
       return ok ? x.href : null;
     } catch {
       return null;
     }
-  }; // (buttons only lead to Color Lab's GitHub, TankTrouble or Discord)
+  }; // (buttons only lead to Color Lab's GitHub or TankTrouble)
   async function annShow(a) {
     // a new announcement: a box in the top right corner (up to 3 stacked, newest on top). It never covers the middle, dims the page or takes the keyboard,
     // and it closes by itself after 30 seconds (not while the mouse is on it). Closed without OK, it stays unread in Message Color Lab > Announcements
@@ -37054,7 +37525,8 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       // a new release, live: only for copies older than it (missed it? the update pop-up still comes at the next check)
       if (!a.tag || SETTINGS.updSkip === a.tag) return;
       const r = await shareCall({ op: 'latest' }).catch(() => null);
-      if (!r || !r.current || !verNewer(a.tag, r.current)) return;
+      if (!r || !r.current || r.store || !verNewer(a.tag, r.current))
+        return; /* (a Chrome Web Store copy: the store updates it) */
       SETTINGS.updPending = a.tag;
       saveSettings();
     }
@@ -37163,7 +37635,20 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     try {
       const r = await shareCall({ op: 'announce' });
       if (r && r.ok && r.data && Array.isArray(r.data.list)) annList = r.data.list.slice(0, 20);
-      annShow(r && r.ok && r.data && r.data.ann);
+      if (r && r.ok && r.data && r.data.team && typeof r.data.team === 'object') {
+        for (const k of Object.keys(CL_TEAM)) delete CL_TEAM[k];
+        for (const [k, v] of Object.entries(r.data.team).slice(0, 20))
+          if (/^\d{1,12}$/.test(k) && Array.isArray(v))
+            CL_TEAM[k] = [
+              esc(String(v[0] || 'Color Lab').slice(0, 24)),
+              esc(String(v[1] || '').slice(0, 80)),
+              v[2] === 'dev' ? 'dev' : '',
+              String(v[3] || 'DEV')
+                .replace(/[^\w .+-]/g, '')
+                .slice(0, 12),
+            ];
+      }
+      /* (who wears the Color Lab badge comes from the server) */ annShow(r && r.ok && r.data && r.data.ann);
     } catch {
     } finally {
       annBusy = false;
@@ -37325,6 +37810,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   }
   async function fbRefresh(seen) {
     // ("Share my look" off: no accounts, server or idle status go with the check)
+    const inv = SETTINGS.invisible === true; // (invisible: not shown or counted for other players)
     const r = await shareCall(
       shareMine()
         ? {
@@ -37332,10 +37818,14 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
             pids: loggedInIds().map(String).slice(0, 4),
             srv: ttServerName(),
             idle: isIdle(),
-            show: SETTINGS.showOnline === true,
-            shsrv: SETTINGS.showServer === true,
+            away: isAway(),
+            wh: ttWhere(),
+            ifor: quietFor(),
+            inv,
+            show: !inv && SETTINGS.showOnline === true,
+            shsrv: !inv && SETTINGS.showServer === true,
           }
-        : { op: 'fblist', show: false },
+        : { op: 'fblist', inv, show: false },
     ).catch(() => null);
     if (!r || !r.ok || !r.data || !Array.isArray(r.data.items)) return;
     const before = fbItems.reduce((n, it) => n + it.replies.length, 0);
@@ -37440,6 +37930,163 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   // "Message Color Lab" laid out like the game's own message laboratory (a box on the right, then a full-page chat to
   // write to the author and read replies)
   const D = (id) => document.getElementById(id);
+  // The Color Lab team's accounts get a badge by their name (in the Color Lab online list and on the forum)
+  const CL_TEAM = {}; // (who wears the Color Lab badge comes from the server)
+  const CL_MINI =
+    '<svg viewBox="0 0 32 32" width="11" height="11" style="vertical-align:-1px;margin-right:2px"><circle cx="16" cy="16" r="15" fill="#1d2b3a" stroke="#27c4a8" stroke-width="3"/><circle cx="11" cy="11" r="4.6" fill="#ef4444"/><circle cx="21" cy="11" r="4.6" fill="#facc15"/><circle cx="11" cy="21" r="4.6" fill="#3b82f6"/><circle cx="21" cy="21" r="4.6" fill="#22c55e"/></svg>';
+  const CL_DEV_SVG =
+    '<rect x="2" y="4" width="28" height="24" rx="4" fill="#000" stroke="#22c55e" stroke-width="2.5"/><path d="M8 12 L13 16 L8 20" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="15" y="19" width="9" height="3" fill="#4ade80"/>'; // the developer's badge: a terminal >_
+  const CL_DEV_MINI =
+    '<svg viewBox="0 0 32 32" width="11" height="11" style="vertical-align:-1px;margin-right:2px">' +
+    CL_DEV_SVG +
+    '</svg>';
+  function clBadge(pid, px, mini) {
+    const t = CL_TEAM[String(pid)];
+    if (!t) return '';
+    const dev = t[2] === 'dev';
+    if (mini)
+      return (
+        '<span class="ttclTeam" title="' +
+        t[1] +
+        '" style="margin-left:2px">' +
+        (dev ? CL_DEV_MINI : CL_MINI) +
+        '</span>'
+      );
+    if (dev)
+      return (
+        '<span class="ttclTeam" title="' +
+        t[1] +
+        '" style="display:inline-block;white-space:nowrap;font:bold ' +
+        (px || 9) +
+        'px Consolas,monospace;line-height:1.35;padding:0 5px 0 3px;margin-left:3px;border-radius:7px;color:#4ade80;text-shadow:none;vertical-align:1px;background:linear-gradient(#111,#000);box-shadow:0 0 0 1px #22c55e">' +
+        CL_DEV_MINI +
+        '&gt;_ ' +
+        t[0] +
+        '</span>'
+      );
+    return (
+      '<span class="ttclTeam" title="' +
+      t[1] +
+      '" style="display:inline-block;white-space:nowrap;font:bold ' +
+      (px || 9) +
+      'px Arial,sans-serif;line-height:1.35;padding:0 4px 0 2px;margin-left:3px;border-radius:7px;color:#fff;text-shadow:none;vertical-align:1px;background:linear-gradient(#2a3d52,#16212e);box-shadow:0 0 0 1px #27c4a8">' +
+      CL_MINI +
+      t[0] +
+      '</span>'
+    );
+  }
+  setInterval(() => {
+    try {
+      if (!/^\/forum/.test(location.pathname)) return; // the forum: a badge under the team's names
+      for (const n of document.querySelectorAll('.tank stroked-player-name[data-player-id]')) {
+        const id = n.getAttribute('data-player-id');
+        if (!CL_TEAM[id] || (n.nextElementSibling && n.nextElementSibling.classList.contains('ttclTeamF'))) continue;
+        const b = document.createElement('div');
+        b.className = 'ttclTeamF';
+        b.style.cssText = 'text-align:center;margin-top:2px;pointer-events:auto';
+        b.innerHTML = clBadge(id, 10);
+        n.after(b);
+      }
+    } catch {}
+  }, 1500);
+  const CL_STAR = (t) =>
+    '<span class="ttclTeamI" title="' +
+    t[1] +
+    '" style="position:absolute;right:-4%;top:-4%;width:30%;max-width:34px;min-width:12px;aspect-ratio:1;z-index:5;pointer-events:auto;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))"><svg viewBox="0 0 32 32" width="100%" height="100%">' +
+    (t[2] === 'dev'
+      ? CL_DEV_SVG
+      : '<circle cx="16" cy="16" r="15" fill="#1d2b3a" stroke="#27c4a8" stroke-width="2.5"/><circle cx="11" cy="11" r="4.4" fill="#ef4444"/><circle cx="21" cy="11" r="4.4" fill="#facc15"/><circle cx="11" cy="21" r="4.4" fill="#3b82f6"/><circle cx="21" cy="21" r="4.4" fill="#22c55e"/>') +
+    '</svg></span>';
+  setInterval(() => {
+    try {
+      // the Color Lab team's tanks wear the Color Lab badge, like the game's old moderator star (seen by Color Lab users)
+      for (const ic of document.querySelectorAll('tank-icon[data-player-id]')) {
+        const t = CL_TEAM[ic.getAttribute('data-player-id')];
+        const has = ic.querySelector(':scope > .ttclTeamI');
+        if (!t) {
+          if (has) has.remove();
+          continue;
+        }
+        if (has || !SETTINGS.on) continue;
+        if (getComputedStyle(ic).position === 'static') ic.style.position = 'relative';
+        ic.insertAdjacentHTML('beforeend', CL_STAR(t));
+      }
+    } catch {}
+  }, 1500);
+  // in the game itself (lobby, player panel, score bar): the team's name gets a "(DEV) " tag and their tank the badge on its corner, where the game's old GM star went
+  const CL_TAG_IMG = {};
+  function clTagImg(kind) {
+    if (CL_TAG_IMG[kind]) return CL_TAG_IMG[kind];
+    const im = new Image();
+    im.src =
+      'data:image/svg+xml,' +
+      encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="128" height="128">' +
+          (kind === 'dev'
+            ? CL_DEV_SVG
+            : '<circle cx="16" cy="16" r="15" fill="#1d2b3a" stroke="#27c4a8" stroke-width="2.5"/><circle cx="11" cy="11" r="4.4" fill="#ef4444"/><circle cx="21" cy="11" r="4.4" fill="#facc15"/><circle cx="11" cy="21" r="4.4" fill="#3b82f6"/><circle cx="21" cy="21" r="4.4" fill="#22c55e"/>') +
+          '</svg>',
+      );
+    return (CL_TAG_IMG[kind] = im);
+  }
+  function clTagGame(g) {
+    const walk = (o, d) => {
+      const ch = o && o.children;
+      if (!ch || d > 9) return;
+      for (const c of ch) {
+        try {
+          if (c.playerId != null) clTagOne(g, c);
+        } catch {}
+        walk(c, d + 1);
+      }
+    };
+    walk(g.world, 0);
+  }
+  function clTagOne(g, c) {
+    const t = SETTINGS.on ? CL_TEAM[String(c.playerId)] : null;
+    if (c.tankName && typeof c.tankName.text === 'string') {
+      const tn = c.tankName,
+        pre = t ? '(' + (t[3] || 'DEV') + ') ' : '',
+        cur = tn.text,
+        base = tn.__ttclPre && cur.startsWith(tn.__ttclPre) ? cur.slice(tn.__ttclPre.length) : cur;
+      if (cur !== pre + base) tn.text = pre + base;
+      tn.__ttclPre = pre;
+      return;
+    }
+    const sp = c.children && c.children[0];
+    if (!sp || !(sp.width > 20) || !/tankicon/i.test(String(sp.key || ''))) return;
+    /* (only the tank icons, never the tanks driving in the maze) */ const kind = t
+      ? t[2] === 'dev'
+        ? 'dev'
+        : 'lab'
+      : '';
+    if (c.__ttclB && (c.__ttclB.__k !== kind || !c.__ttclB.parent)) {
+      try {
+        c.__ttclB.destroy();
+      } catch {}
+      c.__ttclB = null;
+    }
+    if (!kind || c.__ttclB) return;
+    const im = clTagImg(kind);
+    if (!im.complete || !im.naturalWidth) return;
+    const key = 'ttclTag-' + kind;
+    if (!g.cache.checkImageKey(key)) g.cache.addImage(key, null, im);
+    const W = Math.abs(sp.width),
+      H = Math.abs(sp.height),
+      b = g.make.image(sp.x + W * 0.33, sp.y + H * 0.31, key);
+    b.anchor.set(0.5);
+    b.width = b.height = W * 0.17;
+    b.__k = kind;
+    c.addChild(b);
+    c.__ttclB = b;
+  }
+  setInterval(() => {
+    for (const g of [...PAGE_GAMES]) {
+      try {
+        if (g && g.world && !g.pendingDestroy) clTagGame(g);
+      } catch {}
+    }
+  }, 1000);
   const LAB_ICON =
     '<svg viewBox="0 0 32 32" width="26" height="26" style="vertical-align:middle"><circle cx="16" cy="16" r="15" fill="#1d2b3a" stroke="#27c4a8" stroke-width="2"/><circle cx="11" cy="11" r="4.2" fill="#ef4444"/><circle cx="21" cy="11" r="4.2" fill="#facc15"/><circle cx="11" cy="21" r="4.2" fill="#3b82f6"/><circle cx="21" cy="21" r="4.2" fill="#22c55e"/></svg>';
   let labView = 'mine',
@@ -37809,6 +38456,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         SETTINGS.myBullet,
         shareMine(),
         SETTINGS.goOffline === true,
+        SETTINGS.invisible === true,
         gearVer,
         SETTINGS.updPending || '',
         Object.keys(gearG)
@@ -37906,6 +38554,26 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
           }, 500);
       },
     );
+    mk(
+      SETTINGS.invisible === true ? '👻 Invisible' : '👁 Visible',
+      SETTINGS.invisible !== true,
+      'Invisible: other Color Lab players don\'t see you online at all (not listed, not counted). Visible: you show up if "Show me as online" is on',
+      () => {
+        SETTINGS.invisible = !(SETTINGS.invisible === true);
+        saveSettings();
+        try {
+          renderSettings();
+        } catch {}
+        try {
+          fbRefresh(false);
+        } catch {}
+        setTimeout(() => {
+          try {
+            onlineFetch();
+          } catch {}
+        }, 2500);
+      },
+    );
     mk('🎨 Open', true, 'Open the Color Lab panel', () => setOpen(true));
     if (gearVer === null) {
       gearVer = '';
@@ -37951,6 +38619,11 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         const r = await shareCall({ op: 'latest' }).catch(() => null);
         ub.disabled = false;
         ub.textContent = SETTINGS.updPending ? '🔔 Update available: ' + SETTINGS.updPending : '🔔 Check for updates';
+        if (r && r.store) {
+          gearVer = String(r.current);
+          gearQuick();
+          return toast('The Chrome Web Store keeps Color Lab up to date for you (v' + r.current + ')');
+        }
         if (!r || !r.ok || !r.data || !r.data.tag) {
           gearQuick();
           return toast("Couldn't reach the update check. Try again later", true);
@@ -38376,6 +39049,63 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
   function isIdle() {
     return document.hidden || Date.now() - lastInput > 5 * 60000;
   }
+  // where the player is: in a game (local or online), in a queue, or just in the lobby
+  function ttWhere() {
+    let w = 'lobby';
+    for (const g of [...PAGE_GAMES]) {
+      try {
+        if (!g || !g.state || !g.world) continue;
+        const st = g.state.current;
+        if (st === 'Game') return 'game';
+        if (st === 'Lobby' && w === 'lobby') {
+          let q = false;
+          const walk = (o, d) => {
+            if (q || !o || d > 9) return;
+            if (
+              typeof o.text === 'string' &&
+              o.visible !== false &&
+              o.alive !== false &&
+              /^(leave( queue)?|leave the queue|cancel( queue)?|unqueue|queued|in queue)$/i.test(o.text.trim())
+            )
+              q = true;
+            const ch = o.children;
+            if (ch) for (const c of ch) walk(c, d + 1);
+          };
+          walk(g.world, 0);
+          if (q) w = 'queue';
+        }
+      } catch {}
+    }
+    return w;
+  }
+  // away: in the lobby (not in a game or a queue) with the tab in the background for 3 minutes. Other players see an away copy as offline;
+  // back on the tab, it's online again straight away. In a game or a queue a player never goes away (at most idle)
+  let bgSince = document.hidden || !document.hasFocus() ? Date.now() : 0;
+  const bgNow = () => document.hidden || !document.hasFocus();
+  for (const ev of ['blur', 'visibilitychange', 'focus'])
+    addEventListener(
+      ev,
+      () => {
+        const bg = bgNow();
+        if (bg && !bgSince) bgSince = Date.now();
+        else if (!bg) bgSince = 0;
+      },
+      true,
+    );
+  document.addEventListener('visibilitychange', () => {
+    const bg = bgNow();
+    if (bg && !bgSince) bgSince = Date.now();
+    else if (!bg) bgSince = 0;
+  });
+  function isAway() {
+    return !!bgSince && bgNow() && Date.now() - bgSince > 3 * 60000 && ttWhere() === 'lobby';
+  }
+  function quietFor() {
+    const now = Date.now();
+    if (isAway()) return Math.round((now - bgSince) / 60000);
+    if (!isIdle()) return 0;
+    return Math.round((now - (document.hidden && bgSince ? Math.min(bgSince, lastInput) : lastInput)) / 60000);
+  } // (minutes idle or away: shown to the owner)
   {
     let lastIds = null,
       lastIdle = null,
@@ -38383,7 +39113,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     setInterval(() => {
       try {
         const ids = loggedInIds().map(String).sort().join(','),
-          idle = isIdle();
+          idle = isIdle() + '|' + isAway() + '|' + ttWhere();
         if ((lastIds !== null && ids !== lastIds) || (lastIdle !== null && idle !== lastIdle)) fbRefresh(false);
         if (lastIds !== null && ids !== lastIds && ids) {
           try {
@@ -38584,7 +39314,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         before: () => showTab('ach'),
         el: () => $('paneAch'),
         t: 'Achievements 🏆',
-        x: "Color Lab's own hidden achievements. Earn them in online rounds to unlock extra items (and, for the hardest, a paint) in the <b>Achievements</b> box. Unearned ones show as ???.",
+        x: "Color Lab's own achievements. Earn them in online rounds to unlock extra items (and, for the hardest, a paint) in the <b>Achievements</b> box. Each one says how to get it.",
       },
       {
         before: () => showTab('settings'),
@@ -38915,6 +39645,10 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
           sure,
           srv: c.srv || '',
           idle: !!c.idle,
+          inv: !!c.inv,
+          away: !!c.away,
+          wh: c.wh || '',
+          qmins: c.qmins,
           via: o ? o.name : '',
           unsh: sure && !(Array.isArray(c.accounts) && c.accounts.some((x) => String(x.pid) === String(a.pid))),
         });
@@ -38928,16 +39662,38 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     const pend = [],
       seenP = new Set();
     for (let i = people.length - 1; i >= 0; i--)
-      if (people[i].unsh && DEV_BUILD) {
+      if (people[i].unsh && !people[i].on && DEV_BUILD) {
         const q = people.splice(i, 1)[0];
         if (!seenP.has(q.pid)) {
           seenP.add(q.pid);
           pend.unshift(q);
         }
       }
-    const st = (on, idle) =>
+    {
+      const shown = new Set(people.map((p) => String(p.pid)));
+      for (let i = pend.length - 1; i >= 0; i--)
+        if (shown.has(String(pend[i].pid))) {
+          const q = pend[i],
+            p = people.find((x) => String(x.pid) === String(q.pid));
+          if (p && q.on && (!p.on || q.mins < p.mins))
+            Object.assign(p, {
+              on: q.on,
+              mins: q.mins,
+              idle: q.idle,
+              srv: q.srv,
+              inv: q.inv,
+              ver: q.ver,
+              away: q.away,
+              wh: q.wh,
+              qmins: q.qmins,
+            });
+          pend.splice(i, 1);
+        }
+      people.sort((a, b) => b.on - a.on || a.mins - b.mins);
+    } /* (the same account on another copy that's online right now: the row shows that copy's status) */ // (an account already listed, shared from another copy, isn't repeated under "not sharing yet")
+    const st = (on, idle, away) =>
       '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;background:' +
-      (on ? (idle ? '#f2c230' : '#2fd12f') : '#9a9a9a') +
+      (on ? (away ? '#4a8cff' : idle ? '#f2c230' : '#2fd12f') : '#9a9a9a') +
       ';box-shadow:0 0 0 1px rgba(0,0,0,.45)"></span>';
     const OUT = 'color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 3px #000';
     let h =
@@ -38946,11 +39702,50 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       'deg)"></span></div>' +
       '<div style="font:bold 13px Arial;margin:3px 0 2px">' +
       (!srvOn()
-        ? st(false) + (SETTINGS.goOffline === true ? 'Offline (not connected)' : 'Not connected (logged out)')
+        ? st(false) +
+          (incognito()
+            ? 'Offline in Incognito windows'
+            : SETTINGS.goOffline === true
+              ? 'Offline (not connected)'
+              : 'Not connected (logged out)')
         : onlineErr || !onlineData
           ? st(false) + 'Server offline'
-          : st(true) + n + ' online') +
-      '</div>';
+          : st(true) +
+            n +
+            ' online' +
+            (!DEV_BUILD && people.some((p) => p.on && p.idle)
+              ? ' · ' + people.filter((p) => p.on && p.idle).length + ' idle'
+              : '')) +
+      '</div>' +
+      (DEV_BUILD && onlineData && people.length
+        ? (() => {
+            const on = people.filter((p) => p.on),
+              c = (f) => on.filter(f).length,
+              parts = [
+                [c((p) => !p.idle && !p.away), '#2fd12f', 'active'],
+                [c((p) => p.idle && !p.away), '#f2c230', 'idle'],
+                [c((p) => p.away), '#4a8cff', 'away'],
+                [c((p) => p.inv), '', '👻'],
+              ].filter((x) => x[0]);
+            return parts.length
+              ? '<div style="font:10px Arial;opacity:.85;margin:-1px 0 2px" title="Active: playing or recently clicked. Idle: no input for 5 min (still online for others). Away: lobby with the tab in the background for 3 min (offline for others). 👻: invisible">' +
+                  parts
+                    .map(
+                      (x) =>
+                        (x[1]
+                          ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' +
+                            x[1] +
+                            ';margin:0 2px 0 4px"></span>'
+                          : ' ') +
+                        x[0] +
+                        ' ' +
+                        x[2],
+                    )
+                    .join('') +
+                  '</div>'
+              : '';
+          })()
+        : '');
     if (!shut && people.length) {
       const show = people; // (names only, scrolling past ~10; click one for its tank)
       h +=
@@ -38963,21 +39758,46 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
               esc(p.pid) +
               '" style="cursor:pointer;padding:1px 0" title="Click to see their tank">' +
               '<div style="display:flex;align-items:center;gap:1px"><span style="flex:none;display:flex" title="' +
-              (p.on ? (p.idle ? 'Idle (away from the game)' : 'Online') : 'Offline') +
+              (p.on
+                ? p.away
+                  ? 'Away: in the lobby with the tab in the background' +
+                    (p.qmins != null ? ' for ' + p.qmins + ' min' : '') +
+                    ' (offline for other players)'
+                  : p.idle
+                    ? 'Idle: no input' +
+                      (p.qmins != null ? ' for ' + p.qmins + ' min' : '') +
+                      (p.qmins >= 15 ? ' (offline for other players after 15 min idle)' : '')
+                    : 'Online'
+                : 'Offline') +
               '">' +
-              st(p.on, p.idle) +
+              st(p.on, p.idle, p.away) +
               '</span><span title="' +
               esc(p.name) +
-              '" style="min-width:0;font:' +
-              Math.max(8, Math.min(13, Math.floor(140 / (String(p.name).length * 0.95)))) +
+              '" style="min-width:0;flex:0 1 auto;font:' +
+              Math.max(9, Math.min(13, Math.floor((gmTag(p.pid) ? 118 : 140) / (String(p.name).length * 0.95)))) +
               'px TankTrouble,Arial;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
               OUT +
               '">' +
               esc(p.name) +
+              '</span><span style="flex:none;white-space:nowrap">' +
+              (p.inv
+                ? '<span title="Invisible to other players" style="font:11px Arial;margin-left:2px">👻</span>'
+                : '') +
+              (DEV_BUILD && p.unsh
+                ? '<span title="Logged in on a copy that hasn\'t shared this account\'s look yet (not proved, too new or blocked)" style="font:9px Arial;opacity:.75;margin-left:2px">new</span>'
+                : '') +
+              (p.on && p.wh === 'game'
+                ? '<span title="In a game" style="font:11px Arial;margin-left:2px">🎮</span>'
+                : p.on && p.wh === 'queue'
+                  ? '<span title="In a queue" style="font:11px Arial;margin-left:2px">⏳</span>'
+                  : '') +
+              clBadge(p.pid, 0, true) +
               gmTag(p.pid) +
               (p.sure
                 ? ''
-                : '<span style="font:bold 11px Arial" title="v1.3 copy: online, but it can\'t say which of its accounts is logged in"> ?</span>') +
+                : '<span style="font:bold 11px Arial;' +
+                  OUT +
+                  '" title="v1.3 copy: online, but it can\'t say which of its accounts is logged in"> ?</span>') +
               (p.guest ? ' <span style="font:10px Arial">(guest)</span>' : '') +
               '</span></div>' +
               (false && p.via
@@ -38992,7 +39812,15 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
                   esc(p.pid) +
                   '" style="position:absolute;left:0;top:0;transform:scale(.4);transform-origin:0 0"></tank-icon></div>' +
                   '<div style="font:11px Arial;line-height:1.35">' +
-                  (p.on ? '<b>' + (p.idle ? 'Idle' : p.sure ? 'Online' : 'Online?') + '</b>' : ago(p.mins)) +
+                  (p.on
+                    ? '<b>' +
+                      (p.away ? 'Away' : p.idle ? 'Idle' : p.sure ? 'Online' : 'Online?') +
+                      '</b>' +
+                      (DEV_BUILD && (p.away || p.idle) && p.qmins != null ? ' ' + p.qmins + ' min' : '') +
+                      (p.wh
+                        ? ' · ' + (p.wh === 'game' ? 'in a game' : p.wh === 'queue' ? 'in a queue' : 'in the lobby')
+                        : '')
+                    : ago(p.mins)) +
                   '<br><span style="opacity:.75">' +
                   [p.srv ? esc(p.srv) : '', p.ver ? 'v' + esc(p.ver) : ''].filter(Boolean).join(' · ') +
                   '</span></div></div>'
@@ -39011,7 +39839,9 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         ' hidden</div>';
     if (!shut && !(SETTINGS.showOnline === true && shareMine()))
       h +=
-        '<div style="font:10px Arial;opacity:.75;margin-top:3px" title="Turn it on in ⚙ Settings > Look sharing">You\'re hidden from other players</div>';
+        '<div style="font:10px Arial;opacity:.75;margin-top:3px" title="Turn it on in ⚙ Settings > Look sharing">' +
+        (SETTINGS.invisible === true ? "👻 You're invisible to other players" : "You're hidden from other players") +
+        '</div>';
     if (!shut && hid === null && (bare.on || bare.off))
       h +=
         '<div style="font:10px Arial;opacity:.7;margin-top:3px" title="Copies with no account logged in or no shared look yet">+ ' +
@@ -39067,7 +39897,7 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
           if (!document.hidden) onlineFetch();
         } catch {}
       },
-      DEV_BUILD ? 15000 : 60000,
+      DEV_BUILD ? 15000 : 30000,
     );
     setInterval(() => {
       try {
@@ -39080,7 +39910,15 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
       const acc = Array.isArray(c.logged) ? c.logged : [];
       if (acc.some((a) => String(a.pid) === String(pid))) {
         const m = c.mins;
-        return { on: c.on, srv: c.srv || '', ago: m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago' };
+        return {
+          on: c.on,
+          idle: !!c.idle,
+          away: !!c.away,
+          wh: c.wh || '',
+          qmins: c.qmins,
+          srv: c.srv || '',
+          ago: m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago',
+        };
       }
     }
     return null;

@@ -51,6 +51,12 @@
       return false;
     }
   };
+  try {
+    if (chrome.extension && chrome.extension.inIncognitoContext) document.documentElement.dataset.ttclIncog = '1';
+  } catch {}
+  try {
+    document.documentElement.dataset.ttclVer = chrome.runtime.getManifest().version;
+  } catch {} // (content.js shows update notes after an update) // (Incognito: Color Lab stays offline, see content.js)
   const toPage = (msg) => window.postMessage(Object.assign({ __ttcl: true, dir: 'toPage' }, msg), location.origin);
   const pick = (items) => {
     const o = {};
@@ -131,6 +137,10 @@
               pids: d.pids,
               srv: d.srv,
               idle: d.idle,
+              away: d.away,
+              wh: d.wh,
+              ifor: d.ifor,
+              inv: d.inv,
               show: d.show,
               shsrv: d.shsrv,
               about: d.about,
@@ -163,12 +173,6 @@
           } catch {}
           send(key);
         });
-    } else if (d.type === 'devReload') {
-      // (The DEV copy only: reload the extension from the page while testing)
-      try {
-        const p = chrome.runtime.sendMessage({ type: 'devReload' });
-        if (p && p.catch) p.catch(() => {});
-      } catch {}
     } else if (d.type === 'migrate') {
       const items = pick(d.items);
       Object.assign(data || (data = {}), items);

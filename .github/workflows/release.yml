@@ -32,14 +32,17 @@ jobs:
         id: build
         run: npm run build -- --tag "${{ github.ref_name }}"
 
+      # Release notes: this version's section of CHANGELOG.md, then the zip's SHA-256
+      - name: Release notes
+        run: |
+          awk -v v="## ${{ github.ref_name }}" '$0==v{on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
+          printf '\n**SHA-256:** `%s` (built from %s by GitHub Actions)\n' "${{ steps.build.outputs.sha256 }}" "${{ github.sha }}" >> notes.md
+
       - name: Attach the zip to the release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.build.outputs.zip }}
-          append_body: true
-          body: |
-
-            **SHA-256:** `${{ steps.build.outputs.sha256 }}` (built from ${{ github.sha }} by GitHub Actions)
+          body_path: notes.md
 
       # Chrome Web Store: uploads the same zip and submits it for review.
       # Skipped until the five CWS_* secrets are added in Settings > Secrets and variables > Actions.

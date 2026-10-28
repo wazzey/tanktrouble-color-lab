@@ -29,9 +29,11 @@ Color Lab reads TankTrouble's own game messages in the page so it can recolour t
 If you report a shared look, the report records your copy's key hash and your tank's name, so the author can see who reported it. A look reported by enough players is hidden.
 
 ### Online status
-Every few minutes your copy tells the server it is running: its key hash, version, which of your tanks are logged in, which TankTrouble server you're on and whether you're idle. When you close your last TankTrouble tab it says so, so you show as offline straight away. This is kept for up to 60 days after your copy was last seen (logged-in tanks for 30), then deleted.
+Every few minutes your copy tells the server it is running: its key hash, version, which of your tanks are logged in, which TankTrouble server you're on, whether you're idle or away (the tab has been in the background for a few minutes), and whether you're in the lobby, a queue or a game. When you close your last TankTrouble tab it says so, so you show as offline straight away. This is kept for up to 60 days after your copy was last seen (logged-in tanks for 30), then deleted.
 
-Other players see you only if you turn on **Settings > Look sharing > Show me as online** (and your server only if you also turn on **Show which server I'm on**). **👻 Invisible** hides you from the list and the count for everyone except the author. **Go offline** stops Color Lab contacting the server at all.
+Other players see you only if you turn on **Settings > Look sharing > Show me as online** (and your server only if you also turn on **Show which server I'm on**). **👻 Invisible** hides you from the list and the count for everyone except the author. **Go offline** stops Color Lab contacting the server at all. Players who are away, or idle for 15 minutes or more, show as offline to other players.
+
+In an **Incognito window** Color Lab never contacts its server: your looks still work on your own screen, but nothing is shared, sent or shown online.
 
 ### Messages
 If you send a message from **Message Color Lab**, its text and any screenshots go to the author (delivered to the author's private Discord) with your tank's name. The text and replies are kept so you can see them in Color Lab; screenshots are not kept.

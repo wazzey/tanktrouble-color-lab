@@ -100,17 +100,22 @@ in use and which version they are:
 - which of your tanks are logged in right now (player IDs, guests included),
   which TankTrouble server you are playing on (for example "London"), and
   whether you are idle (the TankTrouble tab is hidden, or nothing has been
-  clicked or typed for 5 minutes).
+  clicked or typed for 5 minutes) or away (the tab has been in the background
+  for 3 minutes while you are in the lobby), and whether you are in the lobby,
+  a queue or a game.
 The author can see all of this. Other Color Lab players see you in the Color Lab
 box on the page ONLY if you turn on Settings > Look sharing > "Show me as
-online": then they see your name and whether you are online or idle, only for
+online": then they see your name and whether you are online or idle (and in
+the lobby, a queue or a game), only for
 tanks proven to be yours (never guests). Your server (for example "London") is
 shown only if you also turn on "Show which server I'm on". Otherwise you are
 only counted as "hidden". It is kept for up to 60 days after your copy was
 last seen (the logged-in tanks for 30), then deleted. Switching off
 Settings > Look sharing > "Share my look" stops the tanks, server and idle
 status from being sent and hides you; the key hash and version are still sent
-so replies to your messages can reach you.
+so replies to your messages can reach you. Away, or idle for 15 minutes or
+more, shows as offline to other players. In an Incognito window Color Lab never
+contacts its server at all.
 
 MESSAGES
 If you send a message from Settings > Feedback & reports, its text and any

@@ -42,10 +42,16 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 
 // Shared looks: Color Lab's look server (see "Look sharing" in Settings). Only player IDs and looks go to it.
 const SHARE_BASE = 'https://ttcl-share.wazzey.workers.dev';
+const FROM_STORE = !!chrome.runtime.getManifest().update_url; // installed from the Chrome Web Store (a downloaded zip has no update_url)
 const ttTabs = new Set(); // (TankTrouble tabs that have asked something: live announcements go to all of them)
 chrome.runtime.onMessage.addListener((m, sender, reply) => {
   if (!m || m.type !== 'share' || !sender.tab) return;
+  if (sender.tab.incognito && !/ \(DEV\)$/.test(chrome.runtime.getManifest().name)) {
+    reply({ ok: false, status: 0, incognito: true });
+    return;
+  } // (an Incognito window: never online, nothing goes to the server)
   ttTabs.add(sender.tab.id);
+  ttMark();
   const pid = /^\d{1,12}$/.test(String(m.pid || '')) ? String(m.pid) : null;
   let url,
     opt = {};
@@ -61,7 +67,7 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       try {
         live.close();
       } catch {}
-    } // nothing left to watch: the connection closes
+    } // nothing left to watch (e.g. logged out): the connection closes
     liveOpen();
     liveSend();
     reply({ ok: true, live: !!(live && live.readyState === 1) });
@@ -69,6 +75,10 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
   }
   if (m.op === 'latest') {
     // the newest release (for the update pop-up), with this copy's version to compare
+    if (FROM_STORE) {
+      reply({ ok: true, data: null, current: chrome.runtime.getManifest().version, store: true });
+      return;
+    } // (the Chrome Web Store updates its copies itself: no GitHub pop-up)
     fetch(SHARE_BASE + '/v1/latest', { cache: 'no-store' })
       .then((r) => r.json().then((data) => reply({ ok: r.ok, data, current: chrome.runtime.getManifest().version })))
       .catch(() => reply({ ok: false }));
@@ -118,13 +128,17 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
                 : undefined,
               srv: typeof m.srv === 'string' ? m.srv.slice(0, 24) : undefined,
               idle: m.idle === true,
+              away: m.away === true,
+              wh: ['lobby', 'game', 'queue'].includes(m.wh) ? m.wh : undefined,
+              ifor: Math.max(0, Math.min(1440, Number(m.ifor) || 0)),
+              inv: m.inv === true,
               show: m.show === true ? true : m.show === false ? false : undefined,
               shsrv: m.shsrv === true,
             },
       ),
-    };
+    }; // (fblist: the tanks logged in right now, for the online list)
   } else if (m.op === 'online' && /^[0-9a-f]{64}$/.test(String(m.key || ''))) {
-    // who is online (only players who chose to be shown)
+    // how many Color Lab players are online
     url = SHARE_BASE + '/v1/online';
     opt = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: m.key }) };
   } else if ((m.op === 'report' || m.op === 'vstart' || m.op === 'vcheck') && pid) {
@@ -239,6 +253,37 @@ function liveOpen() {
     } catch {}
   };
 }
+// Closing TankTrouble: when the last TankTrouble tab closes (or goes to another site), the server is told at once, so this copy shows as
+// offline straight away instead of after a few minutes. (If the browser itself is closed or the connection drops, it's after 5-7 minutes.)
+function ttMark() {
+  try {
+    chrome.storage.session.set({ ttOpen: true });
+  } catch {}
+}
+async function ttGone() {
+  try {
+    const st = await chrome.storage.session.get('ttOpen');
+    if (!st || !st.ttOpen) return;
+    const left = await chrome.tabs.query({ url: ['https://tanktrouble.com/*', 'https://*.tanktrouble.com/*'] });
+    if (left.length) return;
+    await chrome.storage.session.set({ ttOpen: false });
+    const it = await chrome.storage.local.get('ttcl_share_key'),
+      key = it && it.ttcl_share_key;
+    if (!key || !/^[0-9a-f]{64}$/.test(key)) return;
+    await fetch(SHARE_BASE + '/v1/bye', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-TTCL-Version': chrome.runtime.getManifest().version },
+      body: JSON.stringify({ key }),
+      keepalive: true,
+    });
+  } catch {}
+}
+chrome.tabs.onRemoved.addListener(() => {
+  setTimeout(ttGone, 300);
+});
+chrome.tabs.onUpdated.addListener((id, ch) => {
+  if (ch.url && !/^https:\/\/([\w-]+\.)?tanktrouble\.com\//.test(ch.url)) setTimeout(ttGone, 300);
+});
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (!liveWatch.delete(tabId)) return;
   if (liveWatch.size) liveSend();
@@ -247,10 +292,4 @@ chrome.tabs.onRemoved.addListener((tabId) => {
       live.close();
     } catch {}
   }
-});
-
-// The DEV copy only (its name ends in "(DEV)"): the page can ask for the extension to reload itself while testing
-chrome.runtime.onMessage.addListener((m) => {
-  if (m && m.type === 'devReload' && / \(DEV\)$/.test(chrome.runtime.getManifest().name))
-    setTimeout(() => chrome.runtime.reload(), 100);
 });
