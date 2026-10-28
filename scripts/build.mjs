@@ -8,14 +8,14 @@
 //   npm run check            -> syntax-checks the scripts without building
 //
 // The build is repeatable: the same source always gives the same zip, byte for byte
-// (pinned terser version, files in a fixed order, every file stamped with the same time).
+// (pinned esbuild version, files in a fixed order, every file stamped with the same time).
 
 import { readFile, writeFile, readdir, mkdir, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { minify } from 'terser';
+import { transform } from 'esbuild';
 import { zipSync } from 'fflate';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,7 +25,7 @@ const SCRIPTS = ['content.js', 'background.js', 'bridge.js'];
 const MINIFY = ['content.js']; // the big one is minified; the small ones ship as written
 const FILES = ['manifest.json', 'HOW TO INSTALL AND USE.txt', 'WHAT IT CHANGES AND PRIVACY.txt']; // (from src/; README.md comes from the top level)
 const FOLDERS = ['icons', 'art'];
-const TERSER = { compress: true, mangle: true, format: { ascii_only: true } };
+const ESBUILD = { minify: true, charset: 'ascii', legalComments: 'none', target: 'chrome110' }; // (content.js runs as a plain script in the page: no module wrapping)
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -73,7 +73,7 @@ async function main() {
   for (const f of SCRIPTS) {
     const src = await readFile(path.join(SRC, f), 'utf8');
     if (MINIFY.includes(f)) {
-      const { code } = await minify(src, TERSER);
+      const { code } = await transform(src, ESBUILD);
       files[f] = Buffer.from(code, 'utf8');
     } else files[f] = Buffer.from(src, 'utf8');
   }

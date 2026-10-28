@@ -267,7 +267,7 @@ In the garage's **All** mode you can also see the never-released box and its pai
 
 The extension's readable source is in [`src/`](src) (the same files that go in the zip); the top level holds the docs, the build script and the release workflow. When a new version is pushed, GitHub Actions (`.github/workflows/release.yml`) builds the release zips with `npm run build` and publishes them with their SHA-256, so anyone can check a release came from this source. The Chrome Web Store copy is the same build. Changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
-Build it yourself (Node 20+): `npm ci`, then `npm run build`. The zips land in `dist/`; the same source always gives the same zip.
+Build it yourself (Node 22+): `npm ci`, then `npm run build`. The zips land in `dist/`; the same source always gives the same zip.
 
 ## Credits
 

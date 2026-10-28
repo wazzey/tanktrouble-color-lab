@@ -10,11 +10,11 @@
     "format:check": "prettier --check src/content.js src/background.js src/bridge.js scripts/build.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.24.0",
     "fflate": "0.8.2",
-    "prettier": "3.3.3",
-    "terser": "5.31.0"
+    "prettier": "3.3.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }
