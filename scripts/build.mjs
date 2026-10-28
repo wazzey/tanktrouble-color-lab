@@ -19,10 +19,11 @@ import { minify } from 'terser';
 import { zipSync } from 'fflate';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SRC = path.join(ROOT, 'src'); // the extension itself (what goes in the zip); the repository's top level is docs and tooling
 const FOLDER = 'TankTrouble-Color-Lab'; // the folder inside the zip
 const SCRIPTS = ['content.js', 'background.js', 'bridge.js'];
 const MINIFY = ['content.js']; // the big one is minified; the small ones ship as written
-const FILES = ['manifest.json', 'README.md', 'HOW TO INSTALL AND USE.txt', 'WHAT IT CHANGES AND PRIVACY.txt'];
+const FILES = ['manifest.json', 'HOW TO INSTALL AND USE.txt', 'WHAT IT CHANGES AND PRIVACY.txt']; // (from src/; README.md comes from the top level)
 const FOLDERS = ['icons', 'art'];
 const TERSER = { compress: true, mangle: true, format: { ascii_only: true } };
 
@@ -34,7 +35,7 @@ const flag = (name) => {
 
 async function listFiles(dir) {
   const out = [];
-  for (const e of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+  for (const e of await readdir(path.join(SRC, dir), { withFileTypes: true })) {
     const rel = path.posix.join(dir, e.name);
     if (e.isDirectory()) out.push(...(await listFiles(rel)));
     else if (e.isFile()) out.push(rel);
@@ -43,7 +44,7 @@ async function listFiles(dir) {
 }
 
 function checkSyntax(file) {
-  execFileSync(process.execPath, ['--check', path.join(ROOT, file)], { stdio: 'inherit' });
+  execFileSync(process.execPath, ['--check', path.join(SRC, file)], { stdio: 'inherit' });
 }
 
 // every file gets the time of the commit being built (or a fixed date outside git), so rebuilding never changes the zip
@@ -63,21 +64,22 @@ async function main() {
     return;
   }
 
-  const manifest = JSON.parse(await readFile(path.join(ROOT, 'manifest.json'), 'utf8'));
+  const manifest = JSON.parse(await readFile(path.join(SRC, 'manifest.json'), 'utf8'));
   const version = manifest.version;
   const tag = flag('--tag');
   if (tag && tag !== 'v' + version) throw new Error(`manifest.json says ${version} but the tag is ${tag}`);
 
   const files = {};
   for (const f of SCRIPTS) {
-    const src = await readFile(path.join(ROOT, f), 'utf8');
+    const src = await readFile(path.join(SRC, f), 'utf8');
     if (MINIFY.includes(f)) {
       const { code } = await minify(src, TERSER);
       files[f] = Buffer.from(code, 'utf8');
     } else files[f] = Buffer.from(src, 'utf8');
   }
-  for (const f of FILES) files[f] = await readFile(path.join(ROOT, f));
-  for (const d of FOLDERS) for (const f of await listFiles(d)) files[f] = await readFile(path.join(ROOT, f));
+  for (const f of FILES) files[f] = await readFile(path.join(SRC, f));
+  files['README.md'] = await readFile(path.join(ROOT, 'README.md'));
+  for (const d of FOLDERS) for (const f of await listFiles(d)) files[f] = await readFile(path.join(SRC, f));
 
   const mtime = buildTime(),
     entries = {},

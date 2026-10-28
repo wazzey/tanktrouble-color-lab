@@ -6,8 +6,8 @@
   "scripts": {
     "check": "node scripts/build.mjs --check",
     "build": "node scripts/build.mjs",
-    "format": "prettier --write content.js background.js bridge.js scripts/build.mjs",
-    "format:check": "prettier --check content.js background.js bridge.js scripts/build.mjs"
+    "format": "prettier --write src/content.js src/background.js src/bridge.js scripts/build.mjs",
+    "format:check": "prettier --check src/content.js src/background.js src/bridge.js scripts/build.mjs"
   },
   "devDependencies": {
     "fflate": "0.8.2",

@@ -1,7 +1,7 @@
 # Builds the extension zips from this repository's source and publishes them as a GitHub Release.
-# Runs on every push to main: when manifest.json has a version that has no release yet (e.g. 1.4.4 and no v1.4.4 tag),
+# Runs on every push to main: when src/manifest.json has a version that has no release yet (e.g. 1.4.4 and no v1.4.4 tag),
 # it builds it, creates the v1.4.4 tag and publishes the release. So a new version is just: raise the version in
-# manifest.json, add its section to CHANGELOG.md, commit and push. (Pushing a v* tag by hand still works too.)
+# src/manifest.json, add its section to CHANGELOG.md, commit and push. (Pushing a v* tag by hand still works too.)
 # The build itself lives in scripts/build.mjs (run it locally with: npm ci && npm run build).
 name: Build release
 
@@ -31,7 +31,7 @@ jobs:
       - name: Version
         id: ver
         run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then tag="${{ github.ref_name }}"; else tag="v$(node -p "require('./manifest.json').version")"; fi
+          if [ "${{ github.ref_type }}" = "tag" ]; then tag="${{ github.ref_name }}"; else tag="v$(node -p "require('./src/manifest.json').version")"; fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           if [ "${{ github.ref_type }}" != "tag" ] && git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
             echo "go=false" >> "$GITHUB_OUTPUT"; echo "$tag is already released: nothing to do"

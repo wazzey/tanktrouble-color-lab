@@ -1,5 +1,5 @@
 node_modules/
 dist/
-art/
-icons/
+src/art/
+src/icons/
 package-lock.json
