@@ -85,7 +85,7 @@ Don't keep two copies switched on in the same browser: only one runs, and the ot
 
 | Version | File | SHA-256 |
 |---|---|---|
-| v1.4.3 (latest) | `TankTrouble-Color-Lab-v1.4.3.zip` | `38058417cde5f34586c2c1de1fce99d2901eb450f01baad7c844f264530f75bf` |
+| v1.4.3 (latest) | `TankTrouble-Color-Lab-v1.4.3.zip` | on the [v1.4.3 release](https://github.com/wazzey/tanktrouble-color-lab/releases/tag/v1.4.3) |
 | v1.4.2 | `TankTrouble-Color-Lab-v1.4.2.zip` | `c1a6ec6a5ff0a0f8430054b030561be82e40ae2270603054798ef4bab0971aea` |
 | v1.4.1 | `TankTrouble-Color-Lab-v1.4.1.zip` | `ad11ff95193d6ff26e6fadc6afbbd90c7c08075c100f78d6436e558303368b8b` |
 
