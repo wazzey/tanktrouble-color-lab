@@ -1,59 +1,37 @@
-# Builds the extension zip from the source in this repo and attaches it to the GitHub Release.
-# Runs when a version tag (v1.2.3) is pushed - including a tag made from the "Draft a new release" page.
+# Builds the extension zip from this repository's source and attaches it to the GitHub Release.
+# Runs when a version tag (v1.2.3) is pushed, including one made on the "Draft a new release" page.
+# The build itself lives in scripts/build.mjs (run it locally with: npm ci && npm run build).
 name: Build release
 
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing tag to rebuild (e.g. v1.4.1)'
-        required: true
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ github.event.inputs.tag || github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: npm
 
-      - name: Check the tag matches manifest.json
-        run: |
-          V=$(node -p "require('./manifest.json').version")
-          if [ "v$V" != "$TAG" ]; then echo "::error::manifest.json says $V but the tag is $TAG"; exit 1; fi
+      - run: npm ci
 
       - name: Build
-        run: |
-          OUT=build/TankTrouble-Color-Lab
-          mkdir -p "$OUT"
-          node --check content.js && node --check background.js && node --check bridge.js
-          npx --yes terser@5.31.0 content.js -c -m -f ascii_only=true -o "$OUT/content.js"
-          cp background.js bridge.js manifest.json README.md "HOW TO INSTALL AND USE.txt" "WHAT IT CHANGES AND PRIVACY.txt" "$OUT/"
-          cp -r icons art "$OUT/"
-          # repeatable: every file gets the tagged commit's time and goes in sorted order, so the same source always gives the same zip
-          T=$(git log -1 --format=%ct)
-          find build -exec touch -h -d "@$T" {} +
-          cd build && find TankTrouble-Color-Lab | LC_ALL=C sort | TZ=UTC zip -X -D -@ "../TankTrouble-Color-Lab-$TAG.zip"
-          cd .. && sha256sum "TankTrouble-Color-Lab-$TAG.zip" | tee checksum.txt
+        id: build
+        run: npm run build -- --tag "${{ github.ref_name }}"
 
-      - name: Attach to the release (made if it doesn't exist yet)
-        run: |
-          ZIP="TankTrouble-Color-Lab-$TAG.zip"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" --clobber
-          else
-            gh release create "$TAG" "$ZIP" --title "$TAG" --generate-notes
-          fi
-          echo "Built from commit $GITHUB_SHA. SHA-256: $(cut -d' ' -f1 checksum.txt)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Attach the zip to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build.outputs.zip }}
+          append_body: true
+          body: |
+
+            **SHA-256:** `${{ steps.build.outputs.sha256 }}` (built from ${{ github.sha }} by GitHub Actions)

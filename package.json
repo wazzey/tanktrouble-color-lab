@@ -1,0 +1,17 @@
+{
+  "name": "tanktrouble-color-lab",
+  "private": true,
+  "description": "Builds the TankTrouble Color Lab extension zip from the source in this repository.",
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/build.mjs --check",
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "fflate": "0.8.2",
+    "terser": "5.31.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

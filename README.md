@@ -292,9 +292,9 @@ Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or op
 
 ## Source code and builds
 
-The files in this repository are the readable source of the current release. Release zips are built from them automatically by GitHub Actions (`.github/workflows/release.yml`) when a version tag is pushed: `content.js` is minified with terser and packed with the other files, and the zip is attached to the release. Each build's SHA-256 is shown in the Actions run, so anyone can check a release came from this source.
+The files in this repository are the readable source of the current release. Release zips are built from them automatically by GitHub Actions (`.github/workflows/release.yml`, which runs `npm run build`) when a version tag is pushed, and the zip and its SHA-256 are added to the release, so anyone can check a release came from this source.
 
-To build it yourself: `npx terser@5.31.0 content.js -c -m -f ascii_only=true -o build/content.js`, then copy the other files next to it.
+To build it yourself (Node 20+): `npm ci`, then `npm run build`. The zip lands in `dist/` and its SHA-256 is printed; the same source always gives the same zip. The build script is `scripts/build.mjs`.
 
 ## Copyright
 
