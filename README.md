@@ -290,6 +290,12 @@ Let me know on the [forum thread](https://tanktrouble.com/forum?id=475180) or op
 - Some items are reskins of TankTrouble's own items (for example capes, hazmat hoods, wings and medals). They are recoloured on your screen from the game's own artwork while you play. None of the game's artwork is included in this download.
 - TankTrouble and its original artwork belong to their owners.
 
+## Source code and builds
+
+The files in this repository are the readable source of the current release. Release zips are built from them automatically by GitHub Actions (`.github/workflows/release.yml`) when a version tag is pushed: `content.js` is minified with terser and packed with the other files, and the zip is attached to the release. Each build's SHA-256 is shown in the Actions run, so anyone can check a release came from this source.
+
+To build it yourself: `npx terser@5.31.0 content.js -c -m -f ascii_only=true -o build/content.js`, then copy the other files next to it.
+
 ## Copyright
 
 © 2026 wazzey. All rights reserved. You're welcome to download and use Color Lab for free, but please don't copy, re-upload or redistribute it, or publish modified versions, without permission. Share the link to this page instead.
