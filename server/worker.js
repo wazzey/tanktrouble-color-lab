@@ -1810,7 +1810,7 @@ async function adminApi(env, ctx, req, url) {
         .then((r) => r.results || []);
     try {
       const miss = await q(
-        "SELECT DISTINCT x.pid FROM (SELECT pid FROM verified UNION SELECT pid FROM looks UNION SELECT pid FROM claims WHERE pid GLOB '[0-9]*' AND at > ?) x LEFT JOIN names n ON n.pid = x.pid WHERE n.pid IS NULL LIMIT 8",
+        "SELECT DISTINCT x.pid FROM (SELECT pid FROM verified UNION SELECT pid FROM looks UNION SELECT pid FROM seen_accts UNION SELECT pid FROM claims WHERE pid GLOB '[0-9]*' AND at > ?) x LEFT JOIN names n ON n.pid = x.pid WHERE n.pid IS NULL LIMIT 8",
         Date.now() - 2 * DAY,
       );
       await Promise.all(miss.map((r) => rememberName(env, r.pid)));
@@ -2950,6 +2950,16 @@ export default {
         }
       }
       if (older) {
+        // still noted on the admin page (its version and, from v1.4.1, the accounts it's on), though it only gets this answer
+        if (req.method === "POST" || req.method === "PUT") {
+          try {
+            const sent = JSON.parse((await req.text()).slice(0, 500));
+            if (sent && typeof sent.key === "string" && KEY.test(sent.key)) {
+              await ensureTables(env);
+              await touchPresence(env, await sha256(sent.key), req, sent.pids);
+            }
+          } catch {}
+        }
         // v1.3's "Please update" pop-up shows this "min" text inside "(v... or newer is needed)", so the owner's message rides along in it
         let an = annCache && Date.now() - annCache.at < 30000 ? annCache.text : null;
         if (!annCache || Date.now() - annCache.at >= 30000) {
