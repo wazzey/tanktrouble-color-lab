@@ -302,7 +302,11 @@ async function applyPush(pid) {
   } // (another computer saved first: taken in at the next check, then sent again)
   else if (r.status === 429 && r.wait) {
     st.later = Date.now() + r.wait;
-  }
+  } else if (r.status === 403) {
+    st.pulled = false;
+    st.status = "unproven";
+    st.later = Date.now() + 30 * 60000;
+  } // (another computer proved the tank since: this one waits, or goes again straight after it proves)
 }
 export async function applyBackupCheck(now) {
   if (!ready()) {
@@ -392,6 +396,9 @@ export async function readAccountMessages() {
   }
   const out = [];
   for (const pid of loggedInIds().filter((id) => /^\d{1,12}$/.test(String(id)))) {
+    if (!STATE[pid] || STATE[pid].status !== "ok") {
+      continue;
+    } // (only once the server has accepted this copy's key for the account: a wrong key is counted as a guess)
     const r = await acctCall("messages", pid);
     if (r.ok && r.data && Array.isArray(r.data.items)) {
       out.push(...r.data.items);
