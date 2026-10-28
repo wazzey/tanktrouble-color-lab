@@ -980,6 +980,13 @@ const BAD_WORDS = [
 ]; // (as a word, or with an ending like -s, -ed, -er, -ing, -y)
 const ENDINGS = ["", "s", "es", "ed", "er", "ers", "ing", "y", "ie", "ies", "head", "face"];
 const once = (w) => w.replace(/(\p{L})\1+/gu, "$1");
+// A copy stopped from messaging for a day after offensive messages can message again (its connection's tries are cleared too)
+const applyUnmute = (env, id) =>
+  env.DB.prepare(
+    "DELETE FROM claims WHERE pid = 'x' AND at IN (SELECT at FROM claims WHERE pid = 'x' AND substr(who, 1, length(?1)) = ?1 AND who IN (SELECT kh FROM presence))",
+  )
+    .bind(id)
+    .run();
 function isOffensive(text) {
   const plain = text
     .toLowerCase()
@@ -1452,6 +1459,15 @@ async function inbox(env, req, ctx, act) {
         [];
     }
     return json({ items });
+  }
+  if (act === "unmute") {
+    // a copy stopped from messaging after offensive messages can message again (from the alerts in the game)
+    const id = String(b.kh || "");
+    if (!/^[0-9a-f]{10,64}$/.test(id)) {
+      return json({ error: "bad copy" }, 400);
+    }
+    await applyUnmute(env, id);
+    return json({ ok: true });
   }
   if (act === "reply") {
     const fid = Number(b.fid),
@@ -2106,6 +2122,10 @@ async function adminApi(env, ctx, req, url) {
         "SELECT q.grp, MAX(q.why) AS why, MAX(q.at) AS at, (SELECT group_concat(COALESCE(n.name || CASE WHEN n.guest = 1 THEN ' (guest)' ELSE '' END, l.pid), ', ') FROM looks l LEFT JOIN names n ON n.pid = l.pid WHERE l.keyhash = q.grp) AS who FROM quarantine q GROUP BY q.grp ORDER BY at DESC",
       ),
       events: await q("SELECT at, kind, detail FROM events ORDER BY at DESC LIMIT 100"),
+      muted: await q(
+        "SELECT c.who AS hash, COUNT(*) AS n, MAX(c.at) AS at, (SELECT group_concat(DISTINCT COALESCE(n.name, x.pid)) FROM (SELECT pid FROM verified WHERE keyhash = c.who UNION SELECT pid FROM looks WHERE keyhash = c.who) x LEFT JOIN names n ON n.pid = x.pid) AS who FROM claims c WHERE c.pid = 'x' AND c.at > ? AND c.who IN (SELECT kh FROM presence) GROUP BY c.who ORDER BY at DESC",
+        Date.now() - DAY,
+      ), // (copies that tried to send offensive messages today: 3 tries and they can't message until tomorrow)
       stats: await (async () => {
         const one = async (sql, ...b) =>
           (
@@ -2360,6 +2380,8 @@ async function adminApi(env, ctx, req, url) {
         return json({ error: "nothing to ban" }, 404);
       }
       await banWho(env, ctx, kh, kh, now);
+    } else if (b.op === "unmute" && hash) {
+      await applyUnmute(env, hash);
     } else if (b.op === "unban" && hash) {
       await env.DB.prepare("DELETE FROM banned WHERE hash = ?").bind(hash).run();
     } else if (b.op === "release" && hash) {
@@ -2550,6 +2572,7 @@ h+='<h2>Latest look changes</h2><p class="dim">Newest first: when, which tank, w
 h+='<h2>Online now ('+onl.length+')</h2><p class="dim">Copies of Color Lab with TankTrouble open in the last 7 minutes. Away = in the lobby with the tab in the background (other players see them as offline). Idle = no input for 5 minutes (still online for others). Last 30 days by version: '+(Object.keys(vers).map(v=>'v'+esc(v)+': '+vers[v]).join(' · ')||'none')+'</p><div class="wrap"><table>'+phead+onl.map(prow).join('')+'</table></div>';
 h+='<h2>Offline (last 30 days, '+off.length+')</h2><div class="wrap"><table>'+phead+off.map(prow).join('')+'</table></div>';
 h+='<h2>Latest events</h2><div class="wrap"><table>'+d.events.map(e=>'<tr><td class="dim">'+when(e.at)+'</td><td>'+esc(e.kind)+'</td><td>'+esc(e.detail)+'</td></tr>').join('')+'</table></div>';
+h+='<h2>Offensive messages today</h2><p class="dim">Copies whose messages were refused for swearing or slurs in the last day. After 3 they can&#39;t send messages until the next day; nothing else about them changes.</p><div class="wrap"><table><tr><th>Copy</th><th>Tries</th><th>Its tanks</th><th>Last</th><th></th></tr>'+(d.muted||[]).map(m=>'<tr><td><code>'+esc(m.hash.slice(0,12))+'</code></td><td>'+m.n+(m.n>=3?' <span class="dim">(stopped)</span>':'')+'</td><td>'+esc(m.who||'none')+'</td><td class="dim">'+when(m.at)+'</td><td>'+btn('unmute','Let them message again',{hash:m.hash})+'</td></tr>').join('')+'</table></div>';
 h+='<h2>On hold (check these)</h2><p class="dim">Copies the server stopped for going after other players&#39; tanks. They are cut off from the server (they can&#39;t see, save, prove or report anything) and their looks are hidden until you release or ban them.</p><div class="wrap"><table><tr><th>Copy</th><th>Why</th><th>Its tanks</th><th>When</th><th></th></tr>'+(d.held||[]).map(h=>'<tr><td><code>'+esc(h.grp.slice(0,12))+'</code></td><td>'+esc(h.why)+'</td><td>'+esc(h.who||'none')+'</td><td class="dim">'+when(h.at)+'</td><td>'+btn('release','Release',{hash:h.grp})+btn('banheld','Ban',{hash:h.grp},1)+'</td></tr>').join('')+'</table></div>';
 h+='<h2>Reported looks (last 7 days)</h2><div class="wrap"><table><tr><th>Player ID</th><th>Name</th><th>People</th><th>Reported by</th><th>Last</th><th></th></tr>'+d.reports.map(r=>'<tr><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+r.people+'</td><td>'+(r.by?esc(r.by):'<span class="dim">not known (reported before this was added)</span>')+'</td><td class="dim">'+when(r.last)+'</td><td>'+btn('clearreports','Dismiss',r)+btn('ban','Ban sharer',r,1)+'</td></tr>').join('')+'</table></div>';
 h+='<h2>Hidden after reports</h2><div class="wrap"><table>'+d.hidden.map(r=>'<tr><td><code>'+esc(r.pid)+'</code></td><td><code>'+esc(r.keyhash.slice(0,12))+'</code></td><td class="dim">'+when(r.at)+'</td><td>'+btn('unhide','Allow again',r)+btn('ban','Ban sharer',{hash:r.keyhash},1)+'</td></tr>').join('')+'</table></div>';
@@ -3786,6 +3809,40 @@ export default {
     }
     if (url.pathname.startsWith("/v1/admin/")) {
       return adminApi(env, ctx, req, url);
+    }
+    if ((url.pathname === "/v1/owner/summary" || url.pathname === "/v1/owner/action") && req.method === "POST") {
+      // the owner's in-game admin: the admin page's own data and actions, for a copy the server trusts as the owner's
+      if (await slowDown(env, req, "write", ctx)) {
+        return json({ error: "slow down" }, 429);
+      }
+      let b = null;
+      try {
+        b = JSON.parse((await req.text()).slice(0, 20000));
+      } catch {}
+      if (!b || typeof b.key !== "string" || !KEY.test(b.key)) {
+        return json({ error: "bad key" }, 400);
+      }
+      await ensureTables(env);
+      if (!(await isOwner(env, await sha256(b.key)))) {
+        return json({ error: "not allowed: this copy isn't trusted as yours" }, 403);
+      }
+      const to = new URL(url.pathname.replace("/v1/owner/", "/v1/admin/"), url),
+        headers = {
+          "x-admin": String(env.ADMIN_TOKEN || ""),
+          "Content-Type": "application/json",
+          "CF-Connecting-IP": req.headers.get("CF-Connecting-IP") || "",
+        };
+      return adminApi(
+        env,
+        ctx,
+        new Request(
+          to,
+          to.pathname === "/v1/admin/action"
+            ? { method: "POST", headers, body: JSON.stringify(b.adm || {}) }
+            : { headers },
+        ),
+        to,
+      );
     }
     if (
       (url.pathname === "/v1/verify/start" || url.pathname === "/v1/verify/check" || url.pathname === "/v1/report") &&

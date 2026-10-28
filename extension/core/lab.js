@@ -233,7 +233,13 @@ export function labDraw() {
             esc(a.kind) +
             '</b></div><div class="bd">' +
             esc(a.text) +
-            "</div></div>",
+            "</div>" +
+            (a.kind === "blocked message" && /^From [0-9a-f]{10}/.test(a.text)
+              ? '<button class="medium grey" data-k="unmute" data-id="' +
+                a.text.slice(5, 15) +
+                '">Let them message again</button>'
+              : "") +
+            "</div>",
         )
         .join("") || '<div class="sub">Nothing in the last 2 days.</div>');
   } else if (DEV_BUILD && labView === "inbox") {
@@ -368,6 +374,11 @@ export function labDraw() {
         labAlertSeen();
       }
       return labDraw();
+    }
+    if (DEV_BUILD && a === "unmute") {
+      const r = await shareCall({ op: "inbox", act: "unmute", kh: k.dataset.id }).catch(() => null);
+      toast(r && r.ok ? "They can send messages again" : "Couldn't do that, try the admin page", !(r && r.ok));
+      return;
     }
     if (a === "ann") {
       labView = "ann";

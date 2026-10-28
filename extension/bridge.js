@@ -288,7 +288,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
         d.op === "fblist" ||
         d.op === "online" ||
         d.op === "announce" ||
-        (DEV_BUILD && (d.op === "inbox" || d.op === "alerts" || d.op === "fdraft")))
+        (DEV_BUILD && (d.op === "inbox" || d.op === "alerts" || d.op === "fdraft" || d.op === "owner")))
     ) {
       // Shared looks: the extension's background page talks to Color Lab's look server, never the page itself.
       // Your tanks' looks are locked to your account's key, or this copy's own key, both kept here.
@@ -319,6 +319,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
               shsrv: d.shsrv,
               about: d.about,
               kind: d.kind,
+              adm: DEV_BUILD ? d.adm : undefined,
             },
             (res) => {
               void chrome.runtime.lastError;

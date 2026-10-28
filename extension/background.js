@@ -165,7 +165,7 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
     DEV_BUILD &&
     m.op === "inbox" &&
     /^[0-9a-f]{64}$/.test(String(m.key || "")) &&
-    ["list", "thread", "reply"].includes(m.act)
+    ["list", "thread", "reply", "unmute"].includes(m.act)
   ) {
     // the owner's inbox (only works for a trusted copy)
     url = SHARE_BASE + "/v1/inbox" + (m.act === "list" ? "" : "/" + m.act);
@@ -191,6 +191,19 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: m.key, id: String(m.fid) }),
+    };
+  } else if (
+    DEV_BUILD &&
+    m.op === "owner" &&
+    /^[0-9a-f]{64}$/.test(String(m.key || "")) &&
+    ["summary", "action"].includes(m.act)
+  ) {
+    // the owner's in-game admin: the admin page's data and actions, for a copy the server trusts as the owner's
+    url = SHARE_BASE + "/v1/owner/" + m.act;
+    opt = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: m.key, adm: m.adm && typeof m.adm === "object" ? m.adm : undefined }),
     };
   } else if (DEV_BUILD && m.op === "alerts" && /^[0-9a-f]{64}$/.test(String(m.key || ""))) {
     // the owner's copy: recent server alerts

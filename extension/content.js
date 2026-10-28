@@ -33,6 +33,7 @@ import "./content/tank-icon.js";
 import "./content/tutorials.js";
 import { startAccessories } from "./core/accessories.js";
 import { startAccountSync } from "./core/account-sync.js";
+import { startAdminPanel } from "./core/admin-panel.js";
 import { startAchievements } from "./core/achievements.js";
 import { startAnnouncements } from "./core/announcements.js";
 import { startCustomBoxArt } from "./core/custom-box-art.js";
@@ -93,5 +94,8 @@ if (!window.__ttColorLab) {
   startTutorialRun();
   startOnline();
   startAccountSync();
+  if (DEV_BUILD) {
+    startAdminPanel();
+  }
   window.__ttColorLab = { toggle: () => setOpen(!panel.classList.contains("open")), refresh: () => refreshLoggedIn() };
 }

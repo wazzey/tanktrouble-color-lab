@@ -1,7 +1,6 @@
 import { roundState } from "./achievements.js";
 import { LOBBY_GAMES, loggedInIds, rpc } from "./game-socket.js";
 import { GAME_STATE } from "./garage.js";
-import { applyLabView, labAdmin, labAlertNew, labAlertSeen, labDraw, labLoadAdmin, labOpen } from "./lab.js";
 import { incognito, shareCall, shareMine, srvOn } from "./look-sharing.js";
 import { toast } from "./panel.js";
 import { SETTINGS, saveSettings } from "./storage.js";
@@ -465,40 +464,6 @@ function onlineDraw() {
         .join(", ") +
       "</div>";
   }
-  if (DEV_BUILD) {
-    h +=
-      '<div style="font:15px Arial;margin-top:5px;border-top:1px solid rgba(127,127,127,.35);padding-top:4px;display:flex;justify-content:space-between;gap:3px;text-align:center">' +
-      [
-        [
-          "alerts",
-          "⚠️" +
-            (labAlertNew
-              ? '<span style="font:bold 10px Arial;background:#e33;color:#fff;border-radius:7px;padding:0 4px;margin-left:1px;vertical-align:top">' +
-                labAlertNew +
-                "</span>"
-              : ""),
-          "Alerts from the server",
-        ],
-        ["inbox", "📨", "Inbox: players' messages"],
-        ["adm", "🔧", "Admin page"],
-        ["cf", "☁️", "Cloudflare dashboard"],
-        ["dc", "💬", "Discord"],
-      ]
-        .map(
-          ([k, t, tip]) =>
-            '<span data-k="' +
-            k +
-            '" title="' +
-            tip +
-            '" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.1"><span style="white-space:nowrap">' +
-            t +
-            '</span><span style="font:7px Arial;letter-spacing:-.2px;opacity:.8;margin-top:1px">' +
-            { alerts: "Alerts", inbox: "Inbox", adm: "Admin", cf: "Cloud", dc: "Discord" }[k] +
-            "</span></span>",
-        )
-        .join("") +
-      "</div>";
-  }
   h += "</div>";
   if (box.__h !== h) {
     box.__h = h;
@@ -507,44 +472,10 @@ function onlineDraw() {
   box.onclick = (e) => {
     if (e.target.closest("tank-icon")) {
       return;
-    }
+    } // (the tank picture opens the game's own profile card)
     const k = e.target.closest("[data-k]");
     if (!k) {
       return;
-    }
-    const kk = k.dataset.k; // (the tank picture opens the game's own profile card)
-    if (DEV_BUILD) {
-      if (kk === "adm") {
-        return window.open("https://ttcl-share.wazzey.workers.dev/admin", "_blank", "noopener");
-      }
-      if (kk === "cf") {
-        return window.open("https://dash.cloudflare.com/", "_blank", "noopener");
-      }
-      if (kk === "dc") {
-        return window.open("https://discord.com/channels/@me", "_blank", "noopener");
-      }
-      if (kk === "inbox") {
-        labOpen();
-        labLoadAdmin()
-          .then(() => {
-            if (labAdmin) {
-              applyLabView("inbox");
-              labDraw();
-            }
-          })
-          .catch(() => {});
-        return;
-      }
-      if (kk === "alerts") {
-        labOpen();
-        applyLabView("alerts");
-        labAlertSeen();
-        labDraw();
-        labLoadAdmin()
-          .then(() => labDraw())
-          .catch(() => {});
-        return;
-      }
     }
     if (k.dataset.k === "tog") {
       SETTINGS.onlineShut = !shut;

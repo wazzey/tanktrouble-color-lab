@@ -3,6 +3,7 @@ import { CUSTOM_ART, paintLabel } from "../content/custom-boxes.js";
 import { MAZE_TILE } from "../content/maze-patterns.js";
 import { toCss } from "../content/registries.js";
 import { populateBackup, readSupportId } from "./account-sync.js";
+import { adminOpen } from "./admin-panel.js";
 import { CUSTOM_BOXES, boxAvailable, boxEnabled, getCustomArt } from "./custom-box-art.js";
 import { fbRefresh } from "./feedback.js";
 import { loggedInIds, refreshSoon, refreshTanks } from "./game-socket.js";
@@ -223,8 +224,8 @@ export function renderSettings() {
     if (DEV_BUILD) {
       const ad = document.createElement("button");
       ad.className = "small grey";
-      ad.textContent = "🔧 Admin page";
-      ad.onclick = () => window.open("https://ttcl-share.wazzey.workers.dev/admin", "_blank", "noopener");
+      ad.textContent = "🔧 Admin";
+      ad.onclick = () => adminOpen();
       r1.append(ad);
     }
     sh.appendChild(r1);
