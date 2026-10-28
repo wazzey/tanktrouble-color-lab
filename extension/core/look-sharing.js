@@ -334,7 +334,8 @@ export async function proveTank(id) {
 }
 // A look is only shared once its tank is proven (so nobody can put a look on someone else's tank). The first time, Color Lab
 // asks; after a yes it proves new tanks by itself.
-let proveAsking = false;
+let proveAsking = false,
+  proveCard = null; // (the "Prove your tank" card while it's showing)
 const GUEST_LOCAL = new Set(); // guest tanks: Color Lab works on your screen only, their looks aren't shared
 function guestLocal(id) {
   if (GUEST_LOCAL.has(String(id))) {
@@ -344,6 +345,10 @@ function guestLocal(id) {
   toast("Guest tanks use Color Lab on your screen only. Log in to share your look with other players");
 }
 export function needProof(ids) {
+  if (proveAsking && proveCard && !proveCard.isConnected) {
+    proveAsking = false;
+    proveCard = null;
+  } // (the card was closed by something else, like the tutorial opening over it: it can be asked again)
   ids = ids.filter((id) => !(SETTINGS.proven || {})[id] && !GUEST_LOCAL.has(String(id)));
   if (!ids.length || proveAsking) {
     return;
@@ -390,7 +395,7 @@ export function needProof(ids) {
     return;
   }
   proveAsking = true;
-  const L = tutLayer();
+  const L = (proveCard = tutLayer());
   tutCard(
     L,
     '<h3>Prove your tank is yours 🛡</h3><p style="font-size:13px;line-height:1.5;margin:4px 0 6px">To stop people putting fake looks on other players\' tanks, your Color Lab look is only shared once you prove the tank is yours. You only do this once per tank.</p>' +
@@ -400,6 +405,7 @@ export function needProof(ids) {
         "🛡 Prove now",
         "go",
         () => {
+          proveCard = null;
           tutClose();
           SETTINGS.proveOk = true;
           saveSettings();
@@ -411,6 +417,7 @@ export function needProof(ids) {
         "Not now",
         "alt",
         () => {
+          proveCard = null;
           tutClose();
           SETTINGS.proveLater = Date.now() + 24 * 3600 * 1000;
           saveSettings();

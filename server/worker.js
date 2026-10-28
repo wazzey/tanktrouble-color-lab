@@ -930,6 +930,78 @@ function spamScore(text) {
   }
   return 0;
 }
+// Swearing and slurs: a message with any of these isn't sent. Letters are compared after undoing look-alike swaps
+// (n1gg@, sh!t) and repeats (fuuuck), and letters spelled out one by one (c u n t, f.u.c.k) are joined up
+const BAD_ANYWHERE = ["nigg", "niga", "nigr", "fuck", "faggot", "fagot", "motherf"]; // (even inside other words)
+const BAD_WORDS = [
+  "negro",
+  "fag",
+  "retard",
+  "tranny",
+  "chink",
+  "kike",
+  "spick",
+  "wetback",
+  "gook",
+  "paki",
+  "coon",
+  "dyke",
+  "fuk",
+  "fck",
+  "fuq",
+  "shit",
+  "sht",
+  "cunt",
+  "bitch",
+  "btch",
+  "bastard",
+  "dick",
+  "cock",
+  "pussy",
+  "whore",
+  "slut",
+  "wank",
+  "wanker",
+  "twat",
+  "prick",
+  "asshole",
+  "arsehole",
+  "jackass",
+  "bollocks",
+  "porn",
+  "rape",
+  "rapist",
+  "kys",
+]; // (as a word, or with an ending like -s, -ed, -er, -ing, -y)
+const ENDINGS = ["", "s", "es", "ed", "er", "ers", "ing", "y", "ie", "ies", "head", "face"];
+const once = (w) => w.replace(/(\p{L})\1+/gu, "$1");
+function isOffensive(text) {
+  const plain = text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[0@4]/g, (c) => ({ 0: "o", "@": "a", 4: "a" })[c])
+    .replace(/[1!|]/g, "i")
+    .replace(/3/g, "e")
+    .replace(/[5$]/g, "s")
+    .replace(/7/g, "t");
+  const words = plain.split(/[^\p{L}]+/u).filter(Boolean);
+  for (const run of plain.match(/(?:(?<!\p{L})\p{L}(?!\p{L})[^\p{L}]*){3,}/gu) || []) {
+    words.push(run.replace(/[^\p{L}]/gu, ""));
+  } // (c u n t)
+  const joined = words.join("");
+  if (BAD_ANYWHERE.some((x) => joined.includes(x) || once(joined).includes(x))) {
+    return true;
+  }
+  const bad = new Set(BAD_WORDS.map(once));
+  if (words.some((w) => w === "spic" || w === "spics")) {
+    return true;
+  } // (not "spicy")
+  return words.some((w) => {
+    const v = once(w);
+    return ENDINGS.some((e) => v.endsWith(e) && bad.has(once(v.slice(0, v.length - e.length))));
+  });
+}
 const isOwner = async (env, kh) => {
   if (
     env.OWNER_COPY &&
@@ -983,6 +1055,24 @@ async function sendFeedback(env, req, ctx) {
         .run();
     } catch {}
     return json({ error: "not allowed" }, 403);
+  }
+  const rude = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who IN (?, ?) AND at > ? AND pid = 'x'")
+    .bind(kh, ih, now - DAY)
+    .first();
+  if (rude && rude.n >= 3) {
+    return json({ error: "you can't send messages for a day after trying to send offensive ones" }, 429);
+  }
+  if (isOffensive(text)) {
+    // not sent: kept on the admin page, and a copy that keeps trying can't send anything for a day
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, 'x', ?), (?, 'x', ?)").bind(kh, now, ih, now),
+      env.DB.prepare("INSERT INTO events (at, kind, detail) VALUES (?, ?, ?)").bind(
+        now,
+        "blocked message",
+        "From " + kh.slice(0, 10) + ": " + text.slice(0, 300),
+      ),
+    ]);
+    return json({ error: "please keep it friendly: messages with swearing or slurs aren't sent" }, 400);
   }
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who IN (?, ?) AND at > ? AND pid = 'f'")
     .bind(kh, ih, now - DAY)

@@ -56,7 +56,7 @@ Turning off **Settings > Look sharing > Share my look** removes your tanks' look
 
 ### Messages
 
-A message sent from **Message Color Lab** goes to the author's private Discord with its text, any screenshots and your logged-in tanks' names. It's sent with the key of the account you send it as, so the conversation shows on any computer you use that account on. Cloudflare's AI ([Workers AI](https://developers.cloudflare.com/workers-ai/)) reads up to the first 800 characters to tag it (bug, idea, question and so on). The text and the replies are kept so you can see them in Color Lab, until you ask for them to be removed; screenshots aren't kept.
+A message sent from **Message Color Lab** goes to the author's private Discord with its text, any screenshots and your logged-in tanks' names. It's sent with the key of the account you send it as, so the conversation shows on any computer you use that account on. A message with swearing or slurs isn't sent: its text is kept on the author's admin page for 30 days, and a copy that tries three times in a day can't send messages until the next day. Cloudflare's AI ([Workers AI](https://developers.cloudflare.com/workers-ai/)) reads up to the first 800 characters to tag it (bug, idea, question and so on). The text and the replies are kept so you can see them in Color Lab, until you ask for them to be removed; screenshots aren't kept.
 
 ### Announcements and updates
 

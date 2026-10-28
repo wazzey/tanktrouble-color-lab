@@ -5,6 +5,7 @@ import { needProof, proveTank, shareMine, srvOn } from "./look-sharing.js";
 import { panel, toast } from "./panel.js";
 import { MAX_PRESETS } from "./panel-actions.js";
 import { renderList } from "./saved-looks.js";
+import { curTab } from "./tabs.js";
 import { renderSettings, uiConfirm } from "./settings.js";
 import {
   PLAYER_COLOR_MAP,
@@ -232,6 +233,15 @@ async function applyPull(pid) {
   const r = await acctCall("pull", pid);
   if (r.status === 403) {
     st.status = "unproven";
+    if (SETTINGS.proven && SETTINGS.proven[pid]) {
+      SETTINGS.proven = Object.assign({}, SETTINGS.proven);
+      delete SETTINGS.proven[pid];
+      saveSettings();
+    } // (another computer proved the tank since, so this one is asked to prove it again)
+    if (document.getElementById("ttcl-tut")) {
+      st.later = Date.now() + 20000;
+      return false;
+    } // (a tutorial or What's new is showing: asked once it's closed)
     st.later = Date.now() + 30 * 60000; // (asked again in half an hour, or straight after the tank is proven)
     if (!st.askedProof) {
       st.askedProof = true;
@@ -321,6 +331,7 @@ export async function applyBackupCheck(now) {
       continue;
     }
     st.busy = true;
+    const was = st.status + "|" + st.at;
     try {
       if (!NAMES[pid]) {
         lookupById(pid)
@@ -348,6 +359,9 @@ export async function applyBackupCheck(now) {
       }
     } catch {}
     st.busy = false;
+    if (was !== st.status + "|" + st.at && panel.classList.contains("open") && curTab === "settings") {
+      renderSettings();
+    } // (Settings > Backup shows the new state straight away)
   }
 }
 
