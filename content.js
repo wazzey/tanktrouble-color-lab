@@ -37983,9 +37983,12 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         if (!CL_TEAM[id] || (n.nextElementSibling && n.nextElementSibling.classList.contains('ttclTeamF'))) continue;
         const b = document.createElement('div');
         b.className = 'ttclTeamF';
-        b.style.cssText = 'text-align:center;margin-top:2px;pointer-events:auto';
+        b.style.cssText =
+          'text-align:center;margin-top:-6px;pointer-events:auto;position:relative;top:' +
+          (parseFloat(getComputedStyle(n).top) || 0) +
+          'px';
         b.innerHTML = clBadge(id, 10);
-        n.after(b);
+        n.after(b); /* (right under the name: the forum lifts the name up a little, so the badge goes up with it) */
       }
     } catch {}
   }, 1500);
@@ -38010,6 +38013,46 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
         if (has || !SETTINGS.on) continue;
         if (getComputedStyle(ic).position === 'static') ic.style.position = 'relative';
         ic.insertAdjacentHTML('beforeend', CL_STAR(t));
+      }
+      // the badge sits on the tank picture's top-right corner (the tank-icon box itself is only the name's height: the picture overflows it)
+      for (const b of document.querySelectorAll('tank-icon[data-player-id] > .ttclTeamI')) {
+        const ic = b.parentElement,
+          cv = ic.querySelector(':scope > canvas, :scope > img');
+        if (!cv) continue;
+        const ir = ic.getBoundingClientRect(),
+          cr = cv.getBoundingClientRect();
+        if (!cr.width || !ir.width) continue;
+        const z = Math.round(Math.max(12, Math.min(26, cr.width * 0.19)));
+        const st =
+          'width:' +
+          z +
+          'px;max-width:none;min-width:0;right:auto;left:' +
+          Math.round(cr.right - ir.left - z * 0.9) +
+          'px;top:' +
+          Math.round(cr.top - ir.top + cr.height * 0.06) +
+          'px';
+        if (b.dataset.pos !== st) {
+          b.dataset.pos = st;
+          b.style.cssText += ';' + st;
+        }
+      }
+      // and in a tank's profile box: the badge under the name (for everyone with Color Lab, the team's own copies too)
+      const box = document.getElementById('tankinfo'),
+        shown = box && box.getClientRects().length,
+        un = shown && box.querySelector('.username'),
+        nm = un && (un.querySelector('stroked-text') || {}).getAttribute?.('text');
+      const pid = nm ? NAME_TO_ID[nm] : null,
+        have = box && box.querySelector('.ttclTeamP');
+      if (!pid || !CL_TEAM[pid] || !SETTINGS.on) {
+        if (have) have.remove();
+      } else if (!have || have.dataset.pid !== pid) {
+        if (have) have.remove();
+        const d = document.createElement('div');
+        d.className = 'ttclTeamP';
+        d.dataset.pid = pid;
+        d.style.cssText = 'text-align:center;margin:3px 0 4px;pointer-events:auto';
+        d.innerHTML = clBadge(pid, 11);
+        un.after(d);
       }
     } catch {}
   }, 1500);
@@ -39147,6 +39190,77 @@ div.show{opacity:1;transform:none}div.err{background:linear-gradient(red,maroon)
     },
     5 * 60 * 1000,
   ); // (replies to your messages, every few minutes)
+  // Moving to the Chrome Web Store: a copy installed from a zip (Load unpacked) offers it once the store page exists (the
+  // server only gives the address once the listing is live). Looks, presets, settings and achievements come along: the new
+  // copy restores them from this browser's backup. Later = tomorrow; Don't show again = never.
+  async function storeMove() {
+    if (SETTINGS.storeMoveOff || (SETTINGS.storeLater && Date.now() < SETTINGS.storeLater)) return;
+    const r = await shareCall({ op: 'store' }).catch(() => null),
+      url = r && r.ok && r.data && r.data.url;
+    if (!url || r.store || !/^https:\/\/chromewebstore\.google\.com\/detail\/[\w-]+\/[a-p]{32}$/.test(url)) return; // (not live yet, or already the store copy)
+    if (document.getElementById('ttcl-tut')) {
+      setTimeout(storeMove, 60 * 1000);
+      return;
+    } // (not over a tutorial or notes: a minute later)
+    const L = tutLayer();
+    tutCard(
+      L,
+      '<h3>Color Lab is on the Chrome Web Store 🎉</h3><p style="font-size:13px;margin:2px 0 6px">Get it from the store and it <b>updates by itself</b>. Your saved looks, presets, settings and achievements come with you (in this browser).</p>' +
+        '<ol style="font-size:13px;margin:4px 0 6px 18px;padding:0;line-height:1.5"><li><b>⬇ Export a backup</b> first, just in case (button below)</li><li>Remove this copy: <b>chrome://extensions</b> → Color Lab → <b>Remove</b></li><li>Add Color Lab from the store, then reload TankTrouble</li><li>To share your look again, prove your tanks once more (a one-second flash)</li></ol>' +
+        '<p style="font-size:12px;color:#aaa;margin:4px 0 0">Keep both copies? Only one should be on at a time, or tanks get painted twice.</p>',
+      [
+        [
+          '🛒 Open the Web Store',
+          'go',
+          () => {
+            window.open(url, '_blank', 'noopener');
+            tutClose();
+          },
+        ],
+        [
+          '⬇ Export backup',
+          'alt',
+          () => {
+            try {
+              $('exportBtn').click();
+            } catch {}
+          },
+        ],
+        [
+          'Later',
+          'alt',
+          () => {
+            SETTINGS.storeLater = Date.now() + 24 * 3600 * 1000;
+            saveSettings();
+            tutClose();
+          },
+        ],
+        [
+          "Don't show again",
+          'alt',
+          () => {
+            SETTINGS.storeMoveOff = true;
+            saveSettings();
+            tutClose();
+          },
+        ],
+      ],
+      true,
+    );
+  }
+  setTimeout(() => {
+    try {
+      whenStorage().then(() => storeMove());
+    } catch {}
+  }, 20000);
+  setInterval(
+    () => {
+      try {
+        storeMove();
+      } catch {}
+    },
+    6 * 3600 * 1000,
+  );
   setTimeout(() => {
     try {
       whenStorage().then(() => checkUpdate());

@@ -1,4 +1,6 @@
-// Builds dist/TankTrouble-Color-Lab-v<version>.zip from the source in this repository.
+// Builds dist/TankTrouble-Color-Lab-v<version>.zip from the source in this repository (everything inside a
+// TankTrouble-Color-Lab folder, for Load unpacked), and dist/TankTrouble-Color-Lab-v<version>-webstore.zip (the same
+// files with manifest.json at the top, as the Chrome Web Store needs).
 //
 //   npm ci
 //   npm run build            -> builds the zip and prints its SHA-256
@@ -78,22 +80,35 @@ async function main() {
   for (const d of FOLDERS) for (const f of await listFiles(d)) files[f] = await readFile(path.join(ROOT, f));
 
   const mtime = buildTime(),
-    entries = {};
-  for (const name of Object.keys(files).sort()) entries[FOLDER + '/' + name] = [files[name], { mtime, level: 9 }];
-  const zip = zipSync(entries);
+    entries = {},
+    storeEntries = {};
+  for (const name of Object.keys(files).sort()) {
+    entries[FOLDER + '/' + name] = [files[name], { mtime, level: 9 }];
+    storeEntries[name] = [files[name], { mtime, level: 9 }];
+  }
+  const zip = zipSync(entries),
+    storeZip = zipSync(storeEntries);
 
   await mkdir(path.join(ROOT, 'dist'), { recursive: true });
   const out = path.join(ROOT, 'dist', `${FOLDER}-v${version}.zip`);
+  const storeOut = path.join(ROOT, 'dist', `${FOLDER}-v${version}-webstore.zip`);
   await writeFile(out, zip);
+  await writeFile(storeOut, storeZip);
   const sha = createHash('sha256').update(zip).digest('hex');
+  const storeSha = createHash('sha256').update(storeZip).digest('hex');
   const contentSha = createHash('sha256').update(files['content.js']).digest('hex');
   console.log(
     `Built ${path.relative(ROOT, out)} (${Object.keys(files).length} files, ${(zip.length / 1048576).toFixed(2)} MB)`,
   );
   console.log(`SHA-256 zip:        ${sha}`);
+  console.log(`SHA-256 Web Store:  ${storeSha}  (${path.relative(ROOT, storeOut)})`);
   console.log(`SHA-256 content.js: ${contentSha}`);
   if (process.env.GITHUB_OUTPUT)
-    await writeFile(process.env.GITHUB_OUTPUT, `zip=${out}\nsha256=${sha}\n`, { flag: 'a' });
+    await writeFile(
+      process.env.GITHUB_OUTPUT,
+      `zip=${out}\nsha256=${sha}\nstore_zip=${storeOut}\nstore_sha256=${storeSha}\n`,
+      { flag: 'a' },
+    );
 }
 
 main().catch((e) => {

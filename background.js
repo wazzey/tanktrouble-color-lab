@@ -84,6 +84,17 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       .catch(() => reply({ ok: false }));
     return true;
   }
+  if (m.op === 'store') {
+    // Color Lab's Chrome Web Store page (once it's there): copies installed from a zip offer to move to it
+    if (FROM_STORE) {
+      reply({ ok: true, data: null, store: true });
+      return;
+    }
+    fetch(SHARE_BASE + '/v1/store', { cache: 'no-store' })
+      .then((r) => r.json().then((data) => reply({ ok: r.ok, data })))
+      .catch(() => reply({ ok: false }));
+    return true;
+  }
   if (m.op === 'get') {
     const ids = (Array.isArray(m.ids) ? m.ids : [])
       .map(String)
