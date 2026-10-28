@@ -2,8 +2,8 @@
 // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
 // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
 // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-export const TUT_VER = 13,
-  TUT_LABEL = "v1.4.2";
+export const TUT_VER = 14,
+  TUT_LABEL = "v1.4.4";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
   [
@@ -262,6 +262,22 @@ export const WHATS_NEW = [
     "The update pop-up's notes are easier to read, and its download button only ever leads to Color Lab's own GitHub page",
   ],
   [12, "🔧", "<b>Fixed</b>: spaces can be typed in the Message Color Lab box again"],
+  [
+    14,
+    "🏆",
+    "<b>Achievement pop-ups</b> can be switched off in ⚙ Settings > Achievements. Achievements still unlock and show as new in the 🏆 tab",
+  ],
+  [
+    14,
+    "🟢",
+    "<b>Online list</b>: a local game against Laika now shows as the lobby, and an account playing on two copies shows once",
+  ],
+  [14, "🏅", "<b>Fairer Hall of Fame</b>: only online rounds count, as intended"],
+  [
+    14,
+    "🔓",
+    "<b>Open source</b>: Color Lab and its server are on GitHub for anyone to read, with a clearer privacy policy",
+  ],
 ];
 // What a brand-new user sees (instead of every older version's notes): what Color Lab has, in short
 export const V1_OVERVIEW = [
