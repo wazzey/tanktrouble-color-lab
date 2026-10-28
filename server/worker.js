@@ -2575,6 +2575,33 @@ const COLOUR = /^(0x[0-9a-fA-F]{6}|p:[\w-]{1,48})$/,
   ACC = /^[\w:.-]{1,64}$/,
   BULLET = /^(turret|0x[0-9a-fA-F]{6}|p:[\w-]{1,48})$/;
 
+// The browser and system a request came from, by name only (Brave says it's Chrome)
+function getDevice(req) {
+  const ua = String(req.headers.get("User-Agent") || "");
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /OPR\/|Opera/.test(ua)
+      ? "Opera"
+      : /Vivaldi/.test(ua)
+        ? "Vivaldi"
+        : /Firefox\//.test(ua)
+          ? "Firefox"
+          : /Chrome\//.test(ua)
+            ? "Chrome"
+            : "an unknown browser";
+  const system = /Windows/.test(ua)
+    ? "Windows"
+    : /CrOS/.test(ua)
+      ? "ChromeOS"
+      : /Mac OS X|Macintosh/.test(ua)
+        ? "Mac"
+        : /Android/.test(ua)
+          ? "Android"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : "an unknown system";
+  return browser + " on " + system;
+}
 async function sha256(s) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -4031,8 +4058,12 @@ export default {
         ctx.waitUntil(
           alert(
             env,
-            "takeback",
-            (await tankName(env, pid)) + " proved the tank is theirs and took it back from " + was.keyhash.slice(0, 10),
+            "login",
+            (await tankName(env, pid)) +
+              " was proven on a different browser or computer (" +
+              getDevice(req) +
+              "), taking over from copy " +
+              was.keyhash.slice(0, 10),
           ),
         );
       } else if (was && env.HUB) {

@@ -31,7 +31,7 @@ If your email changes, a computer that still has the old key moves your account 
 - For each of your logged-in tanks with a Color Lab look: its player ID, its public TankTrouble name, the look, and when it was saved.
 - A history of look changes (the look, when, and the approximate country of the connection as Cloudflare reports it), kept for 30 days to deal with abuse.
 - To show other tanks' looks, your copy sends the player IDs of the tanks around you. The server keeps no record of who asked for which looks.
-- Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day.
+- Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day. When a tank is proven on a different copy, the author is told which browser and system it was (for example Chrome on Windows), never the IP address.
 
 ### Backup
 
