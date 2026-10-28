@@ -515,6 +515,8 @@ select:focus{border-color:#427fff}
     <div class="setlist" id="setBoxes"></div>
     <div class="sublbl">Racing box</div>
     <div class="row setbtns"><span style="font-size:13px;color:#ddd">Your race number</span><input type="text" id="raceNo" maxlength="3" placeholder="e.g. 44" style="width:70px"><button class="small" id="raceNoSet">Add</button></div>
+    <div class="sublbl">Achievements</div>
+    <div class="setlist" id="setAch"></div>
     <div class="sublbl">Look sharing</div>
     <small class="mzsub">Color Lab users see each other's looks. Only your tank's player ID and its look are shared, nothing else</small>
     <div class="setlist" id="setShare"></div>

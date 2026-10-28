@@ -5,7 +5,7 @@ import { GAME_STATE } from "./garage.js";
 import { origFetch } from "./network.js";
 import { renderPalette, renderSources } from "./palette.js";
 import { toast } from "./panel.js";
-import { STATS, saveStats } from "./storage.js";
+import { SETTINGS, STATS, saveStats } from "./storage.js";
 import { curTab, renderAch } from "./tabs.js";
 import { TROPHY_ART, getTrophyArt } from "./trophy-art.js";
 
@@ -131,6 +131,9 @@ export const pendingUnlocks = [];
 // one short message instead of a pile of pop-ups covering the top of the screen. One or two still get the game's pop-up.
 const unlockBatch = {};
 function announceUnlock(pid, achId) {
+  if (SETTINGS.achPopups === false) {
+    return;
+  }
   const k = String(pid),
     b = unlockBatch[k] || (unlockBatch[k] = { ids: [], t: 0 });
   b.ids.push(String(achId));

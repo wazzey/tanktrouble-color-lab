@@ -223,6 +223,21 @@ export function renderSettings() {
     sh.appendChild(sm);
   }
   {
+    const sa = $("setAch");
+    sa.innerHTML = "";
+    row(
+      sa,
+      SETTINGS.achPopups !== false,
+      "Achievement pop-ups",
+      "Shows a pop-up when you unlock an achievement. Off: it still unlocks and shows as new in the 🏆 tab",
+      () => {
+        SETTINGS.achPopups = SETTINGS.achPopups === false;
+        saveSettings();
+        renderSettings();
+      },
+    );
+  }
+  {
     const su = $("setUpd");
     su.innerHTML = "";
     row(
