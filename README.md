@@ -85,17 +85,16 @@ Don't keep two copies switched on in the same browser: only one runs, and the ot
 
 | Version | File | SHA-256 |
 |---|---|---|
+| v1.4.3 (latest) | `TankTrouble-Color-Lab-v1.4.3.zip` | `38058417cde5f34586c2c1de1fce99d2901eb450f01baad7c844f264530f75bf` |
 | v1.4.2 | `TankTrouble-Color-Lab-v1.4.2.zip` | `c1a6ec6a5ff0a0f8430054b030561be82e40ae2270603054798ef4bab0971aea` |
 | v1.4.1 | `TankTrouble-Color-Lab-v1.4.1.zip` | `ad11ff95193d6ff26e6fadc6afbbd90c7c08075c100f78d6436e558303368b8b` |
-| v1.4 | `TankTrouble-Color-Lab-v1.4.zip` | `4aad34e7e2c4ccdeb6bf999b17c7583e1fed15382b54142d59434ed2dad0ecc7` |
-| v1.3 | `TankTrouble-Color-Lab-v1.3.zip` | `21107aa6f07bdc85ccce6e4a25873e433ddf3638e276a5cdd2885fc0bceddd4b` |
 
 **Windows** (PowerShell in the zip's folder): `Get-FileHash .\TankTrouble-Color-Lab-v1.4.3.zip`<br>
 **Mac** (Terminal in the zip's folder): `shasum -a 256 TankTrouble-Color-Lab-v1.4.3.zip`
 
 The code it prints must match the table exactly.
 
-Versions before v1.3 were removed and no longer work online: they were made before a tank had to be proven yours to share its look. Your looks are kept when you update.
+**Versions older than v1.4.3 no longer work online** (look sharing, the online list and messages): please update to v1.4.3. Your looks are kept when you update. Versions before v1.3 were also removed because they were made before a tank had to be proven yours to share its look.
 
 </details>
 
