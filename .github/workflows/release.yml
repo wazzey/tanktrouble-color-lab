@@ -1,11 +1,18 @@
-# Builds the extension zip from this repository's source and attaches it to the GitHub Release.
-# Runs when a version tag (v1.2.3) is pushed, including one made on the "Draft a new release" page.
+# Builds the extension zips from this repository's source and publishes them as a GitHub Release.
+# Runs on every push to main: when manifest.json has a version that has no release yet (e.g. 1.4.4 and no v1.4.4 tag),
+# it builds it, creates the v1.4.4 tag and publishes the release. So a new version is just: raise the version in
+# manifest.json, add its section to CHANGELOG.md, commit and push. (Pushing a v* tag by hand still works too.)
 # The build itself lives in scripts/build.mjs (run it locally with: npm ci && npm run build).
 name: Build release
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -17,44 +24,66 @@ jobs:
       CWS_ON: ${{ secrets.CWS_EXTENSION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Which version this is, and whether it still needs a release (a push to main with an already released version does nothing)
+      - name: Version
+        id: ver
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then tag="${{ github.ref_name }}"; else tag="v$(node -p "require('./manifest.json').version")"; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref_type }}" != "tag" ] && git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "go=false" >> "$GITHUB_OUTPUT"; echo "$tag is already released: nothing to do"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"; echo "Releasing $tag"
+          fi
 
       - uses: actions/setup-node@v4
+        if: steps.ver.outputs.go == 'true'
         with:
           node-version: 20
           cache: npm
 
       - run: npm ci
+        if: steps.ver.outputs.go == 'true'
 
       - name: Check formatting
+        if: steps.ver.outputs.go == 'true'
         run: npm run format:check
 
       - name: Build
+        if: steps.ver.outputs.go == 'true'
         id: build
-        run: npm run build -- --tag "${{ github.ref_name }}"
+        run: npm run build -- --tag "${{ steps.ver.outputs.tag }}"
 
       # Release notes: this version's section of CHANGELOG.md, then the zip's SHA-256
       - name: Release notes
+        if: steps.ver.outputs.go == 'true'
         id: notes
         run: |
-          awk -v v="## ${{ github.ref_name }}" 'index($0, v)==1 && (length($0)==length(v) || substr($0, length(v)+1, 1)==":"){on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
-          title=$(grep -m1 "^## ${{ github.ref_name }}:" CHANGELOG.md | sed 's/^## //')
-          echo "title=${title:-${{ github.ref_name }}}" >> "$GITHUB_OUTPUT"
+          awk -v v="## ${{ steps.ver.outputs.tag }}" 'index($0, v)==1 && (length($0)==length(v) || substr($0, length(v)+1, 1)==":"){on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
+          title=$(grep -m1 "^## ${{ steps.ver.outputs.tag }}:" CHANGELOG.md | sed 's/^## //')
+          echo "title=${title:-${{ steps.ver.outputs.tag }}}" >> "$GITHUB_OUTPUT"
           printf '\n**SHA-256:** `%s` (built from %s by GitHub Actions)\n' "${{ steps.build.outputs.sha256 }}" "${{ github.sha }}" >> notes.md
           printf '\nThe `-webstore.zip` is the same files for the Chrome Web Store (SHA-256 `%s`). To install by hand, use the other zip.\n' "${{ steps.build.outputs.store_sha256 }}" >> notes.md
 
       - name: Attach the zip to the release
+        if: steps.ver.outputs.go == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ${{ steps.build.outputs.zip }}
             ${{ steps.build.outputs.store_zip }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: ${{ steps.notes.outputs.title }}
           body_path: notes.md
 
       # Chrome Web Store: uploads the same zip and submits it for review.
       # Skipped until the five CWS_* secrets are added in Settings > Secrets and variables > Actions.
       - name: Upload to the Chrome Web Store
-        if: env.CWS_ON == 'true'
+        if: env.CWS_ON == 'true' && steps.ver.outputs.go == 'true'
         env:
           EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
           PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}

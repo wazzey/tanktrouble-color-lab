@@ -266,7 +266,7 @@ In the garage's **All** mode you can also see the never-released box and its pai
 
 ## Source code and builds
 
-This repository is the readable source of the current release. When a version tag is pushed, GitHub Actions (`.github/workflows/release.yml`) builds the release zips with `npm run build` and publishes them with their SHA-256, so anyone can check a release came from this source. The Chrome Web Store copy is the same build. Changes per version are in [CHANGELOG.md](CHANGELOG.md).
+This repository is the readable source of the current release. When a new version is pushed, GitHub Actions (`.github/workflows/release.yml`) builds the release zips with `npm run build` and publishes them with their SHA-256, so anyone can check a release came from this source. The Chrome Web Store copy is the same build. Changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 Build it yourself (Node 20+): `npm ci`, then `npm run build`. The zips land in `dist/`; the same source always gives the same zip.
 
