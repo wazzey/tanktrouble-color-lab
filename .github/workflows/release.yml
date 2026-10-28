@@ -66,21 +66,18 @@ jobs:
           title=$(grep -m1 "^## ${{ steps.ver.outputs.tag }}:" CHANGELOG.md | sed 's/^## //')
           echo "title=${title:-${{ steps.ver.outputs.tag }}}" >> "$GITHUB_OUTPUT"
           printf '\n**SHA-256:** `%s` (built from %s by GitHub Actions)\n' "${{ steps.build.outputs.sha256 }}" "${{ github.sha }}" >> notes.md
-          printf '\nThe `-webstore.zip` is the same files for the Chrome Web Store (SHA-256 `%s`). To install by hand, use the other zip.\n' "${{ steps.build.outputs.store_sha256 }}" >> notes.md
 
       - name: Attach the zip to the release
         if: steps.ver.outputs.go == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ steps.build.outputs.zip }}
-            ${{ steps.build.outputs.store_zip }}
+          files: ${{ steps.build.outputs.zip }}
           tag_name: ${{ steps.ver.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: ${{ steps.notes.outputs.title }}
           body_path: notes.md
 
-      # Chrome Web Store: uploads the same zip and submits it for review.
+      # Chrome Web Store: uploads the Web Store layout of the same build (made by build.mjs, not attached to the release) and submits it for review.
       # Skipped until the five CWS_* secrets are added in Settings > Secrets and variables > Actions.
       - name: Upload to the Chrome Web Store
         if: env.CWS_ON == 'true' && steps.ver.outputs.go == 'true'

@@ -46,7 +46,7 @@ Installs in one click and **updates by itself**. The listing is being reviewed; 
 
 ### From GitHub (available now)
 
-1. Download `TankTrouble-Color-Lab-v1.4.3.zip` from the [**latest release**](https://github.com/wazzey/tanktrouble-color-lab/releases/latest) (not the `-webstore` zip, and not "Source code").
+1. Download `TankTrouble-Color-Lab-v1.4.3.zip` from the [**latest release**](https://github.com/wazzey/tanktrouble-color-lab/releases/latest) (not "Source code").
 2. Unzip it and keep the `TankTrouble-Color-Lab` folder somewhere safe. The browser runs it from there.
 3. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`) and turn on **Developer mode**.
 4. Click **Load unpacked** and choose the `TankTrouble-Color-Lab` folder.
