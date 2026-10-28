@@ -188,11 +188,11 @@ If anything in Color Lab isn't allowed, or you'd like something changed or remov
 
 ## Development
 
-| Folder                                 | What it is                                                                                                                                                  |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`extension/`](extension)              | The extension. `content.js` runs in the page, `bridge.js` passes messages to `background.js`, which talks to the server.                                    |
-| [`server/`](server)                    | The look server: a Cloudflare Worker with a D1 database. Pushing to `main` deploys it. Secrets live in Cloudflare (`npx wrangler secret list`), never here. |
-| [`scripts/build.js`](scripts/build.js) | Builds the extension with Bun.                                                                                                                              |
+| Folder                                 | What it is                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`extension/`](extension)              | The extension. `content.js` runs in the page and starts every feature in order; [`core/`](extension/core) holds the features (storage, look sharing, the game hooks, the garage, the panel and so on) and [`content/`](extension/content) the boxes, maps, achievements and art. `bridge.js` passes messages to `background.js`, which talks to the server. |
+| [`server/`](server)                    | The look server: a Cloudflare Worker with a D1 database. Pushing to `main` deploys it. Secrets live in Cloudflare (`npx wrangler secret list`), never here.                                                                                                                                                                                                 |
+| [`scripts/build.js`](scripts/build.js) | Builds the extension with Bun.                                                                                                                                                                                                                                                                                                                              |
 
 Install [Node](https://nodejs.org) 22+, then `npm ci`. That installs the pinned Bun, which does the formatting, linting and building:
 
@@ -204,7 +204,7 @@ Install [Node](https://nodejs.org) 22+, then `npm ci`. That installs the pinned 
 | `npm run lint:fix`  | Fixes and formats everything. Run it before every commit.                                                                                                        |
 | `npm run check`     | What CI runs: formatting, lint and the build.                                                                                                                    |
 
-Code that only belongs in the owner's build sits behind `DEV_BUILD`, which the build sets to `false` for the public build, so that code isn't in it.
+Modules only define things when they load. What a feature does at start-up is in its `start…()` function, and `content.js` calls those in a fixed order. The `content/` modules only add items to shared tables and never import from `core/`. Code that only belongs in the owner's build sits behind `DEV_BUILD`, which the build sets to `false` for the public build, so that code isn't in it.
 
 **Releasing:** raise `version` in `extension/manifest.json` and push. CI checks and builds every push; for a new version it also creates a draft release with the zip and its SHA-256. Write the title and notes there and publish. Publishing uploads the same build to the Chrome Web Store, and the server posts it on the forum.
 

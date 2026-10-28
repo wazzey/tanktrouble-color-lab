@@ -32,6 +32,10 @@ no-underscore-dangle = "off"
 "unicorn/consistent-function-scoping" = "off"
 # assigning on* replaces the previous handler each time a view is redrawn
 "unicorn/prefer-add-event-listener" = "off"
+# core modules call each other; none of them does anything when it loads (content.js starts them in order)
+"import/no-cycle" = "off"
+# the box, award and map modules are imported for the items they add to the shared tables
+"import/no-unassigned-import" = "off"
 # requests go one at a time on purpose (TankTrouble and D1 limits)
 no-await-in-loop = "off"
 # .then callbacks here run for their effects, not to pass a value on
