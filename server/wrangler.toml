@@ -1,0 +1,52 @@
+name = "ttcl-share"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ttcl-looks"
+database_id = "5ed3803f-93be-411e-990d-1567b1b57636"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "LookHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LookHub"]
+
+# requests per connection per minute (Cloudflare rate limiting)
+[[ratelimits]]
+name = "RL_READ"
+namespace_id = "7101"
+  [ratelimits.simple]
+  limit = 120
+  period = 60
+
+[[ratelimits]]
+name = "RL_WRITE"
+namespace_id = "7102"
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+# only looks a tank's owner proved are saved and shown (set to "0" to switch off)
+[vars]
+OWNER_COPY = "a0ea9d93e17a"   # the owner's own copy (first 12 characters of its id on the admin page): only it gets the inbox, alerts and full online list
+PROVEN_ONLY = "1"
+STORE_URL = ""   # the Chrome Web Store page once approved (https://chromewebstore.google.com/detail/<name>/<id>): copies installed from a zip then offer to move there
+MIN_VERSION= "1.4.3"   # copies older than this lose look sharing, the online list and messages, and are asked to update
+FORUM_AUTOPOST = "1"   # replies typed in Discord are posted on the forum by the TT_LOGIN account (secrets TT_LOGIN and TT_PASSWORD); "0" = off
+FORUM_RELEASE_POST = "1"   # a new GitHub release is posted as a reply on the Color Lab thread, as the TT_LOGIN account (ColorLab); "0" = off
+FORUM_THREAD_EDIT = "1"   # on a new release the thread's first post (title, latest version, SHA-256, WHAT'S NEW) is updated as its creator: secrets FORUM_EDIT_LOGIN and FORUM_EDIT_PASSWORD (rip); "0" = off
+FORUM_OWNER = "22849244,3887207"   # your forum account first (ColorLab: "mentions you" looks for its name), then rip; replies from either are not sent to Discord
+TEAM_BADGES = '{"22849244":["Color Lab","The official Color Lab account"],"3887207":["dev","The developer of Color Lab","dev"]}'   # who wears the Color Lab badge (v1.4.2+): player ID -> [label, hover text]
+
+# a daily tidy-up: unproven looks and old notes are removed
+[triggers]
+crons = ["17 4 * * *", "* * * * *"]
+
+[ai]
+binding = "AI"

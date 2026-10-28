@@ -1,0 +1,60 @@
+# Every push and pull request: formatting, lint and the build.
+# On main, a version in extension/manifest.json that has no published release yet also gets a draft release with the
+# zip and its SHA-256 (updated on later pushes until it's published). Write the notes there and publish it.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Formatting
+        run: npm run fmt:check
+
+      - name: Lint
+        run: npm run lint -- --format github
+
+      - name: Build
+        id: build
+        run: npm run build
+
+      - name: Draft release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.build.outputs.version }}
+          ZIP: ${{ steps.build.outputs.zip }}
+          SHA_LINE: "**SHA-256:** `${{ steps.build.outputs.sha256 }}` (built from ${{ github.sha }} by GitHub Actions)"
+        run: |
+          if draft=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$draft" = "false" ]; then
+              echo "$TAG is already published"
+              exit 0
+            fi
+            gh release view "$TAG" --json body --jq .body | grep -v '^\*\*SHA-256:\*\*' > notes.md
+            printf '%s\n' "$SHA_LINE" >> notes.md
+            gh release upload "$TAG" "$ZIP" --clobber
+            gh release edit "$TAG" --target "$GITHUB_SHA" --notes-file notes.md
+          else
+            printf 'What changed in %s.\n\n%s\n' "$TAG" "$SHA_LINE" > notes.md
+            gh release create "$TAG" "$ZIP" --draft --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md
+          fi

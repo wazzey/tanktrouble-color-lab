@@ -1,0 +1,46 @@
+# A published release: rebuild it from its tag, check it matches the release zip, and send it to the Chrome Web Store.
+# The upload is skipped until the five CWS_* secrets are set in Settings > Secrets and variables > Actions.
+name: Chrome Web Store
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      CWS_ON: ${{ secrets.CWS_EXTENSION_ID != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        id: build
+        run: npm run build
+
+      - name: Same as the release zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ github.event.release.tag_name }}" --pattern "*.zip" --dir released
+          echo "${{ steps.build.outputs.sha256 }}  released/$(basename "${{ steps.build.outputs.zip }}")" | sha256sum --check
+
+      - name: Upload
+        if: env.CWS_ON == 'true'
+        env:
+          EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: npx --yes chrome-webstore-upload-cli@4.0.2 --source "${{ steps.build.outputs.store_zip }}"

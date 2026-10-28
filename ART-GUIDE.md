@@ -13,20 +13,20 @@ Accessories show on the **tank picture**: the big tank in the garage and on the 
 
 Draw on this tank. It's the exact size and position the game uses for its tank pictures, so anything drawn on it lines up perfectly.
 
-![The plain grey tank to draw on](images/tank-template.png)
+![The plain grey tank to draw on](.github/images/tank-template.png)
 
-*Right-click the picture and choose "Save image as" to download it (640 × 384 pixels).*
+_Right-click the picture and choose "Save image as" to download it (640 × 384 pixels)._
 
 This version shows which part is which, so you know where items go:
 
-![The tank's parts: turret, barrel, base and treads](images/tank-parts.png)
+![The tank's parts: turret, barrel, base and treads](.github/images/tank-parts.png)
 
-| Part | Colour above | What goes there |
-|---|---|---|
-| **Turret** | blue | hats, glasses, helmets (the round dome on top) |
-| **Barrel** | yellow | barrel items, things hanging from it |
-| **Base** (body) | green | front badges, chains, decals |
-| **Treads** | red | the tracks on each side |
+| Part            | Colour above | What goes there                                |
+| --------------- | ------------ | ---------------------------------------------- |
+| **Turret**      | blue         | hats, glasses, helmets (the round dome on top) |
+| **Barrel**      | yellow       | barrel items, things hanging from it           |
+| **Base** (body) | green        | front badges, chains, decals                   |
+| **Treads**      | red          | the tracks on each side                        |
 
 ## Size
 
@@ -55,7 +55,7 @@ AI image tools work well if you give them the tank to draw on:
 
 1. Attach the [tank template](#the-tank-template) picture.
 2. Describe the item and exactly where it goes (see "Keep it where it belongs" above). Saying "the LEFT side of the picture, behind the turret" helps for back items; otherwise tools often put them on the front.
-3. End the prompt with something like: *"Keep the tank exactly the same as the attached picture: same colours, same angle, same size and position. Only add the item described. Plain pure white background, no ground shadow, cartoon game style with clean dark outlines and soft shading, no text, no logos."*
+3. End the prompt with something like: _"Keep the tank exactly the same as the attached picture: same colours, same angle, same size and position. Only add the item described. Plain pure white background, no ground shadow, cartoon game style with clean dark outlines and soft shading, no text, no logos."_
 
 ## Please keep it original
 

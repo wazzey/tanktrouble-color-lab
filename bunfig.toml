@@ -1,0 +1,46 @@
+[lint]
+ignorePatterns = ["dist/", "node_modules/"]
+
+[lint.globals]
+chrome = "readonly"
+DEV_BUILD = "readonly"
+Phaser = "readonly"
+PhaserSpine = "readonly"
+PIXI = "readonly"
+WebSocketPair = "readonly"
+WebSocketRequestResponsePair = "readonly"
+
+[lint.categories]
+correctness = "error"
+suspicious = "error"
+perf = "error"
+
+[lint.rules]
+curly = "error"
+eqeqeq = ["error", "smart"]
+no-empty = ["error", { allowEmptyCatch = true }]
+no-lonely-if = "error"
+no-self-compare = "error"
+no-throw-literal = "error"
+no-unused-vars = ["error", { args = "none" }]
+no-var = "error"
+prefer-const = "error"
+# TankTrouble's own objects use underscore names (_typeId and the like)
+no-underscore-dangle = "off"
+# helpers live beside their only caller inside the content script's closure
+"unicorn/consistent-function-scoping" = "off"
+# assigning on* replaces the previous handler each time a view is redrawn
+"unicorn/prefer-add-event-listener" = "off"
+# requests go one at a time on purpose (TankTrouble and D1 limits)
+no-await-in-loop = "off"
+# .then callbacks here run for their effects, not to pass a value on
+"promise/always-return" = "off"
+# a regex test also copes with values that aren't strings
+"unicorn/prefer-string-starts-ends-with" = "off"
+# arrays sorted or reversed in place are ones built just for that
+"unicorn/no-array-sort" = "off"
+"unicorn/no-array-reverse" = "off"
+# a Set is copied before looping so the loop can remove from it
+"unicorn/no-useless-spread" = "off"
+# short names (r, m, k) are reused in nested callbacks throughout; to be cleaned up separately
+no-shadow = "off"

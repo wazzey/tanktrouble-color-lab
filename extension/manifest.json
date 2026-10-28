@@ -20,14 +20,8 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": [
-    "scripting",
-    "storage"
-  ],
-  "host_permissions": [
-    "https://tanktrouble.com/*",
-    "https://ttcl-share.wazzey.workers.dev/*"
-  ],
+  "permissions": ["scripting", "storage"],
+  "host_permissions": ["https://tanktrouble.com/*", "https://ttcl-share.wazzey.workers.dev/*"],
   "commands": {
     "_execute_action": {
       "suggested_key": {
@@ -46,33 +40,21 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://tanktrouble.com/*"
-      ],
-      "js": [
-        "bridge.js"
-      ],
+      "matches": ["https://tanktrouble.com/*"],
+      "js": ["bridge.js"],
       "run_at": "document_start"
     },
     {
-      "matches": [
-        "https://tanktrouble.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["https://tanktrouble.com/*"],
+      "js": ["content.js"],
       "run_at": "document_start",
       "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "art/*"
-      ],
-      "matches": [
-        "https://tanktrouble.com/*"
-      ]
+      "resources": ["art/*"],
+      "matches": ["https://tanktrouble.com/*"]
     }
   ]
 }

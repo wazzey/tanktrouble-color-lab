@@ -1,20 +1,21 @@
 {
   "name": "tanktrouble-color-lab",
   "private": true,
-  "description": "Builds the TankTrouble Color Lab extension zip from the source in this repository.",
+  "description": "TankTrouble Color Lab: the extension, its look server and the build.",
+  "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
-    "check": "node scripts/build.mjs --check",
-    "build": "node scripts/build.mjs",
-    "format": "prettier --write src/content.js src/background.js src/bridge.js scripts/build.mjs",
-    "format:check": "prettier --check src/content.js src/background.js src/bridge.js scripts/build.mjs"
+    "build": "bun scripts/build.js",
+    "build:dev": "bun scripts/build.js --dev",
+    "dev": "bun scripts/build.js --dev --watch",
+    "fmt": "bun fmt --no-script .",
+    "fmt:check": "bun fmt --no-script --check .",
+    "lint": "bun lint --no-script --deny-warnings",
+    "lint:fix": "bun lint --no-script --fix && bun fmt --no-script .",
+    "check": "bun fmt --no-script --check . && bun lint --no-script --deny-warnings && bun scripts/build.js"
   },
   "devDependencies": {
-    "esbuild": "0.24.0",
-    "fflate": "0.8.2",
-    "prettier": "3.3.3"
-  },
-  "engines": {
-    "node": ">=22"
+    "bun": "1.4.4-canary.20261028.1",
+    "fflate": "0.8.3"
   }
 }
