@@ -176,7 +176,7 @@ export async function fbRefresh(seen) {
     shareMine()
       ? {
           op: "fblist",
-          pids: loggedInIds().map(String).slice(0, 4),
+          pids: loggedInIds(false).map(String).slice(0, 4), // (guests never go to the server)
           srv: !inv && SETTINGS.showOnline === true && SETTINGS.showServer === true ? ttServerName() : undefined, // (only when the player chose to show it)
           idle: isIdle(),
           away: isAway(),

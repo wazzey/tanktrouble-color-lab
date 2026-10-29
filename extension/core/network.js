@@ -110,14 +110,24 @@ export function applyOverrides(node, depth) {
   }
   return changed;
 }
-// Tanks added after page load (new guests, logins) never reach g_users/g_guests, so pick them up here.
-export const seenAccountIds = new Set();
+// Tanks added after page load (new guests, logins) never reach g_users/g_guests, so pick them up here. Tanks logged out or
+// removed since are noted too, as g_users/g_guests still list them until a reload.
+export const seenAccountIds = new Set(),
+  goneAccountIds = new Set(),
+  guestIds = new Set();
 function collectIds(node, depth) {
   if (!node || typeof node !== "object" || depth > 6) {
     return;
   }
   if (node.playerId != null && /^\d+$/.test(String(node.playerId))) {
     seenAccountIds.add(String(node.playerId));
+  }
+  if (Array.isArray(node.playerIds)) {
+    for (const id of node.playerIds) {
+      if (/^\d+$/.test(String(id))) {
+        seenAccountIds.add(String(id));
+      }
+    }
   }
   for (const k in node) {
     if (/^\d+$/.test(k) && node[k] && typeof node[k] === "object" && "multiplayerToken" in node[k]) {
@@ -190,6 +200,19 @@ export function startNetwork() {
         return res;
       });
     }
+    if (/"tanktrouble\.account\.(deauthenticate|deleteGuest)"/.test(body)) {
+      return p.then(async (res) => {
+        try {
+          const j = JSON.parse(await res.clone().text()),
+            id = String(JSON.parse(body).params[0]);
+          if (j && j.result && j.result.result === true && /^\d+$/.test(id)) {
+            seenAccountIds.delete(id);
+            goneAccountIds.add(id);
+          }
+        } catch {}
+        return res;
+      });
+    } // (logged out, or a guest removed: no longer one of yours)
     // Cheap string checks on the request body (no parsing). Only player-details replies carry tank colours;
     // every other request — and everything before saved data has loaded — passes straight through, never waiting.
     const isAccount = /"tanktrouble\.account\.(createGuests|authenticate|signUp|signUpGuest)"/.test(body);
@@ -221,10 +244,21 @@ export function startNetwork() {
           // so your Color Lab look goes in here too, with its paints and items ready first, or the real tank shows until a refresh
           const fresh = [];
           try {
-            const before = new Set(seenAccountIds);
+            const before = new Set(seenAccountIds),
+              guests = /"tanktrouble\.account\.createGuests"/.test(body),
+              signedUp = /"tanktrouble\.account\.signUpGuest"/.test(body);
             collectIds(json.result && json.result.data, 0);
             for (const id of seenAccountIds) {
-              if (!before.has(id) && PLAYER_COLOR_MAP[id]) {
+              if (before.has(id)) {
+                continue;
+              }
+              goneAccountIds.delete(id);
+              if (guests) {
+                guestIds.add(id);
+              } else if (signedUp) {
+                guestIds.delete(id);
+              }
+              if (PLAYER_COLOR_MAP[id]) {
                 fresh.push(id);
               }
             }

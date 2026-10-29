@@ -64,13 +64,13 @@ function populateBox() {
   const open = (labThreads || []).filter((t) => t.open > 0).length,
     badge = (n) =>
       n
-        ? '<span style="font:bold 10px Arial;background:#e33;color:#fff;border-radius:7px;padding:0 4px;margin-left:2px;vertical-align:top">' +
+        ? '<span style="position:absolute;top:-4px;left:50%;margin-left:5px;font:bold 10px Arial;line-height:13px;background:#e33;color:#fff;border-radius:7px;padding:0 4px">' +
           n +
           "</span>"
         : "";
   const h =
     '<div class="content" style="padding:5px 6px 7px"><div class="header" style="margin-bottom:4px">🔧 Admin</div>' +
-    '<div style="display:flex;justify-content:space-between;gap:3px;font:15px Arial;text-align:center">' +
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px;font:15px Arial;text-align:center">' +
     [
       ["adm", "🔧", "Admin"],
       ["inbox", "📨" + badge(open), "Inbox"],
@@ -84,7 +84,7 @@ function populateBox() {
           k +
           '" title="' +
           label +
-          '" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.1"><span style="white-space:nowrap">' +
+          '" style="position:relative;min-width:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.1"><span style="white-space:nowrap">' +
           t +
           '</span><span style="font:9px Arial;opacity:.85;margin-top:2px">' +
           label +

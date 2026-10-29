@@ -2,7 +2,7 @@ import { GX_PAINT, isPat, patId } from "../content/colours.js";
 import { breathe, garageFake, garageReal } from "../content/garage-folders.js";
 import { getCustomArt, isCustomKey } from "./custom-box-art.js";
 import { hasOverrides, sharedLook } from "./look-sharing.js";
-import { applyOverrides, origFetch, seenAccountIds } from "./network.js";
+import { applyOverrides, goneAccountIds, guestIds, origFetch, seenAccountIds } from "./network.js";
 import { partyRoll } from "./random.js";
 import { PLAYER_COLOR_MAP, SETTINGS } from "./storage.js";
 import { onCollectibleTaken, onTankKilled } from "./trophy-counting.js";
@@ -199,9 +199,10 @@ export const lookupByName = (name) => rpc("getPlayerDetailsByUsername", [name]);
 export const lookupById = (id) => rpc("getPlayerDetails", [String(id)]);
 
 // g_users (accounts) and g_guests (guest tanks) are objects keyed by playerId; empty ones may be [].
-export function loggedInIds() {
+export function loggedInIds(withGuests = true) {
+  // (withGuests false: only real accounts, for what's sent to the server)
   const out = new Set();
-  for (const src of [window.g_users, window.g_guests]) {
+  for (const src of withGuests ? [window.g_users, window.g_guests] : [window.g_users]) {
     try {
       if (!src || typeof src !== "object") {
         continue;
@@ -223,7 +224,7 @@ export function loggedInIds() {
     } catch {}
   }
   seenAccountIds.forEach((id) => out.add(id));
-  return [...out];
+  return [...out].filter((id) => !goneAccountIds.has(id) && (withGuests || !guestIds.has(id)));
 }
 export let LAST_LIVE = 0; // last time the game server sent something about a game being played
 export const playingOnline = () => Date.now() - LAST_LIVE < 5000;
