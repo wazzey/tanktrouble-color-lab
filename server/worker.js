@@ -200,6 +200,9 @@ async function ensureTables(env) {
       "CREATE TABLE IF NOT EXISTS replies (fid INTEGER NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL)",
     ),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS feedback_pids (fid INTEGER NOT NULL, pid TEXT NOT NULL)"),
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS inbox_mark (kh TEXT PRIMARY KEY, read INTEGER NOT NULL, at INTEGER NOT NULL)",
+    ), // (an inbox conversation the owner marked read or unread)
     env.DB.prepare("CREATE TABLE IF NOT EXISTS forum_seen (thread TEXT PRIMARY KEY, last INTEGER NOT NULL)"),
     env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS forum_drafts (id INTEGER PRIMARY KEY AUTOINCREMENT, thread TEXT NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL)",
@@ -1454,10 +1457,11 @@ async function inbox(env, req, ctx, act) {
   }
   if (act === "list") {
     // one row a player copy: who, their latest message, and whether it still needs a reply (a reply answers every message sent before it, from Discord or from TankTrouble)
+    // It's unread while it needs a reply, unless the owner marked it read (until a newer message comes) or unread
     const rows =
       (
         await env.DB.prepare(
-          "SELECT t.keyhash, t.n, t.at, f.who, f.text, (SELECT COUNT(*) FROM feedback f2 WHERE f2.keyhash = t.keyhash AND NOT EXISTS (SELECT 1 FROM replies r JOIN feedback f3 ON f3.id = r.fid WHERE f3.keyhash = f2.keyhash AND (r.fid = f2.id OR r.at >= f2.at))) AS open FROM (SELECT keyhash, MAX(id) AS last, COUNT(*) AS n, MAX(at) AS at FROM feedback GROUP BY keyhash) t JOIN feedback f ON f.id = t.last ORDER BY t.at DESC LIMIT 100",
+          "SELECT t.keyhash, t.n, t.at, f.who, f.text, (SELECT COUNT(*) FROM feedback f2 WHERE f2.keyhash = t.keyhash AND NOT EXISTS (SELECT 1 FROM replies r JOIN feedback f3 ON f3.id = r.fid WHERE f3.keyhash = f2.keyhash AND (r.fid = f2.id OR r.at >= f2.at))) AS open, m.read AS mread, m.at AS mat FROM (SELECT keyhash, MAX(id) AS last, COUNT(*) AS n, MAX(at) AS at FROM feedback GROUP BY keyhash) t JOIN feedback f ON f.id = t.last LEFT JOIN inbox_mark m ON m.kh = t.keyhash ORDER BY t.at DESC LIMIT 100",
         ).all()
       ).results || [];
     return json({
@@ -1468,6 +1472,7 @@ async function inbox(env, req, ctx, act) {
         at: r.at,
         n: r.n,
         open: r.open,
+        unread: r.mread === null ? r.open > 0 : r.mread === 0 || r.at > r.mat,
       })),
     });
   }
@@ -1488,6 +1493,16 @@ async function inbox(env, req, ctx, act) {
         [];
     }
     return json({ items });
+  }
+  if (act === "mark") {
+    const t = String(b.kh || "");
+    if (!/^[0-9a-f]{64}$/.test(t)) {
+      return json({ error: "bad thread" }, 400);
+    }
+    await env.DB.prepare("INSERT OR REPLACE INTO inbox_mark (kh, read, at) VALUES (?, ?, ?)")
+      .bind(t, b.read === true ? 1 : 0, Date.now())
+      .run();
+    return json({ ok: true });
   }
   if (act === "unmute") {
     // a copy stopped from messaging after offensive messages can message again (from the alerts in the game)
@@ -3665,7 +3680,10 @@ export default {
       });
     }
     if (
-      (url.pathname === "/v1/inbox" || url.pathname === "/v1/inbox/thread" || url.pathname === "/v1/inbox/reply") &&
+      (url.pathname === "/v1/inbox" ||
+        url.pathname === "/v1/inbox/thread" ||
+        url.pathname === "/v1/inbox/reply" ||
+        url.pathname === "/v1/inbox/mark") &&
       req.method === "POST"
     ) {
       if (await slowDown(env, req, url.pathname === "/v1/inbox/reply" ? "write" : "read", ctx)) {

@@ -92,7 +92,7 @@ function labCss() {
 #ttclLab h2{font:40px Arial,sans-serif;margin:34px 0 8px}#ttclLab .sub{font-size:19px;margin:0 0 14px}
 #ttclLab textarea{box-sizing:border-box;width:100%;min-height:86px;background:#000;color:#fff;border:3px solid #9a9a9a;border-radius:9px;padding:10px 14px;font:16px monospace;resize:vertical}
 #ttclLab .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0 10px;font-size:13px;opacity:.9}
-#ttclLab .tabs{display:flex;justify-content:center;gap:8px;margin:0 0 6px}#ttclLab .thr{cursor:pointer}#ttclLab .thr:hover{filter:brightness(1.07)}
+#ttclLab .tabs{display:flex;justify-content:center;gap:8px;margin:0 0 6px}#ttclLab .thr{cursor:pointer}#ttclLab .thr:hover{filter:brightness(1.07)}#ttclLab .thr.rd{opacity:.7}
 #ttclLab .pv img{height:46px;border-radius:4px;border:1px solid #777;vertical-align:middle}#ttclLab .pv span{display:inline-block;margin:0 6px 6px 0}
 #ttclLab .badge{background:#e33;color:#fff;border-radius:9px;padding:0 7px;font-size:12px;margin-left:4px}`;
 }
@@ -184,7 +184,7 @@ export function labDraw() {
     document.head.appendChild(st);
   }
   st.textContent = labCss();
-  const open = (labThreads || []).reduce((n, t) => n + (t.open ? 1 : 0), 0);
+  const open = (labThreads || []).reduce((n, t) => n + (t.unread ? 1 : 0), 0);
   let h = '<button class="warning medium x" data-k="close" title="Close">×</button><div class="col">';
   const an = annUnread();
   if (!labAdmin) {
@@ -243,14 +243,16 @@ export function labDraw() {
         )
         .join("") || '<div class="sub">Nothing in the last 2 days.</div>');
   } else if (DEV_BUILD && labView === "inbox") {
-    // every player's messages, newest first; the ones still waiting for a reply are marked
+    // every player's messages, newest first; unread ones (still waiting for a reply, or marked unread) stand out
     h +=
-      '<h2 style="margin-top:14px">Inbox</h2><div class="sub">Messages from Color Lab players. Click one to read it and reply.</div>';
+      '<h2 style="margin-top:14px">Inbox</h2><div class="sub">Messages from Color Lab players. Click one to read it and reply, or mark it read once it\'s dealt with.</div>';
     h +=
       (labThreads || [])
         .map(
           (t) =>
-            '<div class="msg thr" data-k="thread" data-id="' +
+            '<div class="msg thr' +
+            (t.unread ? "" : " rd") +
+            '" data-k="thread" data-id="' +
             esc(t.id) +
             '"><div class="hd"><span class="ts">' +
             labAgo(t.at) +
@@ -260,16 +262,37 @@ export function labDraw() {
             t.n +
             " message" +
             (t.n === 1 ? "" : "s") +
-            (t.open ? '<span class="badge">' + t.open + " to answer</span>" : " · answered") +
+            (t.open
+              ? t.unread
+                ? '<span class="badge">' + t.open + " to answer</span>"
+                : " · " + t.open + " to answer"
+              : " · answered") +
+            ' <button class="small grey" data-k="mark" data-id="' +
+            esc(t.id) +
+            '" data-read="' +
+            (t.unread ? "1" : "") +
+            '">' +
+            (t.unread ? "Mark read" : "Mark unread") +
+            "</button>" +
             '</div><div class="bd">' +
             esc(t.text) +
             "</div></div>",
         )
         .join("") || '<div class="sub">No messages yet.</div>';
   } else if (DEV_BUILD && labView === "thread") {
-    const msgs = labMsgs(labItems, "");
+    const msgs = labMsgs(labItems, ""),
+      th = (labThreads || []).find((t) => t.id === labThread);
     h +=
       '<button class="medium" data-k="inbox">← Back to the inbox</button>' +
+      (th
+        ? ' <button class="medium grey" data-k="mark" data-id="' +
+          esc(th.id) +
+          '" data-read="' +
+          (th.unread ? "1" : "") +
+          '">' +
+          (th.unread ? "Mark read" : "Mark unread") +
+          "</button>"
+        : "") +
       msgs.map((m) => labBubble(m.me, m.who, m.at, m.text)).join("");
     h +=
       '<h2>Reply as Color Lab</h2><div class="sub">They see it in Color Lab (and it\'s posted in Discord too).</div><textarea id="labText" maxlength="1500" placeholder="Reply"></textarea><div class="row"><span id="labMsg"></span><span id="labCount">0/1500</span></div><button class="medium" data-k="reply">Send reply</button>';
@@ -373,6 +396,17 @@ export function labDraw() {
       if (a === "alerts") {
         labAlertSeen();
       }
+      return labDraw();
+    }
+    if (DEV_BUILD && a === "mark") {
+      const r = await shareCall({ op: "inbox", act: "mark", kh: k.dataset.id, read: k.dataset.read === "1" }).catch(
+        () => null,
+      );
+      if (!(r && r.ok)) {
+        toast("Couldn't do that, try again", true);
+        return;
+      }
+      await labLoadAdmin();
       return labDraw();
     }
     if (DEV_BUILD && a === "unmute") {

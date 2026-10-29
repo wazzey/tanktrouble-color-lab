@@ -167,7 +167,7 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
     DEV_BUILD &&
     m.op === "inbox" &&
     /^[0-9a-f]{64}$/.test(String(m.key || "")) &&
-    ["list", "thread", "reply", "unmute"].includes(m.act)
+    ["list", "thread", "reply", "unmute", "mark"].includes(m.act)
   ) {
     // the owner's inbox (only works for a trusted copy)
     url = SHARE_BASE + "/v1/inbox" + (m.act === "list" ? "" : "/" + m.act);
@@ -179,6 +179,7 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
         kh: typeof m.kh === "string" ? m.kh.slice(0, 64) : undefined,
         fid: Number(m.fid) || undefined,
         text: typeof m.text === "string" ? m.text.slice(0, 1500) : undefined,
+        read: m.read === true,
       }),
     };
   } else if (

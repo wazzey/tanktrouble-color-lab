@@ -412,6 +412,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
               about: d.about,
               kind: d.kind,
               adm: DEV_BUILD ? d.adm : undefined,
+              read: DEV_BUILD ? d.read : undefined,
             },
             (res) => {
               void chrome.runtime.lastError;

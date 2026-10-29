@@ -61,7 +61,7 @@ function populateBox() {
       }
     };
   }
-  const open = (labThreads || []).filter((t) => t.open > 0).length,
+  const open = (labThreads || []).filter((t) => t.unread).length,
     badge = (n) =>
       n
         ? '<span style="position:absolute;top:-4px;left:50%;margin-left:5px;font:bold 10px Arial;line-height:13px;background:#e33;color:#fff;border-radius:7px;padding:0 4px">' +
@@ -261,13 +261,13 @@ function getOverview(d) {
   const st = d.stats || {},
     pr = d.presence || [],
     onl = pr.filter(live);
-  const open = (labThreads || []).filter((t) => t.open > 0).length;
+  const open = (labThreads || []).filter((t) => t.unread).length;
   return (
     '<h3>Right now</h3><div class="tiles">' +
     tile(onl.length, "copies online") +
     tile(onl.filter((p) => p.wh === "game").length, "in a game") +
     tile(onl.filter((p) => p.idle || p.away).length, "idle or away") +
-    tile(open, "messages to answer") +
+    tile(open, "unread messages") +
     tile(labAlertNew, "new alerts") +
     tile((d.muted || []).filter((m) => m.n >= 3).length, "stopped from messaging") +
     '</div><h3>Usage</h3><div class="tiles">' +
