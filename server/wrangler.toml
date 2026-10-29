@@ -37,7 +37,7 @@ namespace_id = "7102"
 OWNER_COPY = "a0ea9d93e17a"   # the owner's own copy (first 12 characters of its id on the admin page): only it gets the inbox, alerts and full online list
 PROVEN_ONLY = "1"
 STORE_URL = ""   # the Chrome Web Store page once approved (https://chromewebstore.google.com/detail/<name>/<id>): copies installed from a zip then offer to move there
-MIN_VERSION= "1.4.3"   # copies older than this lose look sharing, the online list and messages, and are asked to update
+MIN_VERSION= "1.4.5"   # copies older than this lose look sharing, the online list and messages, and are asked to update
 FORUM_AUTOPOST = "1"   # replies typed in Discord are posted on the forum by the TT_LOGIN account (secrets TT_LOGIN and TT_PASSWORD); "0" = off
 FORUM_RELEASE_POST = "1"   # a new GitHub release is posted as a reply on the Color Lab thread, as the TT_LOGIN account (ColorLab); "0" = off
 FORUM_THREAD_EDIT = "1"   # on a new release the thread's first post (title, latest version, SHA-256, WHAT'S NEW) is updated as its creator: secrets FORUM_EDIT_LOGIN and FORUM_EDIT_PASSWORD (rip); "0" = off
