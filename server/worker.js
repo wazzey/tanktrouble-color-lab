@@ -1623,7 +1623,7 @@ async function ttAs(login, password, method, params) {
 }
 // A new release, announced on the forum: when GitHub publishes a release, its notes are posted to the
 // first thread in FORUM_THREADS as you (FORUM_AUTOPOST, TT_LOGIN / TT_PASSWORD), once per version. FORUM_RELEASE_POST = "0"
-// under [vars] switches just this off. Until STORE_URL is set it says the Chrome Web Store is coming soon; after, it links it.
+// under [vars] switches just this off. Once STORE_URL is set it links the Chrome Web Store.
 // The forum only takes plain text (no emoji) up to about 1,150 characters: anything else is turned away
 const FORUM_MAX = 1100;
 function forumSafe(t) {
@@ -1691,10 +1691,7 @@ function releaseForumBody(env, r, tag, title, lines, sha, storeOk, store, cut) {
     t +=
       "Download: " +
       (r.html_url || "https://github.com/wazzey/tanktrouble-color-lab/releases") +
-      (sha
-        ? "\nSHA-256: " + sha + "\n(Check it matches before installing. Your looks are kept when you update.)"
-        : "") +
-      "\n\n🛒 Coming soon to the Chrome Web Store! Once it is there, Color Lab installs in one click and updates by itself, and your looks come with you when you switch. The link will be posted here.";
+      (sha ? "\nSHA-256: " + sha + "\n(Check it matches before installing. Your looks are kept when you update.)" : "");
   }
   if (storeOk && sha) {
     t += "\nSHA-256 (zip): " + sha;
