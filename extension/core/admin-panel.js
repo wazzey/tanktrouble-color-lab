@@ -70,7 +70,7 @@ function populateBox() {
         : "";
   const h =
     '<div class="content" style="padding:5px 6px 7px"><div class="header" style="margin-bottom:4px">🔧 Admin</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px;font:15px Arial;text-align:center">' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(32px,1fr));gap:4px 2px;font:15px Arial;text-align:center">' +
     [
       ["adm", "🔧", "Admin"],
       ["inbox", "📨" + badge(open), "Inbox"],
