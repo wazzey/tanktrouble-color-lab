@@ -258,10 +258,14 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
     consentCard = document.createElement("div");
     const root = consentCard.attachShadow({ mode: "closed" });
     root.innerHTML =
-      "<style>.b{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);font:13px Arial,sans-serif}" +
-      ".c{width:360px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;box-sizing:border-box;background:rgba(0,0,0,.94);color:#fff;border:3px solid #427fff;border-radius:12px;padding:14px 16px;line-height:1.45}" +
-      "h3{margin:0 0 8px;font:bold 18px Arial,sans-serif}p{margin:0 0 8px}ul{margin:0 0 8px;padding-left:18px}li{margin:0 0 3px;font-size:12px}a{color:#8fc1ff}.s{font-size:12px;color:#aaa}" +
-      ".r{display:flex;gap:8px;margin-top:4px}button{flex:1;font:bold 14px Arial,sans-serif;border:0;border-radius:8px;padding:9px 6px;cursor:pointer;color:#fff;background:#2a5bd7}</style>" +
+      "<style>.b{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);font:13px/1.45 Arial,sans-serif;color:#fff}" +
+      ".c{width:340px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;box-sizing:border-box;background:rgba(0,0,0,.92);border:3px solid #427fff;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6)}" +
+      ".c>*:not(h3){margin-left:14px;margin-right:14px}" +
+      "h3{margin:0 0 10px;padding:7px 14px 6px;font:normal 20px TankTrouble,Arial,sans-serif;color:#fff;background:linear-gradient(#427fff,#0014ab);text-shadow:0 2px 0 rgba(0,0,0,.35)}" +
+      "p{margin-top:0;margin-bottom:8px}ul{margin-top:0;margin-bottom:8px;padding-left:18px}li{margin:0 0 4px;font-size:12px}b{color:#9db8ff}a{color:#8fc1ff}.s{font-size:12px;color:#aaa}" +
+      ".r{display:flex;gap:7px;margin-top:8px;margin-bottom:12px}" +
+      "button{flex:1;font:16px TankTrouble,Arial,sans-serif;line-height:20px;white-space:nowrap;border:none;border-radius:5px;padding:7px 6px;cursor:pointer;color:#fff;background:linear-gradient(#427fff,#0014ab);box-shadow:0 3px 4px rgba(0,0,0,.5)}" +
+      "button:hover{filter:brightness(1.12)}button:active{box-shadow:0 1px 4px rgba(0,0,0,.5);transform:translateY(2px)}</style>" +
       '<div class="b"><div class="c"><h3>Before you start 🔒</h3>' +
       "<p>Color Lab works on your own screen without any server. If you choose <b>Share</b>, it also uses Color Lab's server (run by its author on Cloudflare), which gets:</p><ul>" +
       "<li>your logged-in tanks' player IDs, their public names and the looks you give them, so other Color Lab players see your looks</li>" +
