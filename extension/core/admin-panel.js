@@ -8,7 +8,7 @@ import {
   labOpen,
   labThreads,
 } from "./lab.js";
-import { shareCall } from "./look-sharing.js";
+import { shareCall, srvOn } from "./look-sharing.js";
 import { SETTINGS } from "./storage.js";
 import { D } from "./team-badges.js";
 import { esc } from "./trophy-counting.js";
@@ -588,13 +588,21 @@ export function startAdminPanel() {
       populateBox();
     } catch {}
   }, 1500);
-  setInterval(() => {
-    if (!labAdmin && tries++ < 10) {
-      labLoadAdmin()
-        .then(() => populateBox())
-        .catch(() => {});
-    }
-  }, 20000); // (asked again until the server answers: at the start of the page nobody is logged in yet)
+  const ask = setInterval(() => {
+    if (labAdmin || !srvOn()) {
+      if (labAdmin) {
+        clearInterval(ask);
+      }
+      return;
+    } // (nothing is asked until the copy is connected, so waiting costs nothing)
+    if (tries++ >= 40) {
+      clearInterval(ask);
+      return;
+    } // (the server isn't answering: the 5-minute check below tries again)
+    labLoadAdmin()
+      .then(() => populateBox())
+      .catch(() => {});
+  }, 3000);
   setInterval(
     () => {
       labLoadAdmin()
