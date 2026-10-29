@@ -237,9 +237,9 @@ export function startTeamBadges() {
   setInterval(() => {
     for (const g of [...PAGE_GAMES]) {
       try {
-        if (g && g.world && !g.pendingDestroy) {
+        if (g && g.world && !g.pendingDestroy && !(g.canvas && g.canvas.closest(".garage"))) {
           clTagGame(g);
-        }
+        } // (never on the tank in the garage)
       } catch {}
     }
   }, 1000);
