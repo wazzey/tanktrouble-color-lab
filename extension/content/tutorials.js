@@ -293,6 +293,16 @@ export const WHATS_NEW = [
     "📨",
     "<b>Messages</b> follow the account you send them as, on any computer. With two accounts logged in, pick which one sends",
   ],
+  [
+    15,
+    "👮",
+    "<b>Staff tags</b>: TankTrouble moderators and developers have a GM or DEV tag next to their name in the Color Lab box, and 👮 lists any in games on your server",
+  ],
+  [
+    15,
+    "🟢",
+    "<b>Color Lab box</b>: see how long someone has been idle, and when players who show themselves were last on in the past week",
+  ],
   [15, "📋", "<b>Copy my support ID</b> in ⚙ Settings > Look sharing helps the Color Lab team find your copy"],
 ];
 // What a brand-new user sees (instead of every older version's notes): what Color Lab has, in short

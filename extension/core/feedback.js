@@ -177,7 +177,7 @@ export async function fbRefresh(seen) {
       ? {
           op: "fblist",
           pids: loggedInIds().map(String).slice(0, 4),
-          srv: ttServerName(),
+          srv: !inv && SETTINGS.showOnline === true && SETTINGS.showServer === true ? ttServerName() : undefined, // (only when the player chose to show it)
           idle: isIdle(),
           away: isAway(),
           wh: ttWhere(),

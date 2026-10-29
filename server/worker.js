@@ -296,6 +296,9 @@ async function ensureTables(env) {
     await env.DB.prepare("CREATE INDEX IF NOT EXISTS presence_last ON presence (last)").run();
   } catch {}
   try {
+    await env.DB.prepare("ALTER TABLE logged ADD COLUMN seenpids TEXT").run();
+  } catch {} // (the tanks last logged in, kept after logging out: "seen" in the online list for players who chose to be shown)
+  try {
     await env.DB.prepare("ALTER TABLE logged ADD COLUMN idle INTEGER").run();
   } catch {} // (away from the game: tab hidden or no input for a few minutes) // (the TankTrouble server a copy plays on; already there after the first time)
   tablesReady = true;
@@ -418,7 +421,7 @@ async function touchPresence(env, kh, req, pids, srv, idle, show, shsrv, away, w
         sat = quiet ? now - Math.min(Math.max(Number(ifor) || 0, 0), 1440) * 60000 : null; // (idle or away since: the copy says how many minutes)
       try {
         await env.DB.prepare(
-          "INSERT INTO logged (kh, pids, srv, idle, shown, shsrv, away, wh, sat, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(kh) DO UPDATE SET pids = excluded.pids, srv = excluded.srv, idle = excluded.idle, shown = excluded.shown, shsrv = excluded.shsrv, away = excluded.away, wh = excluded.wh, sat = CASE WHEN excluded.sat IS NULL THEN NULL WHEN logged.sat IS NULL OR logged.idle IS NOT excluded.idle OR logged.away IS NOT excluded.away THEN excluded.sat ELSE logged.sat END, at = excluded.at",
+          "INSERT INTO logged (kh, pids, srv, idle, shown, shsrv, away, wh, sat, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(kh) DO UPDATE SET pids = excluded.pids, seenpids = CASE WHEN excluded.pids <> '' THEN excluded.pids ELSE COALESCE(NULLIF(logged.pids, ''), logged.seenpids) END, srv = excluded.srv, idle = excluded.idle, shown = excluded.shown, shsrv = excluded.shsrv, away = excluded.away, wh = excluded.wh, sat = CASE WHEN excluded.sat IS NULL THEN NULL WHEN logged.sat IS NULL OR logged.idle IS NOT excluded.idle OR logged.away IS NOT excluded.away THEN excluded.sat ELSE logged.sat END, at = excluded.at",
         )
           .bind(kh, ps, sv || null, id === "1" ? 1 : 0, sh, ss, aw === "1" ? 1 : 0, w || null, sat, now)
           .run();
@@ -463,7 +466,8 @@ async function touchPresence(env, kh, req, pids, srv, idle, show, shsrv, away, w
 }
 // What every Color Lab user can see of who's online: only players who turned "show me" on, only tanks proven to be theirs, never
 // guests, never versions or last-seen times; the server name only if they chose to show it. Worked out once a minute for everyone.
-const ONLINE_MS = 7 * 60000,
+const SEEN_MS = 7 * DAY, // (a player who chose to be shown stays in the list as "seen ... ago" for a week)
+  ONLINE_MS = 7 * 60000,
   IDLE_HIDE_MS = 15 * 60000; // (idle for 15 minutes: other players see them as offline; the owner still sees them)
 let pubOnline = { at: 0, data: null };
 async function publicOnline(env, now) {
@@ -476,16 +480,17 @@ async function publicOnline(env, now) {
       .bind(now - ONLINE_MS, now - IDLE_HIDE_MS)
       .first(),
     online = c ? c.n : 0;
+  // players who chose to be shown, online or seen in the last week (invisible ones never)
   const rows =
     (
       await env.DB.prepare(
-        "SELECT l.kh, l.pids, l.srv, l.idle, l.shsrv, l.wh FROM logged l JOIN presence p ON p.kh = l.kh WHERE l.shown = 1 AND COALESCE(p.inv, 0) = 0 AND COALESCE(l.away, 0) = 0 AND NOT (COALESCE(l.idle, 0) = 1 AND l.sat < ?) AND p.last > ? ORDER BY p.last DESC LIMIT 60",
+        "SELECT l.kh, COALESCE(NULLIF(l.pids, ''), l.seenpids) AS pids, l.pids AS now, l.srv, l.idle, l.away, l.shsrv, l.wh, l.sat, l.at, p.last FROM logged l JOIN presence p ON p.kh = l.kh WHERE l.shown = 1 AND COALESCE(p.inv, 0) = 0 AND p.last > ? ORDER BY p.last DESC LIMIT 60",
       )
-        .bind(now - IDLE_HIDE_MS, now - ONLINE_MS)
+        .bind(now - SEEN_MS)
         .all()
     ).results || [];
   const pids = [...new Set(rows.flatMap((r) => (r.pids ? r.pids.split(",") : [])))].slice(0, 120),
-    own = {},
+    own = new Set(),
     nm = {};
   if (pids.length) {
     const q = pids.map(() => "?").join(",");
@@ -494,7 +499,7 @@ async function publicOnline(env, now) {
         .bind(...pids)
         .all()
     ).results || []) {
-      own[r.pid] = r.keyhash;
+      own.add(r.pid + "|" + r.keyhash);
     }
     for (const r of (
       await env.DB.prepare(`SELECT pid, name, guest FROM names WHERE pid IN (${q})`)
@@ -507,7 +512,7 @@ async function publicOnline(env, now) {
   let asked = 0;
   for (const r of rows) {
     for (const p of (r.pids || "").split(",")) {
-      if (own[p] === r.kh && !nm[p] && asked++ < 4) {
+      if (own.has(p + "|" + r.kh) && !nm[p] && asked++ < 4) {
         const d = await rememberName(env, p);
         if (d) {
           nm[p] = { name: d.username, guest: d.guest ? 1 : 0 };
@@ -515,26 +520,32 @@ async function publicOnline(env, now) {
       }
     }
   }
-  const seen = new Set(),
+  const mins = (t) => Math.max(0, Math.round((now - t) / 60000)),
+    seen = new Set(),
     list = [];
   for (const r of rows) {
-    const ps = (r.pids || "").split(",").filter((p) => p && own[p] === r.kh && nm[p] && !nm[p].guest && !seen.has(p));
+    const ps = (r.pids || "")
+      .split(",")
+      .filter((p) => p && own.has(p + "|" + r.kh) && nm[p] && !nm[p].guest && !seen.has(p));
     if (!ps.length) {
       continue;
     }
     ps.forEach((p) => seen.add(p));
+    const quiet = r.away === 1 || (r.idle === 1 && r.sat !== null && r.sat < now - IDLE_HIDE_MS),
+      on = now - r.last < ONLINE_MS && r.now !== null && r.now !== "" && !quiet; // (away, or idle 15 minutes: offline for other players)
     list.push({
-      srv: r.shsrv ? r.srv || null : null,
-      idle: !!r.idle,
-      wh: ["lobby", "game", "queue"].includes(r.wh) ? r.wh : null,
-      on: true,
-      mins: 0,
+      srv: on && r.shsrv ? r.srv || null : null,
+      idle: on && r.idle === 1,
+      qmins: on && r.idle === 1 && r.sat !== null ? mins(r.sat) : null,
+      wh: on && ["lobby", "game", "queue"].includes(r.wh) ? r.wh : null,
+      on,
+      mins: on ? 0 : mins(quiet && r.sat !== null ? r.sat : r.now === null || r.now === "" ? r.at : r.last), // (when they were last there: last seen)
       ver: null,
       accounts: [],
       logged: ps.map((p) => ({ pid: p, name: nm[p].name, guest: false })),
     });
   }
-  pubOnline = { at: now, data: { online, hidden: Math.max(0, online - list.length), list } };
+  pubOnline = { at: now, data: { online, hidden: Math.max(0, online - list.filter((x) => x.on).length), list } };
   return pubOnline.data;
 }
 // The accounts behind a connection: the tanks shared by the copies seen on it in the last day (for alerts)
@@ -2151,13 +2162,13 @@ async function adminApi(env, ctx, req, url) {
         };
       })(),
       lookTop: await q(
-        "SELECT h.pid, SUM(CASE WHEN h.at > ? THEN 1 ELSE 0 END) AS d1, SUM(CASE WHEN h.at > ? THEN 1 ELSE 0 END) AS d7, COUNT(*) AS d30, MAX(h.at) AS last, COUNT(DISTINCT h.kh) AS copies, group_concat(DISTINCT h.cc) AS ccs, n.name, n.guest FROM look_history h LEFT JOIN names n ON n.pid = h.pid GROUP BY h.pid ORDER BY d7 DESC, d30 DESC LIMIT 30",
+        "SELECT h.pid, SUM(CASE WHEN h.at > ? THEN 1 ELSE 0 END) AS d1, SUM(CASE WHEN h.at > ? THEN 1 ELSE 0 END) AS d7, COUNT(*) AS d30, MAX(h.at) AS last, COUNT(DISTINCT h.kh) AS copies, n.name, n.guest FROM look_history h LEFT JOIN names n ON n.pid = h.pid GROUP BY h.pid ORDER BY d7 DESC, d30 DESC LIMIT 30",
         now - DAY,
         now - 7 * DAY,
       ),
       lookLog: await (async () => {
         const rows = await q(
-          "SELECT h.id, h.pid, h.kh, h.at, h.cc, h.look, n.name, n.guest FROM look_history h LEFT JOIN names n ON n.pid = h.pid ORDER BY h.id DESC LIMIT 150",
+          "SELECT h.id, h.pid, h.kh, h.at, h.look, n.name, n.guest FROM look_history h LEFT JOIN names n ON n.pid = h.pid ORDER BY h.id DESC LIMIT 150",
         ); // (what changed: compared with that tank's look before)
         const parse = (x) => {
             try {
@@ -2203,7 +2214,6 @@ async function adminApi(env, ctx, req, url) {
             guest: r.guest,
             at: r.at,
             kh: r.kh,
-            cc: r.cc,
             changed: ch ? (ch.length ? ch.join(", ") : "saved again, no change") : "first look saved",
           });
         }
@@ -2566,8 +2576,8 @@ h+='<div id="bcBox" style="max-width:780px;border:1px solid #3f78ff66;border-rad
  +'<p style="margin:12px 0 2px"><button id="bcGo" style="font-size:15px;padding:6px 14px">📢 Send to everyone now</button> <button id="bcClear" class="r">Stop showing it</button> <span class="dim">'+(d.bcast?'Showing now: <b>'+esc(d.bcast.title||'(no title)')+'</b>, sent '+esc(when(d.bcast.at))+(d.bcast.until?', until '+esc(when(d.bcast.until)):', until you stop it'):'Nothing is showing right now.')+'</span></p></div>';
 h+='<h2>Forum</h2><p><button id="relPost">Post the newest release on the forum now</button> <b id="relMsg"></b> <span class="dim">ColorLab replies on the Color Lab thread with its notes, and the first post gets the new version, SHA-256 and what is new. New releases do this by themselves: this is only for one published before.</span></p>';
 h+='<h2>Message for players still on v1.3</h2><p class="dim">Shown to older copies: inside the Please update pop-up of v1.3 (every visit, while MIN_VERSION is above their version) and at the top of the new-version pop-up. Leave it empty for none.'+(d.announce?' Last saved '+esc(when(d.announce.at))+'.':'')+'</p><textarea id="ann" rows="3" style="width:100%;max-width:760px;background:#222;color:#eee;border:1px solid #555;border-radius:5px;padding:6px">'+esc(d.announce?d.announce.text:'')+'</textarea><p><button id="annSave">Save message</button> <button id="annClear" class="r">Clear</button></p>';
-h+='<h2>Most changed looks (last 30 days)</h2><p class="dim">How often each tank&#39;s shared look was changed, from how many copies of Color Lab and which countries.</p><div class="wrap"><table><tr><th>Player ID</th><th>Name</th><th>Today</th><th>7 days</th><th>30 days</th><th>Copies</th><th>Countries</th><th>Last change</th></tr>'+(d.lookTop||[]).map(r=>'<tr><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+r.d1+'</td><td>'+r.d7+'</td><td>'+r.d30+'</td><td'+(r.copies>1?' class="bad"':'')+'>'+r.copies+'</td><td>'+esc(r.ccs||'')+'</td><td class="dim">'+when(r.last)+'</td></tr>').join('')+'</table></div>';
-h+='<h2>Latest look changes</h2><p class="dim">Newest first: when, which tank, what changed, from which copy of Color Lab and which country.</p><div class="wrap" style="max-height:420px;overflow:auto"><table><tr><th>When</th><th>Player ID</th><th>Name</th><th>What changed</th><th>Copy</th><th>Country</th></tr>'+(d.lookLog||[]).map(r=>'<tr><td class="dim">'+when(r.at)+'</td><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+esc(r.changed)+'</td><td><code>'+esc((r.kh||'').slice(0,10))+'</code></td><td>'+esc(r.cc||'')+'</td></tr>').join('')+'</table></div>';
+h+='<h2>Most changed looks (last 30 days)</h2><p class="dim">How often each tank&#39;s shared look was changed, and from how many copies of Color Lab.</p><div class="wrap"><table><tr><th>Player ID</th><th>Name</th><th>Today</th><th>7 days</th><th>30 days</th><th>Copies</th><th>Last change</th></tr>'+(d.lookTop||[]).map(r=>'<tr><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+r.d1+'</td><td>'+r.d7+'</td><td>'+r.d30+'</td><td'+(r.copies>1?' class="bad"':'')+'>'+r.copies+'</td><td class="dim">'+when(r.last)+'</td></tr>').join('')+'</table></div>';
+h+='<h2>Latest look changes</h2><p class="dim">Newest first: when, which tank, what changed, and from which copy of Color Lab.</p><div class="wrap" style="max-height:420px;overflow:auto"><table><tr><th>When</th><th>Player ID</th><th>Name</th><th>What changed</th><th>Copy</th></tr>'+(d.lookLog||[]).map(r=>'<tr><td class="dim">'+when(r.at)+'</td><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+esc(r.changed)+'</td><td><code>'+esc((r.kh||'').slice(0,10))+'</code></td></tr>').join('')+'</table></div>';
 {const cnt=f=>onl.filter(f).length;h+='<div class="tiles" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">'+[['🟢 Online',cnt(p=>!p.away&&!p.idle&&!p.off)],['🎮 In a game',cnt(p=>p.wh==='game')],['⏳ In a queue',cnt(p=>p.wh==='queue')],['🟡 Idle',cnt(p=>p.idle&&!p.away)],['🔵 Away',cnt(p=>p.away)],['👻 Invisible',cnt(p=>p.inv)]].map(x=>'<div style="background:#1d2733;border:1px solid #2c3a4a;border-radius:8px;padding:6px 10px"><b style="font-size:18px">'+x[1]+'</b><br><span class="dim">'+x[0]+'</span></div>').join('')+'</div>';}
 h+='<h2>Online now ('+onl.length+')</h2><p class="dim">Copies of Color Lab with TankTrouble open in the last 7 minutes. Away = in the lobby with the tab in the background (other players see them as offline). Idle = no input for 5 minutes (still online for others). Last 30 days by version: '+(Object.keys(vers).map(v=>'v'+esc(v)+': '+vers[v]).join(' · ')||'none')+'</p><div class="wrap"><table>'+phead+onl.map(prow).join('')+'</table></div>';
 h+='<h2>Offline (last 30 days, '+off.length+')</h2><div class="wrap"><table>'+phead+off.map(prow).join('')+'</table></div>';
@@ -2603,33 +2613,6 @@ const COLOUR = /^(0x[0-9a-fA-F]{6}|p:[\w-]{1,48})$/,
   ACC = /^[\w:.-]{1,64}$/,
   BULLET = /^(turret|0x[0-9a-fA-F]{6}|p:[\w-]{1,48})$/;
 
-// The browser and system a request came from, by name only (Brave says it's Chrome)
-function getDevice(req) {
-  const ua = String(req.headers.get("User-Agent") || "");
-  const browser = /Edg\//.test(ua)
-    ? "Edge"
-    : /OPR\/|Opera/.test(ua)
-      ? "Opera"
-      : /Vivaldi/.test(ua)
-        ? "Vivaldi"
-        : /Firefox\//.test(ua)
-          ? "Firefox"
-          : /Chrome\//.test(ua)
-            ? "Chrome"
-            : "an unknown browser";
-  const system = /Windows/.test(ua)
-    ? "Windows"
-    : /CrOS/.test(ua)
-      ? "ChromeOS"
-      : /Mac OS X|Macintosh/.test(ua)
-        ? "Mac"
-        : /Android/.test(ua)
-          ? "Android"
-          : /Linux/.test(ua)
-            ? "Linux"
-            : "an unknown system";
-  return browser + " on " + system;
-}
 async function sha256(s) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -3207,6 +3190,7 @@ export default {
       env.DB.prepare("DELETE FROM logged WHERE at < ?").bind(now - 30 * DAY),
       env.DB.prepare("DELETE FROM swept WHERE at < ?").bind(now - 90 * DAY),
       env.DB.prepare("DELETE FROM look_history WHERE at < ?").bind(now - 30 * DAY), // (once a day, not with every look saved)
+      env.DB.prepare("UPDATE look_history SET cc = NULL WHERE cc IS NOT NULL"), // (countries aren't kept any more)
       env.DB.prepare("DELETE FROM saves WHERE at < ?").bind(now - 365 * DAY), // (a year without a single change)
       env.DB.prepare("DELETE FROM save_hist WHERE at < ? OR pid NOT IN (SELECT pid FROM saves)").bind(now - 30 * DAY),
       env.DB.prepare(
@@ -3562,11 +3546,10 @@ export default {
       );
       ctx.waitUntil(
         env.DB.batch([
-          env.DB.prepare("INSERT INTO look_history (pid, kh, at, cc, look) VALUES (?, ?, ?, ?, ?)").bind(
+          env.DB.prepare("INSERT INTO look_history (pid, kh, at, look) VALUES (?, ?, ?, ?)").bind(
             pid,
             kh,
             now,
-            String((req.cf && req.cf.country) || "").slice(0, 2) || null,
             s.slice(0, 4000),
           ),
         ]).catch(() => {}),
@@ -3672,7 +3655,7 @@ export default {
       return inbox(env, req, ctx, url.pathname === "/v1/inbox" ? "list" : url.pathname.slice(10));
     }
     if (url.pathname === "/v1/online" && (req.method === "GET" || req.method === "POST")) {
-      // how many Color Lab copies are online; the owner's (trusted) copy also gets who
+      // how many Color Lab copies are online, and who of those that chose to be shown
       if (await slowDown(env, req, "read", ctx)) {
         return json({ error: "slow down" }, 429);
       }
@@ -3692,89 +3675,7 @@ export default {
         if (b && typeof b.key === "string" && KEY.test(b.key)) {
           const kh = await sha256(b.key);
           await touchPresence(env, kh, req);
-          if (!(await isOwner(env, kh))) {
-            return json(await publicOnline(env, now));
-          } // (everyone else: the shared, opted-in view)
-          {
-            // (the owner's copy: everything below)
-            const ownC = await env.DB.prepare("SELECT COUNT(*) AS n FROM presence WHERE last > ?")
-              .bind(now - ONLINE_MS)
-              .first();
-            out.online = ownC ? ownC.n : out.online; // (the owner counts invisible copies too)
-            const rows =
-              (
-                await env.DB.prepare(
-                  "SELECT p.kh, p.ver, p.last, p.inv, (SELECT group_concat(a.pid || '|' || COALESCE(n.guest, 0) || '|' || COALESCE(replace(n.name, ';', ''), ''), ';') FROM (SELECT pid FROM verified WHERE keyhash = p.kh UNION SELECT pid FROM looks WHERE keyhash = p.kh) a LEFT JOIN names n ON n.pid = a.pid) AS acc FROM presence p WHERE p.last > ? ORDER BY p.last DESC LIMIT 200",
-                )
-                  .bind(now - DAY)
-                  .all()
-              ).results || [];
-            // the logged-in tanks each copy reported (v1.4 on), with names (asked from TankTrouble for a few unknown ones)
-            const lg = {},
-              sv = {},
-              idl = {},
-              awy = {},
-              whr = {},
-              sats = {};
-            for (const r of (
-              await env.DB.prepare(
-                "SELECT kh, pids, srv, idle, away, wh, sat FROM logged WHERE kh IN (SELECT kh FROM presence WHERE last > ?)",
-              )
-                .bind(now - DAY)
-                .all()
-            ).results || []) {
-              lg[r.kh] = r.pids ? r.pids.split(",") : [];
-              sv[r.kh] = r.srv || null;
-              idl[r.kh] = !!r.idle;
-              awy[r.kh] = !!r.away;
-              whr[r.kh] = r.wh || null;
-              sats[r.kh] = r.sat || null;
-            }
-            const want = [...new Set(Object.values(lg).flat())],
-              nm = {};
-            if (want.length) {
-              for (const r of (
-                await env.DB.prepare(
-                  `SELECT pid, name, guest FROM names WHERE pid IN (${want.map(() => "?").join(",")})`,
-                )
-                  .bind(...want)
-                  .all()
-              ).results || []) {
-                nm[r.pid] = r;
-              }
-            }
-            let asked = 0;
-            for (const p of want) {
-              if (!nm[p] && asked++ < 6) {
-                const d = await rememberName(env, p);
-                if (d) {
-                  nm[p] = { name: d.username, guest: d.guest ? 1 : 0 };
-                }
-              }
-            }
-            out.list = rows.map((r) => ({
-              srv: sv[r.kh] || null,
-              idle: !!idl[r.kh],
-              logged: lg[r.kh]
-                ? lg[r.kh].map((p) => ({ pid: p, name: nm[p] ? nm[p].name : null, guest: !!(nm[p] && nm[p].guest) }))
-                : null,
-              accounts: String(r.acc || "")
-                .split(";")
-                .filter(Boolean)
-                .map((x) => {
-                  const [pid, g, ...nameParts] = x.split("|");
-                  return { pid, guest: g === "1", name: nameParts.join("|") || null };
-                }),
-              ver: r.ver,
-              on: now - r.last < ONLINE_MS,
-              mins: Math.round((now - r.last) / 60000),
-              mine: r.kh === kh,
-              inv: !!r.inv,
-              away: !!awy[r.kh],
-              wh: whr[r.kh] || null,
-              qmins: sats[r.kh] ? Math.max(0, Math.round((now - sats[r.kh]) / 60000)) : null,
-            }));
-          }
+          return json(await publicOnline(env, now)); // (everyone sees the same list, the owner's copy included)
         }
       }
       return json(out);
@@ -4122,9 +4023,7 @@ export default {
             env,
             "login",
             (await tankName(env, pid)) +
-              " was proven on a different browser or computer (" +
-              getDevice(req) +
-              "), taking over from copy " +
+              " was proven on another copy, taking over from copy " +
               was.keyhash.slice(0, 10),
           ),
         );

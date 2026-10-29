@@ -14,7 +14,7 @@ TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser e
 - A backup of the above in tanktrouble.com's site storage, so your looks survive a reinstall, and a picture cache.
 - Your accounts' keys and this copy's key (see below), in the extension's own storage, which the page's scripts can't read.
 
-Color Lab reads TankTrouble's own game messages in the page so it can recolour tanks and count achievements. To make your account's key it also reads, on your computer, your account's email and the number of its oldest laboratory message; neither is sent anywhere or kept. Your login passes through the game the normal way: Color Lab never reads, keeps or sends your password. Its browser permissions are `storage` (your looks) and `scripting` (so the toolbar button and Alt+C open the panel).
+Color Lab reads TankTrouble's own game messages in the page so it can recolour tanks and count achievements. To make your account's key it also reads, on your computer, your account's email and the number of its oldest laboratory message; neither is sent anywhere or kept. Your login passes through the game the normal way: Color Lab never reads, keeps or sends your password. To tag TankTrouble's own staff, it asks TankTrouble (not Color Lab's server) for the staff level of players in the online list and your games, and remembers it for a day. Its browser permissions are `storage` (your looks) and `scripting` (so the toolbar button and Alt+C open the panel).
 
 ## On the Color Lab server
 
@@ -29,9 +29,9 @@ If your email changes, a computer that still has the old key moves your account 
 ### Look sharing
 
 - For each of your logged-in tanks with a Color Lab look: its player ID, its public TankTrouble name, the look, and when it was saved.
-- A history of look changes (the look, when, and the approximate country of the connection as Cloudflare reports it), kept for 30 days to deal with abuse.
+- A history of look changes (the look, when, and which copy made it), kept for 30 days to deal with abuse.
 - To show other tanks' looks, your copy sends the player IDs of the tanks around you. The server keeps no record of who asked for which looks.
-- Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day. When a tank is proven on a different copy, the author is told which browser and system it was (for example Chrome on Windows), never the IP address.
+- Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day.
 
 ### Backup
 
@@ -48,7 +48,7 @@ A connection that sends wrong keys for an account is noted with that account's p
 
 ### Online status
 
-Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your tanks are logged in (guests included), which TankTrouble server you're on, whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, and whether you're in the lobby, a queue or an online game. When you close your last TankTrouble tab it says so, so you show as offline at once.
+Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your tanks are logged in (guests included), which TankTrouble server you're on (only if you chose **Show which server I'm on**), whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, and whether you're in the lobby, a queue or an online game. When you close your last TankTrouble tab it says so, so you show as offline at once.
 
 The copy's key hash, version and first and last seen are kept for up to 60 days after it was last seen, and its logged-in tanks for 30 days. For each account seen logged in, the server also keeps the copy it was last seen on, that copy's version and when it was first and last seen, for up to 60 days after it was last seen. Tank names are kept for 180 days, or for as long as the tank has a shared look, a proof, a report or a removal note.
 
@@ -66,9 +66,9 @@ Like any website, Cloudflare (which runs the server) sees your IP address when y
 
 ## Who sees what
 
-**Other Color Lab players** see your look on your proven tanks. They see you in the online list only if you turn on **Settings > Look sharing > Show me as online** (your name, and whether you're online or idle and in the lobby, a queue or a game), and your TankTrouble server only if you also turn on **Show which server I'm on**. Otherwise you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
+**Other Color Lab players** see your look on your proven tanks. They see you in the online list only if you turn on **Settings > Look sharing > Show me as online** (your name, whether you're online or idle and for how many minutes, whether you're in the lobby, a queue or a game, and when you were last seen in the past 7 days), and your TankTrouble server only if you also turn on **Show which server I'm on** and are online. Otherwise you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
 
-**The author** sees everything the server keeps, on its admin page and in the author's own copy of Color Lab. That includes every online copy whatever its settings (invisible ones too), guests' names, accounts not yet allowed to share, each copy's version, server, idle and away minutes and last seen, the look history and reports, and the messages. That includes the backups. It's used to run the server, deal with abuse and answer messages, and isn't shared with anyone.
+**The author's** online list is the same as everyone else's. The author can also see what the server keeps on its admin page: the copies and accounts seen and when, each copy's version, the look history and reports, the messages and the backups. It's used to run the server, deal with abuse and answer messages, and isn't shared with anyone.
 
 ## Your choices and deleting your data
 
