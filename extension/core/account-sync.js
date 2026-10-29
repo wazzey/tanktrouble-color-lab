@@ -263,6 +263,10 @@ async function applyPull(pid) {
     return false;
   }
   st.status = "ok";
+  if (!(SETTINGS.proven || {})[pid]) {
+    SETTINGS.proven = Object.assign({}, SETTINGS.proven, { [pid]: Date.now() });
+    saveSettings();
+  } // (the server only reads a backup with the tank's proven key, so another computer proved it)
   const local = readSlice(pid),
     mark = readMark(pid);
   if (r.none) {
