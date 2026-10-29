@@ -1,3 +1,4 @@
+import { post } from "../content/bridge-messages.js";
 import { TUT_LABEL, TUT_VER, V1_OVERVIEW, WHATS_NEW, tutCard, tutLayer } from "../content/tutorials.js";
 import { renderGarageSearch } from "./garage-search.js";
 import { $, KEY_C, panel, toast } from "./panel.js";
@@ -18,37 +19,24 @@ export function tutClose() {
   }
 }
 let tutTimer = 0;
-// Asked once, before anything goes to Color Lab's server: what it gets, and a choice (the Chrome Web Store's prominent
-// disclosure). "Keep it local" is the same as going offline, so the 🟢 Online button asks again before connecting
+// Asked once, before anything goes to Color Lab's server. The card and the answer belong to the extension's own world
+// (bridge.js), so the page can't answer it for the player; this side only waits for the answer
 export function consentChoose(then) {
-  const L = tutLayer();
-  const pick = (share) => {
-    SETTINGS.consent = share ? "share" : "local";
-    SETTINGS.goOffline = !share;
+  const done = (e) => {
+    const d = e.data;
+    if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toPage" || d.type !== "consent") {
+      return;
+    }
+    window.removeEventListener("message", done);
+    SETTINGS.consent = d.value;
+    SETTINGS.goOffline = d.value !== "share";
     saveSettings();
-    tutClose();
     if (then) {
       then();
     }
   };
-  tutCard(
-    L,
-    "<h3>Before you start 🔒</h3><p>Color Lab works on your screen on its own. If you share, it also uses Color Lab's server, which gets:</p>" +
-      '<p style="font-size:12px;line-height:1.45">• your logged-in tanks\' player IDs and the looks you give them, so other Color Lab players see your looks<br>' +
-      "• whether you're online or idle and in the lobby, a queue or a game, for the online count (your name only shows if you turn on <b>Show me as online</b>)<br>" +
-      "• the player IDs of tanks on your screen, to fetch their Color Lab looks<br>" +
-      "• a backup of your looks and achievement progress (⚙ Settings > Backup)<br>" +
-      "• messages and reports, only when you send one</p>" +
-      '<p style="font-size:12px;line-height:1.45">To keep these with your account, Color Lab makes a key on this computer from your account\'s email and the number of its oldest laboratory message. Neither leaves your computer. Nothing is sold or used for ads. <a href="' +
-      "https://github.com/wazzey/tanktrouble-color-lab/blob/main/PRIVACY.md" +
-      '" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">Privacy policy</a></p>' +
-      "<p style=\"font-size:12px;color:#aaa\">Keep it local: nothing about you goes to the server, and you won't see other players' looks, the online list or messages. Change it any time with the 🟢 Online button.</p>",
-    [
-      ["🎨 <b>Share</b>", "big", () => pick(true)],
-      ["🔒 Keep it local", "alt", () => pick(false)],
-    ],
-    true,
-  );
+  window.addEventListener("message", done);
+  post({ type: "consentAsk" });
 }
 export function tutChoose(first) {
   if (first) {

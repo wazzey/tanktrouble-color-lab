@@ -316,6 +316,7 @@ export function startStorage() {
     }
     if (d.type === "init" && !storageLoaded) {
       onStorageInit(d.data || {});
+      SETTINGS.consent = d.consent; // (the extension's own record of the player's choice, not the page's)
     } else if (d.type === "migrated") {
       OLD_KEYS.forEach((k) => {
         try {

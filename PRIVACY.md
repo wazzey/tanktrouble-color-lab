@@ -2,29 +2,31 @@
 
 _Last updated: 29 October 2026_
 
-TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser extension made and run by **wazzey** ("the author"). It is not affiliated with TankTrouble. This page lists everything it collects, who can see it, how long it's kept and how to remove it. The code that does all of this is public: the extension in [`extension/`](extension) and its server in [`server/`](server).
+TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser extension made and run by **wazzey** ("the author"), an individual in the United Kingdom. It is not affiliated with TankTrouble. The author is responsible for the data described here (the "controller" under UK data protection law). This page lists everything Color Lab collects, why, who can see it, how long it's kept and how to have it removed. The code that does all of this is public: the extension in [`extension/`](extension) and its server in [`server/`](server).
 
-**In short:** no tracking, no analytics, no ads, no accounts, and nothing is sold or shared. Color Lab only runs on tanktrouble.com, and apart from TankTrouble it only talks to its own server, `ttcl-share.wazzey.workers.dev`, run by the author on Cloudflare.
+**Contact:** wazzey.dev@gmail.com (privacy questions and requests, including deleting your data).
 
-**You choose first.** The first time Color Lab starts, it shows what its server gets and asks you to pick **Share** or **Keep it local**. Nothing about you is sent, and your account's details aren't read, until you pick Share. Keep it local works like **🔌 Offline**: Color Lab never contacts its server about you, and you can change your mind with the **🟢 Online** button, which shows the same choice again.
+**In short:** no tracking, no analytics, no ads and no accounts, and nothing is sold. Data is only shared with the services listed under **Who else handles it**. Color Lab only runs on tanktrouble.com, and apart from TankTrouble it only talks to its own server, `ttcl-share.wazzey.workers.dev`, run by the author on Cloudflare.
+
+**You choose first.** The first time Color Lab starts, it shows what its server gets and asks you to pick **Share** or **Keep it local**. The choice is drawn and kept by the extension itself, where the page's scripts can't reach it. Until you pick Share, nothing about you is sent and your account's details aren't read. Keep it local works like **🔌 Offline**: Color Lab doesn't contact its server about you, and you can change your mind with the **🟢 Online** button, which shows the same choice again. (Going offline sends one last note so the server shows you as offline straight away.)
 
 ## On your own computer
 
-- Your saved looks, presets, favourites and settings.
+- Your saved looks, presets, favourites and settings, and your privacy choice.
 - For tanks you give a custom look: their in-game name, player ID and any nickname you type.
 - Achievement progress (kills, wins, streaks, which days you played).
 - A backup of the above in tanktrouble.com's site storage, so your looks survive a reinstall, and a picture cache.
 - Your accounts' keys and this copy's key (see below), in the extension's own storage, which the page's scripts can't read.
 
-Color Lab reads TankTrouble's own game messages in the page so it can recolour tanks and count achievements. To make your account's key it also reads, on your computer, your account's email and the number of its oldest laboratory message; neither is sent anywhere or kept. Your login passes through the game the normal way: Color Lab never reads, keeps or sends your password. To tag TankTrouble's own staff, it asks TankTrouble (not Color Lab's server) for the staff level of players in the online list and your games, and remembers it for a day. Its browser permissions are `storage` (your looks) and `scripting` (so the toolbar button and Alt+C open the panel).
+Color Lab reads TankTrouble's own game messages in the page so it can recolour tanks and count achievements. To make your account's key it also reads, on your computer, your account's email and the number of its oldest laboratory message. Neither is sent anywhere or kept. Your login passes through the game the normal way: Color Lab never reads, keeps or sends your password. To tag TankTrouble's own staff, it asks TankTrouble (not Color Lab's server) for the staff level of players in the online list and your games, and remembers it for a day. Its browser permissions are `storage` (your looks), `scripting` (so the toolbar button and Alt+C open the panel), and access to tanktrouble.com (to recolour tanks) and to its own server.
 
 ## On the Color Lab server
 
 ### Your keys
 
-Each account you log in with gets its own key, made on your computer from the account's email, player ID and oldest laboratory message, so every computer you use makes the same one. The server only keeps a one-way hash of it, which ties your shared look, proofs, backup and messages to your account. TankTrouble's own website can read those details while you're logged in, so a script running on tanktrouble.com could work the key out too, the same way Color Lab does. An account without an email, or that has never sent a message to the laboratory, uses your copy's random key instead, so on a new computer (or if that key is lost) it proves the tank again before its backup comes back.
+Each account you log in with gets its own key, made on your computer from the account's email, player ID and oldest laboratory message, so every computer you use makes the same one. The key is sent with that account's requests, and the server only keeps a one-way hash of it, which ties your shared look, proofs, backup and messages to your account. TankTrouble's own website can read those details while you're logged in, so a script running on tanktrouble.com could work the key out too, the same way Color Lab does. An account without an email, or that has never sent a message to the laboratory, uses your copy's random key instead, so on a new computer (or if that key is lost) it proves the tank again before its backup comes back.
 
-Each copy of Color Lab also makes a random key for its online status and its own messages. The server only keeps a one-way hash of it.
+Each copy of Color Lab also makes a random key, sent with its online status and its own messages. The server only keeps a one-way hash of it.
 
 If your email changes, a computer that still has the old key moves your account to the new one by itself. A new computer asks you to prove the tank instead.
 
@@ -33,7 +35,7 @@ If your email changes, a computer that still has the old key moves your account 
 - For each of your logged-in tanks with a Color Lab look: its player ID, its public TankTrouble name, the look, and when it was saved.
 - A history of look changes (the look, when, and which copy made it), kept for 30 days to deal with abuse.
 - To show other tanks' looks, your copy sends the player IDs of the tanks around you. The server keeps no record of who asked for which looks.
-- Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day.
+- Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day. A finished proof (the player ID, the key's hash and when) is kept until you ask for it to be removed, or until TankTrouble bans the account.
 
 ### Backup
 
@@ -43,22 +45,24 @@ A connection that sends wrong keys for an account is noted with that account's p
 
 ### Limits and abuse
 
-- A one-way code made from your connection's IP address, which changes every day. It's kept for a day for the sharing limits, and for 7 days next to your copy's key hash to spot one connection making many copies. It's never stored next to a look. A banned connection's lasting code is kept until the ban is lifted.
-- If you report a shared look, the report records your copy's key hash and your tank's name, for 30 days. A look reported by enough players is hidden.
+- A one-way code made from your connection's IP address, which changes every day. It's kept for a day for the sharing limits, for 7 days next to your copy's key hash to spot one connection making many copies, and for 30 days with any report you make. It's never stored next to a look.
+- A lasting code made from your connection's IP address is kept for 45 to 90 minutes if the connection floods the server, and until it's lifted if a copy or connection is banned or put on hold. A ban or hold also keeps the names of the tanks seen on that copy or connection.
+- If you report a shared look, the report keeps your connection's daily code and your copy's key hash for 30 days, and the alert to the author's Discord names the tanks logged in on your copy. A look reported by enough players is hidden.
 - Tanks whose look the server removes by itself (guests, and accounts TankTrouble has banned) are noted with their name and the reason for 90 days.
-- Server events (errors, limits reached, bans) are kept for 30 days.
+- Some checks are automatic: a copy that tries to prove or take over many tanks it can't change, or floods the server, is put on hold or shut out by itself. The author reviews these and can lift them. Ask using the contact above if you think one is wrong.
+- Server events (errors, limits reached, bans, and messages from banned or held copies) are kept for 30 days.
 
 ### Online status
 
-Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your tanks are logged in (guests included), which TankTrouble server you're on (only if you chose **Show which server I'm on**), whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, and whether you're in the lobby, a queue or an online game. When you close your last TankTrouble tab it says so, so you show as offline at once.
+Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your accounts are logged in (not guests), which TankTrouble server you're on (only if you chose **Show which server I'm on**), whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, whether you're in the lobby, a queue or an online game, and whether you chose to be invisible. When you close your last TankTrouble tab it says so, so you show as offline at once.
 
 The copy's key hash, version and first and last seen are kept for up to 60 days after it was last seen, and its logged-in tanks for 30 days. For each account seen logged in, the server also keeps the copy it was last seen on, that copy's version and when it was first and last seen, for up to 60 days after it was last seen. Tank names are kept for 180 days, or for as long as the tank has a shared look, a proof, a report or a removal note.
 
-Turning off **Settings > Look sharing > Share my look** removes your tanks' looks from the server and stops sending your tanks, server and idle status. The key hash and version are still sent, so replies to your messages reach you. **Go offline** stops Color Lab contacting the server at all, and in an **Incognito window** it never does.
+Turning off **Settings > Look sharing > Share my look** removes your tanks' looks from the server and stops sending your tanks, server and idle status. The key hash and version are still sent, so replies to your messages reach you. **Go offline** stops Color Lab contacting the server, and in an **Incognito window** it never does.
 
 ### Messages
 
-A message sent from **Message Color Lab** goes to the author's private Discord with its text, any screenshots and your logged-in tanks' names. It's sent with the key of the account you send it as, so the conversation shows on any computer you use that account on. A message with swearing or slurs isn't sent: its text is kept on the author's admin page for 30 days, and a copy that tries three times in a day can't send messages until the next day. Cloudflare's AI ([Workers AI](https://developers.cloudflare.com/workers-ai/)) reads up to the first 800 characters to tag it (bug, idea, question and so on). The text and the replies are kept so you can see them in Color Lab, until you ask for them to be removed; screenshots aren't kept.
+A message sent from **Message Color Lab** goes to the author's private Discord with its text, any screenshots, the tanks logged in on your copy (guests included) and, for a report, the tank it's about. It's named after the first tank your copy proved, even if another one is logged in. It's sent with the key of the account you send it as, so the conversation shows on any computer you use that account on. A message with swearing or slurs isn't sent: its text is kept on the author's admin page for 30 days, and a copy that tries three times in a day can't send messages until the next day. Cloudflare's AI ([Workers AI](https://developers.cloudflare.com/workers-ai/)) reads up to the first 800 characters to tag it (bug, idea, question and so on). The server keeps the text and the replies so you can see them in Color Lab, until you ask for them to be removed. Screenshots aren't kept on the server, but they stay in the author's Discord with the message until deleted there.
 
 ### Announcements and updates
 
@@ -66,27 +70,46 @@ Color Lab checks the server for announcements and, for copies downloaded from Gi
 
 Like any website, Cloudflare (which runs the server) sees your IP address when your browser connects.
 
+### The Color Lab forum thread
+
+The server reads new replies on Color Lab's own TankTrouble forum thread every minute and passes them (the poster's name, player ID and text) to the author's private Discord, so they can be answered. These are public forum posts. The poster's name is kept like other tank names.
+
 ## Who sees what
 
 **Other Color Lab players** see your look on your proven tanks. They see you in the online list only if you turn on **Settings > Look sharing > Show me as online** (your name, whether you're online or idle and for how many minutes, whether you're in the lobby, a queue or a game, and when you were last seen in the past 7 days), and your TankTrouble server only if you also turn on **Show which server I'm on** and are online. Otherwise you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
 
-**The author's** online list is the same as everyone else's. The server's admin page shows the author what the server keeps: the copies and accounts seen and when, each copy's version, the look history, reports and messages. The author only reads it to keep the server running and to deal with abuse and security problems (for example checking a report, or a copy trying to take over other players' tanks), and reads a message because you sent it to Color Lab. Backups aren't shown on the admin page. None of it is shared with anyone, apart from the alerts below.
+**The author's** online list is the same as everyone else's. The server's admin page, and the author's own copy of Color Lab, show the author what the server keeps: every copy's status (online, idle, away, invisible or offline on purpose, and the server if you chose to show it, whatever your **Show me as online** setting), the tanks on each copy, the copies and accounts seen and when, each copy's version, the look history, reports, bans and holds, server events and messages. The author only reads it to keep the server running and to deal with abuse and security problems (for example checking a report, or a copy trying to take over other players' tanks), and reads a message because you sent it to Color Lab. Backups aren't shown on the admin page. None of it is shared with anyone, apart from the alerts below.
 
 Alerts about abuse and security (reports, a tank taken over, flooding, bans) go to the author's private Discord, so they can be dealt with quickly even when the author is away from a computer. They include the tank names and player IDs involved, and are only used to deal with that problem.
 
-## Your choices and deleting your data
+## Why it's used (lawful basis)
 
-- **Keep it local** (or **🔌 Offline**) stops Color Lab contacting its server about you at all.
+- **Your consent**, given by choosing **Share**: look sharing, the online list, backups and messages. You can withdraw it at any time with **Keep it local** or **🔌 Offline**.
+- **Legitimate interests** in keeping Color Lab safe and working: proofs, the connection codes, reports, bans and holds, the look history, server events and abuse alerts. These stop people putting looks on other players' tanks, flooding the server or abusing messages.
+
+## Who else handles it
+
+- **Cloudflare** runs the server, its database and the AI that tags messages.
+- **Discord** carries messages, alerts and forum replies to the author.
+- **TankTrouble** is asked for tanks' public details (name, looks, staff level) by player ID.
+- **GitHub** hosts the code and releases, and tells the server when a new version is out.
+
+Cloudflare and Discord are based in the United States, so some data is handled there, under the UK–US data bridge or the providers' standard data protection terms.
+
+## Your rights and deleting your data
+
+You can ask for a copy of your data, or for it to be corrected, deleted or no longer used, and you can object to how it's used. Email the contact above with your tank's name or player ID, and your support ID from **⚙ Settings > Look sharing**. You'll get an answer within a month. If you're unhappy with the answer, you can complain to the UK's Information Commissioner's Office at [ico.org.uk](https://ico.org.uk).
+
+- **Keep it local** (or **🔌 Offline**) stops Color Lab contacting its server about you.
 - **Share my look** off removes your tanks' looks from the server and stops sending your tanks, server and idle status.
 - **See other players' looks** off stops asking for anyone's look.
 - **Backup** off stops sending your backup. **Delete my backup** removes it from the server.
-- To remove everything: switch off Share my look, remove the extension at `chrome://extensions`, then clear tanktrouble.com's site data (padlock > Site settings > Delete data).
-- To ask for any data to be removed, open an issue at https://github.com/wazzey/tanktrouble-color-lab/issues or message Color Lab from the extension.
+- Removing the extension at `chrome://extensions` and clearing tanktrouble.com's site data (padlock > Site settings > Delete data) removes everything on your computer. What's on the server then expires as described above, apart from finished proofs, names kept for them, and your messages, which stay until you ask for them to be removed using the contact above.
 
 ## How this data is used
 
-Color Lab's use of the data above follows the [Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/), including its Limited Use requirements. It's only used to provide Color Lab's own features, never sold or passed on, never used for advertising, and only read by a person as described under **Who sees what**.
+Color Lab's use of the data above follows the [Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/), including its Limited Use requirements. It's only used to provide Color Lab's own features and keep them safe, never sold, never used for advertising, and only read by a person as described under **Who sees what**.
 
-## Contact
+## Changes to this policy
 
-wazzey: https://github.com/wazzey/tanktrouble-color-lab
+When this policy changes, the date at the top changes, and the update notes in Color Lab say so.

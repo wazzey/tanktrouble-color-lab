@@ -47,6 +47,9 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
     return b === undefined ? a : b;
   };
   let data = null;
+  // The player's privacy choice ("share" or "local"), kept apart from the page's settings so only the player can make it
+  const CONSENT = "ttcl_consent";
+  let consent;
   const alive = () => {
     try {
       return !!(chrome.runtime && chrome.runtime.id);
@@ -246,6 +249,46 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
         document.documentElement.appendChild(host);
       }));
 
+  // The privacy choice: drawn here, out of the page's reach, and it only takes real clicks
+  let consentCard = null;
+  const applyConsentAsk = () => {
+    if (consentCard) {
+      return;
+    }
+    consentCard = document.createElement("div");
+    const root = consentCard.attachShadow({ mode: "closed" });
+    root.innerHTML =
+      "<style>.b{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);font:13px Arial,sans-serif}" +
+      ".c{width:360px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;box-sizing:border-box;background:rgba(0,0,0,.94);color:#fff;border:3px solid #427fff;border-radius:12px;padding:14px 16px;line-height:1.45}" +
+      "h3{margin:0 0 8px;font:bold 18px Arial,sans-serif}p{margin:0 0 8px}ul{margin:0 0 8px;padding-left:18px}li{margin:0 0 3px;font-size:12px}a{color:#8fc1ff}.s{font-size:12px;color:#aaa}" +
+      ".r{display:flex;gap:8px;margin-top:4px}button{flex:1;font:bold 14px Arial,sans-serif;border:0;border-radius:8px;padding:9px 6px;cursor:pointer;color:#fff;background:#2a5bd7}</style>" +
+      '<div class="b"><div class="c"><h3>Before you start 🔒</h3>' +
+      "<p>Color Lab works on your own screen without any server. If you choose <b>Share</b>, it also uses Color Lab's server (run by its author on Cloudflare), which gets:</p><ul>" +
+      "<li>your logged-in tanks' player IDs, their public names and the looks you give them, so other Color Lab players see your looks</li>" +
+      "<li>whether you're online or idle and in the lobby, a queue or a game (your name only shows if you turn on <b>Show me as online</b>)</li>" +
+      "<li>the player IDs of tanks on your screen, to fetch their Color Lab looks</li>" +
+      "<li>a backup of your looks and achievement progress (on unless you turn it off in ⚙ Settings > Backup)</li>" +
+      "<li>messages and reports, only when you send one. They go to the author's private Discord, and Cloudflare's AI tags their topic</li>" +
+      "<li>a scrambled code of your connection, to stop abuse</li></ul>" +
+      '<p class="s">To prove a tank is yours, Color Lab changes one thing on it for about a second, after asking you. It also makes a key for your account on this computer from the account\'s email and its oldest laboratory message. Those never leave your computer, and the server keeps only a scrambled copy of the key. Nothing is sold or used for ads. ' +
+      '<a href="https://github.com/wazzey/tanktrouble-color-lab/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer">Privacy policy</a></p>' +
+      "<p class=\"s\">Keep it local: nothing about you goes to the server, and you won't see other players' looks, the online list or messages. You can change it any time with the 🟢 Online button.</p>" +
+      '<div class="r"><button class="sh">🎨 Share</button><button class="lo">🔒 Keep it local</button></div></div></div>';
+    const choose = (value) => (e) => {
+      if (!e.isTrusted) {
+        return;
+      }
+      consentCard.remove();
+      consentCard = null;
+      consent = value;
+      chrome.storage.local.set({ [CONSENT]: value });
+      toPage({ type: "consent", value });
+    };
+    root.querySelector(".sh").addEventListener("click", choose("share"));
+    root.querySelector(".lo").addEventListener("click", choose("local"));
+    document.documentElement.appendChild(consentCard);
+  };
+
   window.addEventListener("message", (e) => {
     const d = e.data;
     if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toExt") {
@@ -256,7 +299,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
     } // the extension was reloaded or updated: this old copy stops quietly (refresh the page)
     if (d.type === "hello") {
       if (data) {
-        toPage({ type: "init", data });
+        toPage({ type: "init", data, consent });
       }
     } else if (d.type === "save") {
       const items = pick(d.items);
@@ -305,6 +348,10 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
           }),
         )
         .catch(() => toPage({ type: "supportIdRes", rid: d.rid, id: null }));
+    } else if (d.type === "consentAsk") {
+      applyConsentAsk();
+    } else if (d.type === "acct" && consent !== "share") {
+      toPage({ type: "acctRes", rid: d.rid, res: { status: 0, error: "not shared" } });
     } else if (d.type === "acct" && PID.test(String(d.pid || ""))) {
       accountOp(d)
         .catch(() => ({ error: "failed" }))
@@ -380,6 +427,10 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
             .then(send);
         }
       };
+      if (consent !== "share" && d.op !== "latest" && d.op !== "announce") {
+        toPage({ type: "shareRes", rid: d.rid, res: null });
+        return;
+      } // (the player hasn't chosen Share: only the update check and announcements, which carry nothing about them)
       const ask = DEV_BUILD ? readOwnerAsk(d) : null;
       if (DEV_BUILD && ask) {
         applyOwnerAsk(ask).then((ok) => {
@@ -421,8 +472,10 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
     }
   });
 
-  chrome.storage.local.get(KEYS, (items) => {
+  chrome.storage.local.get(KEYS.concat(CONSENT), (items) => {
     data = items || {};
+    consent = data[CONSENT];
+    delete data[CONSENT];
     if (!KEYS.some((k) => k in data)) {
       // nothing saved: a fresh install. Bring back the copy from the site storage, if there is one
       try {
@@ -436,6 +489,6 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
     } else {
       backup();
     }
-    toPage({ type: "init", data });
+    toPage({ type: "init", data, consent });
   });
 })();
