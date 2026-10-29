@@ -539,7 +539,7 @@ select:focus{border-color:#427fff}
     <div class="row setbtns"><button class="small" id="exportBtn" title="Save all your saved tanks, looks, colours and settings to a backup file">⬇ Export backup</button><button class="small" id="importBtn" title="Load a backup file (adds its tanks and looks to what you have)">⬆ Import backup</button></div>
     <div class="row setbtns"><button class="small warning" id="wipe" title="Delete every saved tank and recent colour">Wipe all data</button></div>
     <div class="sublbl">About</div>
-    <small class="mzsub" style="display:block;line-height:1.5">TankTrouble Color Lab v1.4, made and run by <b>wazzey</b>. A free, fan-made, cosmetic-only extension: not affiliated with TankTrouble. Updates, the official download and feedback: <a href="https://github.com/wazzey/tanktrouble-color-lab" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">GitHub</a></small>
+    <small class="mzsub" style="display:block;line-height:1.5">TankTrouble Color Lab v1.4, made and run by <b>wazzey</b>. A free, fan-made, cosmetic-only extension: not affiliated with TankTrouble. Updates, the official download and feedback: <a href="https://github.com/wazzey/tanktrouble-color-lab" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">GitHub</a> · <a href="https://github.com/wazzey/tanktrouble-color-lab/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">Privacy policy</a></small>
   </div>
 
   <div class="pane" id="paneSaved" hidden>

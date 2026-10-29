@@ -61,7 +61,9 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
     return;
   } // (an Incognito window: never online, nothing goes to the server)
   ttTabs.add(sender.tab.id);
-  ttMark();
+  if (!["latest", "store", "announce", "watch"].includes(m.op)) {
+    ttMark();
+  } // (only a copy that's been talking to the server says goodbye when TankTrouble closes)
   const pid = /^\d{1,12}$/.test(String(m.pid || "")) ? String(m.pid) : null;
   let url,
     opt = {};

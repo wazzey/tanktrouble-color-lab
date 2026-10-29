@@ -193,6 +193,9 @@ export function startPresence() {
           if (on && shareSee()) {
             fetchShared([...SHARE_SEEN.keys()]);
           }
+          if (on) {
+            fbRefresh(false);
+          }
           try {
             renderSettings();
           } catch {}

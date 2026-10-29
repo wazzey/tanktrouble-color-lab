@@ -34,7 +34,7 @@ namespace_id = "7102"
 
 # only looks a tank's owner proved are saved and shown (set to "0" to switch off)
 [vars]
-OWNER_COPY = "a0ea9d93e17a"   # the owner's own copy (first 12 characters of its id on the admin page): only it gets the inbox, alerts and full online list
+OWNER_COPY = "a0ea9d93e17ade075ff9824962564a954b8185940a8aed952119b1561fc14ac5"   # the owner's own copy (its full id, from the admin page's trusted list): only it gets the inbox, alerts and owner admin
 PROVEN_ONLY = "1"
 STORE_URL = ""   # the Chrome Web Store page once approved (https://chromewebstore.google.com/detail/<name>/<id>): copies installed from a zip then offer to move there
 MIN_VERSION= "1.4.5"   # copies older than this lose look sharing, the online list and messages, and are asked to update

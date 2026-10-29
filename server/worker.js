@@ -1033,10 +1033,10 @@ const isOwner = async (env, kh) => {
       .split(",")
       .map((x) => x.trim())
       .filter(Boolean)
-      .some((x) => String(kh).startsWith(x))
+      .some((x) => x === String(kh))
   ) {
     return false;
-  } // (OWNER_COPY can list several copies: "a0ea9d93e17a,1234abcd5678")
+  } // (OWNER_COPY lists the owner's copies by their full 64-character id, comma-separated)
   return !!(await env.DB.prepare("SELECT 1 FROM trusted WHERE hash = ?").bind(kh).first());
 }; // (the owner's own copy only: inbox, alerts and the full online list)
 async function sendFeedback(env, req, ctx) {
@@ -1153,8 +1153,26 @@ async function sendFeedback(env, req, ctx) {
   // the copy's main account: the first tank it proved. Its messages always carry that name, whichever account is logged in now
   const main = await env.DB.prepare("SELECT pid FROM verified WHERE keyhash = ? ORDER BY at LIMIT 1").bind(kh).first(),
     mainName = main ? await tankName(env, main.pid) : null;
+  // only tanks this key proved count as the sender: anyone can name any tank, so the others are marked and kept apart
+  const proven = new Set(
+    pids.length
+      ? (
+          (
+            await env.DB.prepare(
+              `SELECT pid FROM verified WHERE keyhash = ? AND pid IN (${pids.map(() => "?").join(",")})`,
+            )
+              .bind(kh, ...pids)
+              .all()
+          ).results || []
+        ).map((r) => String(r.pid))
+      : [],
+  );
   const now2 = (
-    await Promise.all(pids.filter((p) => !main || p !== String(main.pid)).map((p) => tankName(env, p)))
+    await Promise.all(
+      pids
+        .filter((p) => !main || p !== String(main.pid))
+        .map(async (p) => (await tankName(env, p)) + (proven.has(p) ? "" : " (unproven)")),
+    )
   ).join(", ");
   const from = mainName ? mainName + (now2 ? " (playing as " + now2 + ")" : "") : now2 || "not logged in",
     aboutName = about ? await tankName(env, about) : null;
@@ -1165,9 +1183,9 @@ async function sendFeedback(env, req, ctx) {
   await env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, 'f', ?), (?, 'f', ?)")
     .bind(kh, now, ih, now)
     .run();
-  if (pids.length) {
+  if (proven.size) {
     await env.DB.batch(
-      pids.map((p) => env.DB.prepare("INSERT INTO feedback_pids (fid, pid) VALUES (?, ?)").bind(fid, p)),
+      [...proven].map((p) => env.DB.prepare("INSERT INTO feedback_pids (fid, pid) VALUES (?, ?)").bind(fid, p)),
     );
   } // (the conversation belongs to these accounts too)
   const kind =
@@ -1654,7 +1672,7 @@ function releaseForumText(env, r) {
       .trim();
   const lines = [],
     sha = (/\*\*SHA-256:\*\*\s*`([0-9a-f]{64})`/i.exec(body) || [])[1];
-  for (const l of body.split("\n")) {
+  for (const l of body.split(/\r?\n/)) {
     const m = /^\s*[-*]\s+(.+)$/.exec(l);
     if (m) {
       lines.push("- " + strip(m[1]));
@@ -1744,7 +1762,7 @@ async function releaseThreadEdit(env, r, force) {
       );
     }
     const points = [];
-    for (const l of body.split("\n")) {
+    for (const l of body.split(/\r?\n/)) {
       const m = /^\s*[-*]\s+(.+)$/.exec(l);
       if (m) {
         let x = forumSafe(m[1].replace(/\*\*/g, "").replace(/`/g, ""));
@@ -2327,11 +2345,15 @@ async function adminApi(env, ctx, req, url) {
             nm[r.pid] = r.name + (r.guest ? " (guest)" : "");
           }
         }
+        // a copy says which tanks it's playing as without proving them, so tanks nobody has proved are marked
+        const proved = new Set((await q("SELECT pid FROM verified")).map((v) => String(v.pid)));
+        const label = (x) =>
+          (nm[x] || x) + (proved.has(String(x)) || String(nm[x] || "").endsWith("(guest)") ? "" : " (not proven)");
         rows.forEach((r) => {
           r.nowAs = String(r.lpids || "")
             .split(",")
             .filter(Boolean)
-            .map((x) => nm[x] || x)
+            .map(label)
             .join(", ");
           r.seenAs = [
             ...new Set(
@@ -2342,7 +2364,7 @@ async function adminApi(env, ctx, req, url) {
               ),
             ),
           ]
-            .map((x) => nm[x] || x)
+            .map(label)
             .join(", ");
           delete r.lpids;
         });
@@ -3550,7 +3572,7 @@ export default {
             s.slice(0, 4000),
           ),
         ]).catch(() => {}),
-      ); // (when, from which copy and which country: for the admin page)
+      ); // (when, and from which copy: for the admin page)
       if (env.HUB) {
         ctx.waitUntil(
           hub(env)
@@ -3888,10 +3910,12 @@ export default {
         )
           .bind(kh, ih, now - DAY)
           .first();
-        const here = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who = ? AND pid = ? AND at > ?")
-          .bind(kh, "s" + pid, now - DAY)
-          .first();
-        if ((here && here.n >= 6) || (tries && tries.t >= 8)) {
+        const here = await env.DB.prepare(
+          "SELECT SUM(CASE WHEN who = ? THEN 1 ELSE 0 END) AS n, SUM(CASE WHEN who = ? THEN 1 ELSE 0 END) AS c FROM claims WHERE who IN (?, ?) AND pid = ? AND at > ?",
+        )
+          .bind(kh, ih, kh, ih, "s" + pid, now - DAY)
+          .first(); // (per connection too: new keys are free, so a connection can't keep a tank from being proven)
+        if ((here && (here.n >= 6 || here.c >= 6)) || (tries && tries.t >= 8)) {
           return json({ error: "too many tries today" }, 429);
         }
         await env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, ?, ?), (?, ?, ?)")
@@ -3980,7 +4004,8 @@ export default {
           ih,
           "p" + pid,
           now,
-        ), // (proved: not counted as probing) env.DB.prepare('DELETE FROM proofs WHERE pid = ?').bind(pid),
+        ), // (proved: not counted as probing)
+        env.DB.prepare("DELETE FROM proofs WHERE pid = ?").bind(pid),
         env.DB.prepare("DELETE FROM hidden WHERE pid = ?").bind(pid),
       ]);
       ctx.waitUntil(

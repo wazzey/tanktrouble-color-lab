@@ -1,10 +1,12 @@
 # TankTrouble Color Lab: privacy policy
 
-_Last updated: 28 October 2026 (v1.4.5)_
+_Last updated: 29 October 2026_
 
 TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser extension made and run by **wazzey** ("the author"). It is not affiliated with TankTrouble. This page lists everything it collects, who can see it, how long it's kept and how to remove it. The code that does all of this is public: the extension in [`extension/`](extension) and its server in [`server/`](server).
 
 **In short:** no tracking, no analytics, no ads, no accounts, and nothing is sold or shared. Color Lab only runs on tanktrouble.com, and apart from TankTrouble it only talks to its own server, `ttcl-share.wazzey.workers.dev`, run by the author on Cloudflare.
+
+**You choose first.** The first time Color Lab starts, it shows what its server gets and asks you to pick **Share** or **Keep it local**. Nothing about you is sent, and your account's details aren't read, until you pick Share. Keep it local works like **🔌 Offline**: Color Lab never contacts its server about you, and you can change your mind with the **🟢 Online** button, which shows the same choice again.
 
 ## On your own computer
 
@@ -68,15 +70,22 @@ Like any website, Cloudflare (which runs the server) sees your IP address when y
 
 **Other Color Lab players** see your look on your proven tanks. They see you in the online list only if you turn on **Settings > Look sharing > Show me as online** (your name, whether you're online or idle and for how many minutes, whether you're in the lobby, a queue or a game, and when you were last seen in the past 7 days), and your TankTrouble server only if you also turn on **Show which server I'm on** and are online. Otherwise you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
 
-**The author's** online list is the same as everyone else's. The author can also see what the server keeps on its admin page: the copies and accounts seen and when, each copy's version, the look history and reports, the messages and the backups. It's used to run the server, deal with abuse and answer messages, and isn't shared with anyone.
+**The author's** online list is the same as everyone else's. The server's admin page shows the author what the server keeps: the copies and accounts seen and when, each copy's version, the look history, reports and messages. The author only reads it to keep the server running and to deal with abuse and security problems (for example checking a report, or a copy trying to take over other players' tanks), and reads a message because you sent it to Color Lab. Backups aren't shown on the admin page. None of it is shared with anyone, apart from the alerts below.
+
+Alerts about abuse and security (reports, a tank taken over, flooding, bans) go to the author's private Discord, so they can be dealt with quickly even when the author is away from a computer. They include the tank names and player IDs involved, and are only used to deal with that problem.
 
 ## Your choices and deleting your data
 
+- **Keep it local** (or **🔌 Offline**) stops Color Lab contacting its server about you at all.
 - **Share my look** off removes your tanks' looks from the server and stops sending your tanks, server and idle status.
 - **See other players' looks** off stops asking for anyone's look.
 - **Backup** off stops sending your backup. **Delete my backup** removes it from the server.
 - To remove everything: switch off Share my look, remove the extension at `chrome://extensions`, then clear tanktrouble.com's site data (padlock > Site settings > Delete data).
 - To ask for any data to be removed, open an issue at https://github.com/wazzey/tanktrouble-color-lab/issues or message Color Lab from the extension.
+
+## How this data is used
+
+Color Lab's use of the data above follows the [Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/), including its Limited Use requirements. It's only used to provide Color Lab's own features, never sold or passed on, never used for advertising, and only read by a person as described under **Who sees what**.
 
 ## Contact
 

@@ -47,10 +47,10 @@ export const flipSrvManual = () => {
 export const incognito = () => !DEV_BUILD && document.documentElement.dataset.ttclIncog === "1"; // an Incognito window: Color Lab works, but never goes online
 export const srvOn = () => {
   try {
-    if (SETTINGS.goOffline === true || incognito()) {
+    if (SETTINGS.consent === undefined || SETTINGS.goOffline === true || incognito()) {
       return false;
     }
-    /* (the player chose to go offline: nothing is sent to the server) */ if (!DEV_BUILD) {
+    /* (the player hasn't chosen yet, or chose to go offline: nothing is sent to the server) */ if (!DEV_BUILD) {
       return true;
     }
   } catch {

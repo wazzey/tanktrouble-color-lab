@@ -204,6 +204,47 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
     }
     return { error: "bad act" };
   }
+  // The owner's actions are confirmed here, in the extension's own world. A script in TankTrouble's page can ask for one,
+  // but it can't see or click this box (it only takes real clicks), so it can't act as the owner
+  const readOwnerAsk =
+    DEV_BUILD &&
+    ((d) => {
+      if (d.op === "owner" && d.act === "action" && d.adm && typeof d.adm === "object") {
+        const parts = Object.entries(d.adm).map(([k, v]) => k + ": " + String(v).slice(0, 120));
+        return "Admin action\n" + parts.join("\n");
+      }
+      if (d.op === "inbox" && d.act === "reply") {
+        return "Reply to a message\n" + String(d.text || "").slice(0, 300);
+      }
+      if (d.op === "inbox" && d.act === "unmute") {
+        return "Let copy " + String(d.kh || "").slice(0, 12) + " message again";
+      }
+      return null;
+    });
+  const applyOwnerAsk =
+    DEV_BUILD &&
+    ((what) =>
+      new Promise((resolve) => {
+        const host = document.createElement("div");
+        const root = host.attachShadow({ mode: "closed" });
+        root.innerHTML =
+          "<style>.b{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);font:14px Arial,sans-serif}" +
+          ".c{width:340px;max-width:calc(100vw - 24px);background:#111;color:#fff;border:3px solid #e3a008;border-radius:12px;padding:14px}" +
+          ".t{font-weight:bold;margin:0 0 6px}.w{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:240px;overflow:auto;background:#1d1d1d;border-radius:6px;padding:8px;margin:0 0 10px}" +
+          "button{font:bold 13px Arial,sans-serif;border:0;border-radius:6px;padding:7px 14px;margin-right:6px;cursor:pointer}.ok{background:#2fa84f;color:#fff}.no{background:#555;color:#fff}</style>" +
+          '<div class="b"><div class="c"><p class="t">🔒 Confirm (Color Lab owner)</p><p class="w"></p><button class="ok">Do it</button><button class="no">Cancel</button></div></div>';
+        root.querySelector(".w").textContent = what;
+        const close = (ok) => (e) => {
+          if (!e.isTrusted) {
+            return;
+          }
+          host.remove();
+          resolve(ok);
+        };
+        root.querySelector(".ok").addEventListener("click", close(true));
+        root.querySelector(".no").addEventListener("click", close(false));
+        document.documentElement.appendChild(host);
+      }));
 
   window.addEventListener("message", (e) => {
     const d = e.data;
@@ -330,12 +371,26 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
           toPage({ type: "shareRes", rid: d.rid, res: null });
         }
       };
-      if (d.op === "get" || d.op === "watch" || d.op === "latest") {
-        send(null);
+      const go = () => {
+        if (d.op === "get" || d.op === "watch" || d.op === "latest") {
+          send(null);
+        } else {
+          keyFor(d)
+            .catch(() => readCopyKey())
+            .then(send);
+        }
+      };
+      const ask = DEV_BUILD ? readOwnerAsk(d) : null;
+      if (DEV_BUILD && ask) {
+        applyOwnerAsk(ask).then((ok) => {
+          if (ok) {
+            go();
+          } else {
+            toPage({ type: "shareRes", rid: d.rid, res: { ok: false, status: 0, data: { error: "cancelled" } } });
+          }
+        });
       } else {
-        keyFor(d)
-          .catch(() => readCopyKey())
-          .then(send);
+        go();
       }
     } else if (DEV_BUILD && d.type === "devReload") {
       // (reload the extension from the page while testing)

@@ -206,9 +206,11 @@ function onlineDraw() {
       ? st(false) +
         (incognito()
           ? "Offline in Incognito windows"
-          : SETTINGS.goOffline === true
-            ? "Offline (not connected)"
-            : "Not connected (logged out)")
+          : SETTINGS.consent === undefined
+            ? "Not connected yet"
+            : SETTINGS.goOffline === true
+              ? "Offline (not connected)"
+              : "Not connected (logged out)")
       : onlineErr || !onlineData
         ? st(false) + "Server offline"
         : st(true) +

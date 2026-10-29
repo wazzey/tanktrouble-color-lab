@@ -156,7 +156,7 @@ export function startTeamBadges() {
         const b = document.createElement("div");
         b.className = "ttclTeamF";
         b.style.cssText =
-          "text-align:center;margin-top:-6px;pointer-events:auto;position:relative;top:" +
+          "text-align:center;margin-top:3px;pointer-events:auto;position:relative;top:" +
           (parseFloat(getComputedStyle(n).top) || 0) +
           "px";
         b.innerHTML = clBadge(id, 10);
@@ -167,8 +167,9 @@ export function startTeamBadges() {
   setInterval(() => {
     try {
       // the Color Lab team's tanks wear the Color Lab badge, like the game's old moderator star (seen by Color Lab users)
+      const forum = /^\/forum/.test(location.pathname); // (the forum has the badge under the name instead)
       for (const ic of document.querySelectorAll("tank-icon[data-player-id]")) {
-        const t = CL_TEAM[ic.getAttribute("data-player-id")];
+        const t = forum ? null : CL_TEAM[ic.getAttribute("data-player-id")];
         const has = ic.querySelector(":scope > .ttclTeamI");
         if (!t) {
           if (has) {

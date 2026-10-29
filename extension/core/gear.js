@@ -14,7 +14,7 @@ import { $, toast } from "./panel.js";
 import { renderSettings } from "./settings.js";
 import { SETTINGS, saveSettings } from "./storage.js";
 import { setOpen } from "./tabs.js";
-import { whatsNew } from "./tutorial-run.js";
+import { consentChoose, whatsNew } from "./tutorial-run.js";
 import { checkUpdate, verNewer } from "./updates.js";
 
 let gearG;
@@ -150,6 +150,10 @@ function gearQuick() {
     SETTINGS.goOffline !== true,
     "Go offline: Color Lab stops contacting its server completely (no sharing, no online list, nothing sent) until you switch it back on",
     () => {
+      if (SETTINGS.goOffline === true && SETTINGS.consent !== "share") {
+        consentChoose();
+        return;
+      } // (chose to keep it local: what the server gets is shown again before connecting)
       if (SETTINGS.goOffline !== true) {
         try {
           shareCall({ op: "fblist", off: true, show: false }).catch(() => {});

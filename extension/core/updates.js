@@ -3,12 +3,16 @@ import { shareCall } from "./look-sharing.js";
 import { toast } from "./panel.js";
 import { SETTINGS, TUTS, WAS_USER, saveSettings, tutSave } from "./storage.js";
 import { esc } from "./trophy-counting.js";
-import { tutChoose, tutClose, whatsNew } from "./tutorial-run.js";
+import { consentChoose, tutChoose, tutClose, whatsNew } from "./tutorial-run.js";
 
 let EXT_VER;
 let UPDATE_STEPS;
 export function tutAuto() {
   if (document.getElementById("ttcl-tut")) {
+    return;
+  }
+  if (SETTINGS.consent === undefined) {
+    consentChoose(() => tutAuto());
     return;
   }
   if (!TUTS) {

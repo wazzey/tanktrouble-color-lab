@@ -221,6 +221,13 @@ export function renderSettings() {
       }
     };
     r1.append(sid);
+    const pp = document.createElement("button");
+    pp.className = "small grey";
+    pp.textContent = "🔒 Privacy policy";
+    pp.title = "What Color Lab sends, why, and how long it's kept";
+    pp.onclick = () =>
+      window.open("https://github.com/wazzey/tanktrouble-color-lab/blob/main/PRIVACY.md", "_blank", "noopener");
+    r1.append(pp);
     if (DEV_BUILD) {
       const ad = document.createElement("button");
       ad.className = "small grey";
