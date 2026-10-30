@@ -135,7 +135,11 @@ export function readBetaBwPixel(item) {
       } else if (red) {
         x = 30 + 45 * v;
       }
-    } else if (item !== "barrel38" && item !== "front41" && item !== "front40") {
+    } else if (item === "barrel38" || item === "front41") {
+      if (s > 0.15 && (h < 60 || h >= 330)) {
+        x = Math.max(6, Math.min(72, 6 + 132 * (v - 0.5)));
+      }
+    } else if (item !== "front40") {
       if (yellow || orange) {
         x = Math.min(255, 90 + 165 * v);
       }
