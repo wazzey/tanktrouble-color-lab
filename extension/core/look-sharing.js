@@ -448,7 +448,7 @@ export function shareMyLooks(force, soon) {
                 turret: (on && e.turret) || undefined,
                 base: (on && e.base) || undefined,
                 treads: (on && e.treads) || undefined,
-                acc: (on && e.acc) || undefined,
+                acc: (on && e.acc && readSharedAcc(id, e.acc)) || undefined,
                 maze: (on && e.maze) || undefined,
                 bullet: bul,
               }
@@ -485,6 +485,9 @@ export function shareMyLooks(force, soon) {
         const r = await shareCall(look ? { op: "put", pid: String(id), look } : { op: "delete", pid: String(id) });
         if (r && r.ok) {
           SHARE_SENT[id] = sig;
+          SETTINGS.sharedAcc = SETTINGS.sharedAcc || {};
+          SETTINGS.sharedAcc[id] = (look && look.acc) || {};
+          saveSettings();
         } else if (r && r.status === 429) {
           setTimeout(() => shareMyLooks(), r.data && r.data.error === "too fast" ? 1200 : 60000);
           return;
@@ -533,6 +536,19 @@ export function shareMyLooks(force, soon) {
     },
     force || soon ? 500 : 5000,
   );
+}
+// A Beta B&W item stays on your own screen: its slot keeps the item last shared there (or the tank's real one)
+function readSharedAcc(id, acc) {
+  const kept = (SETTINGS.sharedAcc && SETTINGS.sharedAcc[id]) || {},
+    out = {};
+  for (const [slot, v] of Object.entries(acc)) {
+    if (!String(v).startsWith("ttcl:bw-")) {
+      out[slot] = v;
+    } else if (kept[slot] != null) {
+      out[slot] = kept[slot];
+    }
+  }
+  return Object.keys(out).length ? out : null;
 }
 export function getOverride(id, now) {
   if (!SETTINGS.on) {
