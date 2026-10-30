@@ -428,7 +428,9 @@ export function needProof(ids) {
     true,
   );
 }
-export function shareMyLooks(force) {
+// A look goes up once it has stayed the same for a few seconds (clicking 🎲 over and over sends only the one kept);
+// Done in the garage, Save in the panel or a refresh send it straight away
+export function shareMyLooks(force, soon) {
   clearTimeout(shareUpTimer);
   shareUpTimer = setTimeout(
     async () => {
@@ -529,7 +531,7 @@ export function shareMyLooks(force) {
         needProof(proof);
       }
     },
-    force ? 500 : 500,
+    force || soon ? 500 : 5000,
   );
 }
 export function getOverride(id, now) {
@@ -572,6 +574,15 @@ export function hasOverrides() {
 }
 
 export function startLookSharing() {
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (e.target && e.target.closest && e.target.closest(".garage form button[type=submit]")) {
+        shareMyLooks(false, true);
+      }
+    },
+    true,
+  );
   window.addEventListener("message", (e) => {
     const d = e.data;
     if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toPage") {

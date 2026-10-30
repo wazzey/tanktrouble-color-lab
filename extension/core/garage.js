@@ -36,6 +36,7 @@ import {
 } from "./garage-search.js";
 import { hookMapGroups, mapPickNext } from "./map-themes.js";
 import { startMazePatterns } from "./maze.js";
+import { pageBurst, pageTick } from "./page.js";
 import { renderList } from "./saved-looks.js";
 import { PLAYER_COLOR_MAP, normEntry, saveToStorage, syncActive } from "./storage.js";
 
@@ -201,6 +202,11 @@ export function hookPhaser() {
         watchGarageMain(st);
         keepGarageTank(st);
       }
+      if (key !== "Game") {
+        // TankTrouble makes a screen's pictures afresh (white), so they're themed before its first frame
+        applyPageOnCreate(this.states && this.states[key]);
+        pageBurst();
+      }
       return r;
     };
   }
@@ -356,6 +362,20 @@ export function placeGarageBar() {
     }
     bar.style.zIndex = "2";
   } catch {}
+}
+function applyPageOnCreate(st) {
+  if (!st || st.__ttclPageCreate || typeof st.create !== "function") {
+    return;
+  }
+  st.__ttclPageCreate = true;
+  const orig = st.create;
+  st.create = function (...a) {
+    const r = orig.apply(this, a);
+    try {
+      pageTick();
+    } catch {}
+    return r;
+  };
 }
 function watchGarageMain(st) {
   if (!st || st.__ttclWatched || typeof st._setBoxSelection !== "function") {

@@ -84,6 +84,7 @@ export async function saveForm(saveAsNew) {
   });
   trimHistory();
   saveToStorage();
+  shareMyLooks(false, true);
   renderPalette();
   renderList();
   removedIds.delete(p.playerId);
@@ -152,7 +153,7 @@ export function startPanelActions() {
     }
     refreshLoggedIn();
     try {
-      shareMyLooks();
+      shareMyLooks(false, true);
     } catch {}
   }; // (your logged-in tanks, and checks they're shared; Shift-click redraws every custom tank)
   $("power").onclick = () => {

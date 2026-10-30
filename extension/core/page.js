@@ -161,7 +161,7 @@ function pageImgCss(P) {
 }
 let pageReady = false,
   pageCssSaved = null; // (true once your settings have loaded; until then the last page theme is put up straight away, so pages don't flash unthemed)
-function pageTick() {
+export function pageTick() {
   if (!pageReady) {
     if (!storageLoaded) {
       return;
@@ -227,7 +227,7 @@ function pageTick() {
   }
 }
 let pageBurstT = 0;
-const pageBurst = () => {
+export const pageBurst = () => {
   let n = 0;
   clearInterval(pageBurstT);
   pageBurstT = setInterval(() => {
