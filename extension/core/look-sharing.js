@@ -442,6 +442,20 @@ export function shareMyLooks(force, soon) {
         const e = PLAYER_COLOR_MAP[id],
           on = shareMine() && e && e.enabled !== false,
           bul = shareMine() && SETTINGS.myBullet ? SETTINGS.myBullet : undefined; // (your bullets, from 🗺 Maze > Your bullets)
+        if (
+          on &&
+          e.acc &&
+          Object.values(e.acc).some((v) => String(v).startsWith("ttcl:bw-")) &&
+          !(SETTINGS.sharedAcc && SETTINGS.sharedAcc[id])
+        ) {
+          const r = await shareCall({ op: "get", ids: [String(id)] }).catch(() => null);
+          if (!r || !r.ok || !r.data || !r.data.looks) {
+            continue;
+          } // (what other players see now isn't known yet: tried again at the next change)
+          const l = r.data.looks[id];
+          SETTINGS.sharedAcc = SETTINGS.sharedAcc || {};
+          SETTINGS.sharedAcc[id] = (l && l.look && l.look.acc) || {};
+        }
         const look =
           on || bul
             ? {
@@ -537,7 +551,7 @@ export function shareMyLooks(force, soon) {
     force || soon ? 500 : 5000,
   );
 }
-// A Beta B&W item stays on your own screen: its slot keeps the item last shared there (or the tank's real one)
+// A Beta B&W item stays on your own screen: other players keep seeing the Color Lab item they saw in that slot before
 function readSharedAcc(id, acc) {
   const kept = (SETTINGS.sharedAcc && SETTINGS.sharedAcc[id]) || {},
     out = {};
