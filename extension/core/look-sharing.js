@@ -442,27 +442,13 @@ export function shareMyLooks(force, soon) {
         const e = PLAYER_COLOR_MAP[id],
           on = shareMine() && e && e.enabled !== false,
           bul = shareMine() && SETTINGS.myBullet ? SETTINGS.myBullet : undefined; // (your bullets, from 🗺 Maze > Your bullets)
-        if (
-          on &&
-          e.acc &&
-          Object.values(e.acc).some((v) => String(v).startsWith("ttcl:bw-")) &&
-          !(SETTINGS.sharedAcc && SETTINGS.sharedAcc[id])
-        ) {
-          const r = await shareCall({ op: "get", ids: [String(id)] }).catch(() => null);
-          if (!r || !r.ok || !r.data || !r.data.looks) {
-            continue;
-          } // (what other players see now isn't known yet: tried again at the next change)
-          const l = r.data.looks[id];
-          SETTINGS.sharedAcc = SETTINGS.sharedAcc || {};
-          SETTINGS.sharedAcc[id] = (l && l.look && l.look.acc) || {};
-        }
         const look =
           on || bul
             ? {
                 turret: (on && e.turret) || undefined,
                 base: (on && e.base) || undefined,
                 treads: (on && e.treads) || undefined,
-                acc: (on && e.acc && readSharedAcc(id, e.acc)) || undefined,
+                acc: (on && e.acc) || undefined,
                 maze: (on && e.maze) || undefined,
                 bullet: bul,
               }
@@ -499,9 +485,6 @@ export function shareMyLooks(force, soon) {
         const r = await shareCall(look ? { op: "put", pid: String(id), look } : { op: "delete", pid: String(id) });
         if (r && r.ok) {
           SHARE_SENT[id] = sig;
-          SETTINGS.sharedAcc = SETTINGS.sharedAcc || {};
-          SETTINGS.sharedAcc[id] = (look && look.acc) || {};
-          saveSettings();
         } else if (r && r.status === 429) {
           setTimeout(() => shareMyLooks(), r.data && r.data.error === "too fast" ? 1200 : 60000);
           return;
@@ -550,19 +533,6 @@ export function shareMyLooks(force, soon) {
     },
     force || soon ? 500 : 5000,
   );
-}
-// A Beta B&W item stays on your own screen: other players keep seeing the Color Lab item they saw in that slot before
-function readSharedAcc(id, acc) {
-  const kept = (SETTINGS.sharedAcc && SETTINGS.sharedAcc[id]) || {},
-    out = {};
-  for (const [slot, v] of Object.entries(acc)) {
-    if (!String(v).startsWith("ttcl:bw-")) {
-      out[slot] = v;
-    } else if (kept[slot] != null) {
-      out[slot] = kept[slot];
-    }
-  }
-  return Object.keys(out).length ? out : null;
 }
 export function getOverride(id, now) {
   if (!SETTINGS.on) {

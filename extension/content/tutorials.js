@@ -2,8 +2,8 @@
 // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
 // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
 // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-export const TUT_VER = 16,
-  TUT_LABEL = "v1.4.6";
+export const TUT_VER = 17,
+  TUT_LABEL = "v1.4.7";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
   [
@@ -316,6 +316,24 @@ export const WHATS_NEW = [
     "<b>Safer messages and proofs</b>: someone else's message can no longer show up as yours, and blocking your proof is much harder",
   ],
   [16, "🏷", "<b>Badges</b> sit neatly under names on the forum, and your own tank in the garage no longer wears one"],
+  [17, "🖤", "<b>Beta B&W box</b>: the Beta box in black and white, with black sticking plasters, in the Fun & Games folder"],
+  [
+    17,
+    "⚡",
+    "<b>Performance mode</b> (⚙ menu or 🗺 Maze tab): fewer map effects in a round, with plain crates and bullets. <b>On + game's maps</b> also switches to the game's own maps",
+  ],
+  [
+    17,
+    "🧹",
+    "<b>Plain maps</b> (⚙ menu or 🗺 Maze tab): map floors and walls in their colours only, with no cracks, patterns or decorations",
+  ],
+  [
+    17,
+    "🚀",
+    "<b>Smoother</b>: the ⚙ menu, Settings and the colour panel open without a stall, and clicking your tank no longer stutters",
+  ],
+  [17, "🧱", "<b>Clearer corners</b>: no more rivet dots where walls meet, so ricochets are easier to read"],
+  [17, "🗺", "<b>Lobby maze</b> no longer flashes white before your page theme comes back"],
 ];
 // What a brand-new user sees (instead of every older version's notes): what Color Lab has, in short
 export const V1_OVERVIEW = [

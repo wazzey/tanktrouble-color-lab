@@ -1126,19 +1126,15 @@ export function startCustomBoxArt() {
       prefix: "sp-",
       paints: ["0x39ff14", "0x00ffc8", "0x00b3ff", "0xff00e6", "0xb026ff", "0x5a00b5", "0x1a0033", "0xe6d6ff"],
     },
-    // the Beta box in black and white (DEV only for now)
-    ...(DEV_BUILD
-      ? [
-          {
-            id: "betabw",
-            name: "Beta B&W",
-            from: 7,
-            prefix: "bw-",
-            pix: "bw",
-            paints: ["0xe5e5e5", "0x7f7f7f", "0x4c4c4c", "0x000000", "0xffffff"],
-          },
-        ]
-      : []),
+    // the Beta box in black and white
+    {
+      id: "betabw",
+      name: "Beta B&W",
+      from: 7,
+      prefix: "bw-",
+      pix: "bw",
+      paints: ["0xe5e5e5", "0x7f7f7f", "0x4c4c4c", "0x000000", "0xffffff"],
+    },
     // the Laika trophy bones live here; the box appears once you've earned one
     {
       id: "galaxy",
