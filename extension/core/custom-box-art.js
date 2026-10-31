@@ -1039,8 +1039,15 @@ export function gxPaintIcon(key) {
   }
   return gxIcons[key];
 }
-export let galaxyArtReq = null,
-  GALAXY_BOX = null;
+export let galaxyArtReq = null;
+let GALAXY_BOX = null;
+// The Galaxy 'box' is an actual black hole, drawn on its own (the box's paints and items aren't needed for it)
+export function readGalaxyBox() {
+  if (!GALAXY_BOX) {
+    GALAXY_BOX = drawBlackHoleBox().toDataURL();
+  }
+  return GALAXY_BOX;
+}
 export function galaxyArt() {
   if (!galaxyArtReq) {
     galaxyArtReq = getAssetMap()
@@ -1050,9 +1057,7 @@ export function galaxyArt() {
           const u = m && (map["acc640/" + m[1]] || map["accessories/" + m[1]]);
           return u ? loadImg(u) : Promise.resolve(null);
         };
-        const art = await buildGalaxyArt(load);
-        GALAXY_BOX = drawBlackHoleBox().toDataURL(); // the Galaxy 'box' is an actual black hole
-        return art;
+        return buildGalaxyArt(load);
       })
       .catch(() => {
         galaxyArtReq = null;

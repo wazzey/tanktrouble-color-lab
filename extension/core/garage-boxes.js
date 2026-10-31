@@ -31,15 +31,14 @@ import { EXT_ITEM } from "../content/registries.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import {
   CUSTOM_BOXES,
-  GALAXY_BOX,
   afterCustomArt,
   boxOfKey,
   boxShown,
   customItems,
-  galaxyArt,
   garageArtReady,
   getCustomArt,
   isCustomKey,
+  readGalaxyBox,
 } from "./custom-box-art.js";
 import { trophyAccValue } from "./draw-swap.js";
 import { garageSig, garageSnap, lookupById, refreshSoon, refreshTanks, warmLooks } from "./game-socket.js";
@@ -650,10 +649,10 @@ export function picCacheSave() {
 export const artOf = (key) =>
   (TROPHY_ART && TROPHY_ART[key] && TROPHY_ART[key].frame) || CUSTOM_ART[key] || GARAGE_ART[key] || null;
 export function artCacheSave(key) {
-  const f = GX_PAINT[key] ? MAZE_TILE[key] : artOf(key);
+  const f = (GX_PAINT[key] && MAZE_TILE[key]) || artOf(key);
   if (!f || ART_BLOBS[key] || !PIC_CACHE || typeof f.toBlob !== "function" || isBlankPic(f)) {
     return;
-  } // (a paint: its tile; never an empty picture)
+  } // (a paint: its tile, or its whole picture when it has no maze tile, like the Shadow paints; never an empty picture)
   ART_BLOBS[key] = true; // (being saved)
   f.toBlob(async (blob) => {
     if (!blob) {
@@ -927,7 +926,7 @@ export function customBoxSheet(customBox) {
     return customBox.picFn();
   }
   if (customBox.trophies === "galaxy") {
-    return galaxyArt().then(() => GALAXY_BOX);
+    return Promise.resolve(readGalaxyBox());
   }
   const from = customBox.picFrom || customBox.from;
   return getAssetMap()
