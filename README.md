@@ -7,11 +7,10 @@
 **Custom colours, paints, items, map themes and page themes for TankTrouble.**<br>
 Cosmetic only · Free · No ads · No account · Open source
 
-[![Latest release](https://img.shields.io/github/v/release/wazzey/tanktrouble-color-lab?label=latest&color=27c4a8)](https://github.com/wazzey/tanktrouble-color-lab/releases/latest)
-![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-coming%20soon-4285F4?logo=googlechrome&logoColor=white)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/hiocbocmjpgclglooaplkihghibjgdbh?label=Chrome%20Web%20Store&logo=googlechrome&logoColor=white&color=4285F4)](https://chromewebstore.google.com/detail/tanktrouble-color-lab/hiocbocmjpgclglooaplkihghibjgdbh)
 [![Licence: GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
 
-[**Install**](#install) · [**What's new**](https://github.com/wazzey/tanktrouble-color-lab/releases/latest) · [**Features**](#features) · [**Screenshots**](#screenshots) · [**FAQ**](#faq) · [**Privacy**](PRIVACY.md) · [**Development**](#development)
+[**Install**](#install) · [**Features**](#features) · [**Screenshots**](#screenshots) · [**FAQ**](#faq) · [**Privacy**](PRIVACY.md) · [**Development**](#development)
 
 </div>
 
@@ -21,24 +20,12 @@ Cosmetic only · Free · No ads · No account · Open source
 
 ## Install
 
-### Chrome Web Store (recommended)
+**[Add Color Lab from the Chrome Web Store](https://chromewebstore.google.com/detail/tanktrouble-color-lab/hiocbocmjpgclglooaplkihghibjgdbh)**. One click, and it **updates by itself**. Then open tanktrouble.com and press **Alt+C** (**Option+C** on a Mac). A short tutorial starts the first time.
 
-One click, and it **updates by itself**. The listing is in review; the **Add to Chrome** link goes here once it's approved.
-
-### From GitHub
-
-1. Download `TankTrouble-Color-Lab-v<version>.zip` from the [**latest release**](https://github.com/wazzey/tanktrouble-color-lab/releases/latest) (not "Source code").
-2. Unzip it and keep the `TankTrouble-Color-Lab` folder somewhere safe. The browser runs it from there.
-3. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`) and turn on **Developer mode**.
-4. Click **Load unpacked** and choose the `TankTrouble-Color-Lab` folder.
-5. Open tanktrouble.com and press **Alt+C** (**Option+C** on a Mac).
-
-A short tutorial starts the first time. This copy doesn't update by itself; Color Lab tells you when a new version is out. To update, copy the new files over the old folder, press reload on the extension and refresh TankTrouble. Your looks are kept.
-
-Copies older than v1.4.3 no longer work online (look sharing, the online list and messages).
+Color Lab used to be downloaded from this page's Releases. Those zips are no longer updated, and this repository now only holds the source code.
 
 <details>
-<summary><b>Moving from the GitHub zip to the Chrome Web Store</b></summary>
+<summary><b>Still on a copy from GitHub? Move to the Chrome Web Store</b></summary>
 
 <br>
 
@@ -51,18 +38,6 @@ Do it **in the same browser** and your looks come with you:
 Saved tanks and looks, colours, settings, themes and achievement progress are restored from the backup Color Lab keeps in TankTrouble's own site storage. Your account's key is made from your account's details, so your tanks stay proven. Moving to a **different browser** or computer? Log in and your saved looks and achievements come back from **Backup** by themselves. **⬇ Export backup** and **⬆ Import** still move everything else (settings, themes, and looks you gave other players' tanks).
 
 Don't keep two copies switched on in the same browser: only one runs, and the other gets in its way.
-
-</details>
-
-<details>
-<summary><b>Checking a download</b></summary>
-
-<br>
-
-Official copies come only from the Chrome Web Store and this repository's [Releases page](https://github.com/wazzey/tanktrouble-color-lab/releases). Each release lists its zip's SHA-256, built from the source here by GitHub Actions. If someone sends you a copy, check it matches:
-
-- **Windows** (PowerShell in the zip's folder): `Get-FileHash .\TankTrouble-Color-Lab-v<version>.zip`
-- **Mac** (Terminal in the zip's folder): `shasum -a 256 TankTrouble-Color-Lab-v<version>.zip`
 
 </details>
 
@@ -195,7 +170,7 @@ If anything in Color Lab isn't allowed, or you'd like something changed or remov
 | Folder                                 | What it is                                                                                                                                                                                                                                                                                                                                                                                                |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`extension/`](extension)              | The extension. `content.js` runs in the page and starts every feature in order; [`core/`](extension/core) holds the features (storage, look sharing, the game hooks, the garage, the panel and so on) and [`content/`](extension/content) the boxes, maps, achievements and art. `bridge.js` passes messages to `background.js`, which talks to the server, and with `vault.js` makes each account's key. |
-| [`server/`](server)                    | The look server: a Cloudflare Worker with a D1 database. Pushing to `main` deploys it. Secrets live in Cloudflare (`npx wrangler secret list`), never here.                                                                                                                                                                                                                                               |
+| [`server/`](server)                    | The look server: a Cloudflare Worker with a D1 database. `npx wrangler deploy` in this folder deploys it. Secrets live in Cloudflare (`npx wrangler secret list`), never here.                                                                                                                                                                                                                            |
 | [`scripts/build.js`](scripts/build.js) | Builds the extension with Bun.                                                                                                                                                                                                                                                                                                                                                                            |
 
 Install [Node](https://nodejs.org) 22+, then `npm ci`. That installs the pinned Bun, which does the formatting, linting and building:
@@ -210,7 +185,7 @@ Install [Node](https://nodejs.org) 22+, then `npm ci`. That installs the pinned 
 
 Modules only define things when they load. What a feature does at start-up is in its `start…()` function, and `content.js` calls those in a fixed order. The `content/` modules only add items to shared tables and never import from `core/`. Code that only belongs in the owner's build sits behind `DEV_BUILD`, which the build sets to `false` for the public build, so that code isn't in it.
 
-**Releasing:** raise `version` in `extension/manifest.json` and push. CI checks and builds every push; for a new version it also creates a draft release with the zip and its SHA-256. Write the title and notes there and publish. Publishing uploads the same build to the Chrome Web Store, and the server posts it on the forum.
+**Releasing:** raise `version` in `extension/manifest.json`, add the notes to "What's new" in `extension/content/tutorials.js`, run `npm run build` and upload the Web Store zip from `dist/` in the Chrome Web Store dashboard. CI checks and builds every push.
 
 ## Licence
 
