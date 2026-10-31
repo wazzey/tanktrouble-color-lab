@@ -182,7 +182,7 @@ function buildMapSheet(game, base, key) {
   const sheet = document.createElement("canvas");
   sheet.width = src.width;
   sheet.height = src.height;
-  const sg = sheet.getContext("2d");
+  const sg = sheet.getContext("2d", { willReadFrequently: true }); // (read back for each floor tile edge)
   sg.drawImage(src, 0, 0);
   const fd = game.cache.getFrameData("game");
   if (!fd) {
@@ -196,6 +196,46 @@ function buildMapSheet(game, base, key) {
     draw(g, fr.w, fr.h);
     sg.clearRect(fr.x, fr.y, fr.w, fr.h);
     sg.drawImage(c, fr.x, fr.y);
+  };
+  const padEdges = (fr) => {
+    // the game's sheet repeats each floor tile's edge 2px round it, so a tile drawn scaled down has no seam.
+    // That border still held the game's own floor, which showed as thin lines between tiles, so it's redone from the new tile
+    const x0 = Math.max(0, fr.x - 2),
+      y0 = Math.max(0, fr.y - 2),
+      x1 = Math.min(sheet.width, fr.x + fr.w + 2),
+      y1 = Math.min(sheet.height, fr.y + fr.h + 2),
+      w = x1 - x0,
+      was = document.createElement("canvas");
+    was.width = w;
+    was.height = y1 - y0;
+    const wg = was.getContext("2d", { willReadFrequently: true });
+    wg.drawImage(src, x0, y0, w, y1 - y0, 0, 0, w, y1 - y0);
+    const o = wg.getImageData(0, 0, w, y1 - y0).data,
+      d = sg.getImageData(x0, y0, w, y1 - y0),
+      p = d.data;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (x >= fr.x && x < fr.x + fr.w && y >= fr.y && y < fr.y + fr.h) {
+          continue;
+        }
+        const i = ((y - y0) * w + (x - x0)) * 4,
+          j =
+            ((Math.min(fr.y + fr.h - 1, Math.max(fr.y, y)) - y0) * w +
+              (Math.min(fr.x + fr.w - 1, Math.max(fr.x, x)) - x0)) *
+            4;
+        const copied =
+          Math.abs(o[i] - o[j]) + Math.abs(o[i + 1] - o[j + 1]) + Math.abs(o[i + 2] - o[j + 2]) < 24 &&
+          Math.abs(o[i + 3] - o[j + 3]) < 8;
+        if (o[i + 3] !== 0 && !copied) {
+          continue;
+        } // (part of something else on the sheet)
+        p[i] = p[j];
+        p[i + 1] = p[j + 1];
+        p[i + 2] = p[j + 2];
+        p[i + 3] = p[j + 3];
+      }
+    }
+    sg.putImageData(d, x0, y0);
   };
   const orig = (name) => mapFrame(game, name);
   let fav = null;
@@ -252,6 +292,7 @@ function buildMapSheet(game, base, key) {
         }
         T.floor(g, +m[2], w, h, src, orig);
       });
+      padEdges(fr);
     } else if (/^space\d+-\d+$/.test(n)) {
       piece(fr, (g, w, h) => (T.space ? T.space(g, w, h, src, orig) : null));
     } else if (/^(border|wallDecoration)\d+-\d+$/.test(n)) {
@@ -266,23 +307,45 @@ function buildMapSheet(game, base, key) {
         g.drawImage(wallSym(T, src, orig), 0, 0);
         g.restore();
         if (SETTINGS.plainMaps === true) {
-          // plain walls: the wall's own average colour, same shape
-          const d = g.getImageData(0, 0, w, h).data;
-          let r = 0,
-            gr = 0,
-            b = 0,
-            count = 0;
+          // plain walls: one of the wall's own colours, same shape
+          const d = g.getImageData(0, 0, w, h).data,
+            fl = floorAvg(),
+            floorLum = 0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2],
+            tally = {};
+          let count = 0;
           for (let i = 0; i < d.length; i += 4) {
             if (d[i + 3] > 128) {
-              r += d[i];
-              gr += d[i + 1];
-              b += d[i + 2];
+              const k = (d[i] >> 4) + "," + (d[i + 1] >> 4) + "," + (d[i + 2] >> 4),
+                t = tally[k] || (tally[k] = [0, 0, 0, 0]);
+              t[0] += d[i];
+              t[1] += d[i + 1];
+              t[2] += d[i + 2];
+              t[3]++;
               count++;
             }
           }
-          if (count) {
+          // the wall's most common colour, unless it hardly shows on the floor: then the one that stands out most
+          const gapOf = (t) => Math.abs((0.3 * t[0] + 0.59 * t[1] + 0.11 * t[2]) / t[3] - floorLum),
+            main = Object.values(tally)
+              .filter((t) => t[3] >= count * 0.05)
+              .sort((x, y) => y[3] - x[3]);
+          let best = main[0];
+          if (best && gapOf(best) < 40) {
+            for (const t of main) {
+              if (gapOf(t) > gapOf(best)) {
+                best = t;
+              }
+            }
+          }
+          if (!best && count) {
+            best = Object.values(tally).reduce((a, t) => [a[0] + t[0], a[1] + t[1], a[2] + t[2], a[3] + t[3]], [0, 0, 0, 0]);
+          }
+          if (best) {
+            const r = best[0] / best[3],
+              gr = best[1] / best[3],
+              b = best[2] / best[3];
             g.globalCompositeOperation = "source-atop";
-            g.fillStyle = `rgb(${r / count},${gr / count},${b / count})`;
+            g.fillStyle = `rgb(${r},${gr},${b})`;
             g.fillRect(0, 0, w, h);
             g.globalCompositeOperation = "source-over";
           }
