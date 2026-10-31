@@ -7,6 +7,7 @@ import { colourName } from "./garage-search.js";
 import { laikaDog, laikaSkinChanged, redoLaikaSkin } from "./laika-look.js";
 import { shareCall, shareMine, shareMyLooks, shareWatch } from "./look-sharing.js";
 import { mapApplyNow } from "./map-themes.js";
+import { mazeTimer, perfOn } from "./maze.js";
 import { BULLET_COLS, bulletIcon, bulletWarn, mapThumb, renderMazeTab } from "./maze-tab.js";
 import { onlineFetch } from "./online.js";
 import { pageKeyNow, pagePal } from "./page.js";
@@ -72,6 +73,7 @@ function gearQuick() {
       shareMine(),
       SETTINGS.goOffline === true,
       SETTINGS.invisible === true,
+      SETTINGS.perfMode || "off",
       gearVer,
       SETTINGS.updPending || "",
       Object.keys(gearG)
@@ -196,6 +198,21 @@ function gearQuick() {
           onlineFetch();
         } catch {}
       }, 2500);
+    },
+  );
+  mk(
+    perfOn() ? "⚡ Performance" : "⚡ Normal",
+    perfOn(),
+    "Performance mode: fewer map effects in a round (more in the 🗺 Maze tab)",
+    () => {
+      SETTINGS.perfMode = perfOn() ? "off" : "on";
+      saveSettings();
+      try {
+        mapApplyNow();
+      } catch {}
+      try {
+        renderMazeTab();
+      } catch {}
     },
   );
   mk("🎨 Open", true, "Open the Color Lab panel", () => setOpen(true));
@@ -640,6 +657,10 @@ export function startGear() {
         if (gearShown()) {
           return;
         }
+        if (perfOn() && mazeTimer) {
+          setTimeout(warm, 5000);
+          return;
+        } // (performance mode: not during a round)
         const ks = mapThemeList(),
           pks = [...Object.keys(PAGE_SPECIAL), ...ks.filter((k) => k !== "standard")].filter(pageThemeOk); // (the map pictures and page-theme colours it shows are worked out a few at a time when the page is idle, so opening it is quick too)
         const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 200));

@@ -31,7 +31,7 @@ import { flatHex, toCss } from "../content/registries.js";
 import { loggedInIds, lookupById } from "./game-socket.js";
 import { laikaSkinChanged } from "./laika-look.js";
 import { SHARED, VIEW_REAL, getOverride, shareSee } from "./look-sharing.js";
-import { forgetMazeTanks, mazeFeature, mazeGame, mazePatternTick, patternSourceFor } from "./maze.js";
+import { forgetMazeTanks, mazeFeature, mazeGame, mazePatternTick, patternSourceFor, perfOn } from "./maze.js";
 import { mapT, pageForMaze } from "./page.js";
 import { SETTINGS } from "./storage.js";
 
@@ -60,7 +60,7 @@ function pickMapTheme() {
     }
   } // a fixed or daily page theme the maze follows too
   const mode = SETTINGS.mapMode || "game";
-  if (mode === "game") {
+  if (mode === "game" || SETTINGS.perfMode === "game") {
     return null;
   }
   if (mode === "fixed") {
@@ -173,7 +173,7 @@ function buildMapSheet(game, base, key) {
       "|" +
       (SETTINGS.bulletPatterns !== false) +
       "|" +
-      (SETTINGS.crateStyle !== "box" ? "o" : "b");
+      (SETTINGS.crateStyle !== "box" && !perfOn() ? "o" : "b");
   if (mapSheets[id]) {
     return mapSheets[id];
   }
@@ -258,7 +258,7 @@ function buildMapSheet(game, base, key) {
       });
     } else if ((m = /^crate(\d+)-(\d)$/.exec(n))) {
       const k = +m[2],
-        obj = SETTINGS.crateStyle !== "box" && OBJ_CRATES[key];
+        obj = SETTINGS.crateStyle !== "box" && !perfOn() && OBJ_CRATES[key];
       if (obj) {
         piece(fr, (g) => obj(g, glyphs[k], k, T.shade === "dark"));
       } else {
@@ -425,7 +425,7 @@ function onMazeCreate(group, frame, x, y, first) {
     mapNext = undefined;
     applyMapTheme(game, k);
   } // a new maze
-  if (!mapTheme || !/^floor/.test(frame)) {
+  if (!mapTheme || !/^floor/.test(frame) || perfOn()) {
     return;
   }
   const T = mapT(mapTheme);
@@ -471,7 +471,7 @@ function ownerTurret(id) {
   return null;
 }
 function bulletSkin(sprite, id, frame) {
-  if (!/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(frame)) {
+  if (!/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(frame) || perfOn()) {
     return;
   }
   const p = sprite.gameController && sprite.gameController.getProjectile && sprite.gameController.getProjectile(id);
@@ -607,7 +607,7 @@ function patchProjectiles(obj) {
     P.update = function () {
       const r = origUp.apply(this, arguments);
       try {
-        if (MAP_SHOT_STYLE && FACE_TRAVEL.has(MAP_SHOT_STYLE) && !this.__ttclBullet && this.exists) {
+        if (MAP_SHOT_STYLE && FACE_TRAVEL.has(MAP_SHOT_STYLE) && !this.__ttclBullet && this.exists && !perfOn()) {
           const L = this.__ttclLast,
             x = this.x,
             y = this.y;

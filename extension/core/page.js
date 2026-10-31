@@ -20,6 +20,7 @@ import {
   tabMap,
 } from "../content/page-themes.js";
 import { mapApplyNow, mapNext, mapShade, mapTheme } from "./map-themes.js";
+import { perfOn } from "./maze.js";
 import { root } from "./panel.js";
 import { SETTINGS, storageLoaded } from "./storage.js";
 
@@ -171,7 +172,9 @@ export function pageTick() {
   const key = pageKeyWanted(),
     P = key ? pagePal(key) : null,
     forum = /^\/forum/.test(location.pathname);
-  const base = P ? pageCss(P, true) + newsCss(P) + pageImgCss(P) : "",
+  const base = P
+      ? pageCss(P.deco && perfOn() ? Object.assign({}, P, { deco: "" }) : P, true) + newsCss(P) + pageImgCss(P)
+      : "",
     css = base + (P && forum ? forumCss(P) : ""); // (every page gets the whole theme; the forum setting only changes the posts)
   if (pageCssSaved !== base) {
     pageCssSaved = base;

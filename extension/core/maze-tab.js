@@ -520,6 +520,56 @@ export function renderMazeTab() {
     };
     seg.appendChild(b);
   }
+  mzl("⚡ Performance mode:");
+  const pf = document.createElement("div");
+  pf.className = "mzseg";
+  sm.appendChild(pf);
+  const pcur = ["on", "game"].includes(SETTINGS.perfMode) ? SETTINGS.perfMode : "off";
+  for (const [v, t, tip] of [
+    ["off", "Off", "Every map effect on"],
+    [
+      "on",
+      "⚡ On",
+      "Fewer effects in a round: no floor decorations, pattern paints in their main colour in the maze, plain crates and bullets. Your looks and the map colours stay",
+    ],
+    ["game", "⚡ On + game's maps", "Like On, with the game's own maps instead of Color Lab's"],
+  ]) {
+    const b = document.createElement("button");
+    b.className = "small" + (pcur === v ? "" : " grey");
+    b.textContent = t;
+    b.title = tip;
+    b.onclick = () => {
+      SETTINGS.perfMode = v;
+      saveSettings();
+      try {
+        mapApplyNow();
+      } catch {}
+      renderMazeTab();
+    };
+    pf.appendChild(b);
+  }
+  const pa = document.createElement("div");
+  pa.className = "mzseg";
+  sm.appendChild(pa);
+  for (const [v, t, tip] of [
+    [
+      true,
+      "Switch on by itself",
+      "If a round keeps running slowly, performance mode switches on by itself (you're told)",
+    ],
+    [false, "Only when I choose", "Performance mode never switches on by itself"],
+  ]) {
+    const b = document.createElement("button");
+    b.className = "small" + ((SETTINGS.perfAuto !== false) === v ? "" : " grey");
+    b.textContent = t;
+    b.title = tip;
+    b.onclick = () => {
+      SETTINGS.perfAuto = v;
+      saveSettings();
+      renderMazeTab();
+    };
+    pa.appendChild(b);
+  }
   if (mode !== "game") {
     mzl("Light or dark:");
     const sh = document.createElement("div");

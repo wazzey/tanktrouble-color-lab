@@ -20,7 +20,8 @@ import { getCustomArt } from "./custom-box-art.js";
 import { lookupById } from "./game-socket.js";
 import { getOverride } from "./look-sharing.js";
 import { MAP_FLOOR_NOW, mapNext } from "./map-themes.js";
-import { SETTINGS } from "./storage.js";
+import { toast } from "./panel.js";
+import { SETTINGS, saveSettings } from "./storage.js";
 
 // ---------- Pattern in-maze ----------
 // In a match every tank part is a picture from the game's picture sheet ("game" atlas), tinted one colour. For a
@@ -34,7 +35,11 @@ export let mazeTimer = null,
 export const forgetMazeTanks = () => {
   mazeTanks = null;
 };
-export const mazeFeature = () => SETTINGS.mazePatterns !== false;
+// Performance mode: fewer effects in a round ("on"), and the game's own maps too ("game")
+export const perfOn = () => SETTINGS.perfMode === "on" || SETTINGS.perfMode === "game";
+export const mazeFeature = () => SETTINGS.mazePatterns !== false && !perfOn();
+const perfSlow = [];
+let perfAsked = false;
 export function startMazePatterns(game) {
   // also keeps colours live: changes made in the panel show on tanks mid-round
   mazeGame = new WeakRef(game);
@@ -283,6 +288,7 @@ export function mazePatternTick() {
   try {
     hookAimLines(game);
   } catch {}
+  applyPerfCheck(game);
   if (!window.PIXI || !PIXI.BaseTexture) {
     return;
   }
@@ -322,6 +328,27 @@ export function mazePatternTick() {
       mazeSet(t.rightTread, sheet && parts.treads ? sheet : null);
     } catch {}
   }
+}
+// The game kept running slowly (most frames over 25 ms for 15 s of a round): performance mode switches on by itself, once
+function applyPerfCheck(game) {
+  if (perfAsked || perfOn() || SETTINGS.perfAuto === false || document.hidden) {
+    return;
+  }
+  const ms = game.time && game.time.elapsedMS;
+  if (!ms) {
+    return;
+  }
+  perfSlow.push(ms > 25);
+  if (perfSlow.length > 75) {
+    perfSlow.shift();
+  }
+  if (perfSlow.length < 75 || perfSlow.filter((slow) => slow).length < 50) {
+    return;
+  }
+  perfAsked = true;
+  SETTINGS.perfMode = "on";
+  saveSettings();
+  toast("⚡ The game was running slowly, so Color Lab switched on Performance mode (🗺 Maze tab to change it)");
 }
 
 export function startMaze() {
