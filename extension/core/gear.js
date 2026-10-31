@@ -74,6 +74,7 @@ function gearQuick() {
       SETTINGS.goOffline === true,
       SETTINGS.invisible === true,
       SETTINGS.perfMode || "off",
+      SETTINGS.plainMaps === true,
       gearVer,
       SETTINGS.updPending || "",
       Object.keys(gearG)
@@ -201,11 +202,26 @@ function gearQuick() {
     },
   );
   mk(
-    perfOn() ? "⚡ Performance" : "⚡ Normal",
+    perfOn() ? "⚡ Performance mode: on" : "⚡ Performance mode: off",
     perfOn(),
     "Performance mode: fewer map effects in a round (more in the 🗺 Maze tab)",
     () => {
       SETTINGS.perfMode = perfOn() ? "off" : "on";
+      saveSettings();
+      try {
+        mapApplyNow();
+      } catch {}
+      try {
+        renderMazeTab();
+      } catch {}
+    },
+  );
+  mk(
+    SETTINGS.plainMaps === true ? "🧹 Plain maps: on" : "🧹 Plain maps: off",
+    SETTINGS.plainMaps === true,
+    "Plain maps: Color Lab's map floors and walls in their colours only, no cracks, patterns or decorations",
+    () => {
+      SETTINGS.plainMaps = SETTINGS.plainMaps !== true;
       saveSettings();
       try {
         mapApplyNow();

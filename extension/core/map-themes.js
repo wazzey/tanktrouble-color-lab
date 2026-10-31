@@ -173,7 +173,9 @@ function buildMapSheet(game, base, key) {
       "|" +
       (SETTINGS.bulletPatterns !== false) +
       "|" +
-      (SETTINGS.crateStyle !== "box" && !perfOn() ? "o" : "b");
+      (SETTINGS.crateStyle !== "box" && !perfOn() ? "o" : "b") +
+      "|" +
+      (SETTINGS.plainMaps === true);
   if (mapSheets[id]) {
     return mapSheets[id];
   }
@@ -241,7 +243,15 @@ function buildMapSheet(game, base, key) {
       if (m[1] === "0" && T.keepStandard) {
         continue;
       }
-      piece(fr, (g, w, h) => T.floor(g, +m[2], w, h, src, orig));
+      piece(fr, (g, w, h) => {
+        if (SETTINGS.plainMaps === true) {
+          const [r, gr, b] = floorAvg();
+          g.fillStyle = `rgb(${r},${gr},${b})`;
+          g.fillRect(0, 0, w, h);
+          return;
+        }
+        T.floor(g, +m[2], w, h, src, orig);
+      });
     } else if (/^space\d+-\d+$/.test(n)) {
       piece(fr, (g, w, h) => (T.space ? T.space(g, w, h, src, orig) : null));
     } else if (/^(border|wallDecoration)\d+-\d+$/.test(n)) {
@@ -255,6 +265,28 @@ function buildMapSheet(game, base, key) {
         g.translate((w - 216) / 2, (h - 16) / 2);
         g.drawImage(wallSym(T, src, orig), 0, 0);
         g.restore();
+        if (SETTINGS.plainMaps === true) {
+          // plain walls: the wall's own average colour, same shape
+          const d = g.getImageData(0, 0, w, h).data;
+          let r = 0,
+            gr = 0,
+            b = 0,
+            count = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            if (d[i + 3] > 128) {
+              r += d[i];
+              gr += d[i + 1];
+              b += d[i + 2];
+              count++;
+            }
+          }
+          if (count) {
+            g.globalCompositeOperation = "source-atop";
+            g.fillStyle = `rgb(${r / count},${gr / count},${b / count})`;
+            g.fillRect(0, 0, w, h);
+            g.globalCompositeOperation = "source-over";
+          }
+        }
       });
     } else if ((m = /^crate(\d+)-(\d)$/.exec(n))) {
       const k = +m[2],
@@ -425,7 +457,7 @@ function onMazeCreate(group, frame, x, y, first) {
     mapNext = undefined;
     applyMapTheme(game, k);
   } // a new maze
-  if (!mapTheme || !/^floor/.test(frame) || perfOn()) {
+  if (!mapTheme || !/^floor/.test(frame) || perfOn() || SETTINGS.plainMaps === true) {
     return;
   }
   const T = mapT(mapTheme);

@@ -549,6 +549,28 @@ export function renderMazeTab() {
     pf.appendChild(b);
   }
   if (mode !== "game") {
+    mzl("🧹 Plain maps:");
+    const pl = document.createElement("div");
+    pl.className = "mzseg";
+    sm.appendChild(pl);
+    for (const [v, t, tip] of [
+      [false, "Off", "Every map with its floor details, wall patterns and decorations"],
+      [true, "🧹 On", "Floors and walls in the map's colours only, no cracks, patterns or decorations"],
+    ]) {
+      const b = document.createElement("button");
+      b.className = "small" + ((SETTINGS.plainMaps === true) === v ? "" : " grey");
+      b.textContent = t;
+      b.title = tip;
+      b.onclick = () => {
+        SETTINGS.plainMaps = v;
+        saveSettings();
+        try {
+          mapApplyNow();
+        } catch {}
+        renderMazeTab();
+      };
+      pl.appendChild(b);
+    }
     mzl("Light or dark:");
     const sh = document.createElement("div");
     sh.className = "mzseg";
