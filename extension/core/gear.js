@@ -29,13 +29,16 @@ function gearTheme() {
     st.id = "ttclGearCss";
     document.head.appendChild(st);
   }
-  const c = P
+  // the box on its own layer, so opening or closing it doesn't redraw the whole (much taller) box and its shadow every frame
+  const c =
+    "#settings{will-change:transform,opacity}" +
+    (P
     ? `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto;background:linear-gradient(${P.panel},${P.panel2})!important;color:${P.ink}!important;border:1px solid ${P.accent}88}#settings .spaced{color:${P.ink}!important}#settings .tab{background:${P.panel2}!important}
 #settings .ui-selectmenu-button{background:rgba(0,0,0,.35)!important;color:${P.ink}!important;border:1px solid ${P.accent}88!important}#settings .ui-selectmenu-button .ui-icon{filter:invert(1)}
 .ui-selectmenu-menu .ui-menu{background:${P.panel2}!important;color:${P.ink}!important;border:1px solid ${P.accent}88!important}.ui-selectmenu-menu .ui-menu .ui-menu-item-wrapper{color:${P.ink}!important;background:none!important;border:0!important}
 .ui-selectmenu-menu .ui-menu .ui-state-active,.ui-selectmenu-menu .ui-menu .ui-state-focus{background:linear-gradient(${P.pBtnTop},${P.pBtnBot})!important;color:#fff!important}
 #settings .content{box-sizing:border-box;overflow-x:hidden}#ttclGear .ttgx:hover{background:rgba(127,127,127,.18)}#ttclGear .h:hover{opacity:.85}#ttclGear{margin-top:8px;padding-top:6px;max-width:100%;border-top:1px solid ${P.accent}77}#ttclGear .h{font:bold 13px Arial;color:${P.head};margin-bottom:5px;cursor:pointer;user-select:none}#ttclGear label.ttg{display:flex;align-items:center;gap:6px;margin:3px 0;font:12px Arial;color:${P.ink}}#ttclGear label.ttg span{flex:0 0 72px;white-space:pre}#ttclGear select{flex:1;min-width:0;font:12px Arial;padding:3px 4px;border-radius:5px;background:rgba(0,0,0,.4);color:${P.ink};border:1px solid ${P.accent}88}#ttclGear select option{background:${P.panel2};color:${P.ink}}`
-    : `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto}#settings .content{box-sizing:border-box;overflow-x:hidden}#ttclGear .ttgx:hover{background:rgba(127,127,127,.18)}#ttclGear .h:hover{opacity:.85}#ttclGear{margin-top:8px;padding-top:6px;max-width:100%;border-top:1px solid #9998}#ttclGear .h{font:bold 13px Arial;color:#444;margin-bottom:5px;cursor:pointer;user-select:none}#ttclGear label.ttg{display:flex;align-items:center;gap:6px;margin:3px 0;font:12px Arial;color:#222}#ttclGear label.ttg span{flex:0 0 72px;white-space:pre}#ttclGear select{flex:1;min-width:0;font:12px Arial;padding:3px 4px;border-radius:5px}`;
+    : `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto}#settings .content{box-sizing:border-box;overflow-x:hidden}#ttclGear .ttgx:hover{background:rgba(127,127,127,.18)}#ttclGear .h:hover{opacity:.85}#ttclGear{margin-top:8px;padding-top:6px;max-width:100%;border-top:1px solid #9998}#ttclGear .h{font:bold 13px Arial;color:#444;margin-bottom:5px;cursor:pointer;user-select:none}#ttclGear label.ttg{display:flex;align-items:center;gap:6px;margin:3px 0;font:12px Arial;color:#222}#ttclGear label.ttg span{flex:0 0 72px;white-space:pre}#ttclGear select{flex:1;min-width:0;font:12px Arial;padding:3px 4px;border-radius:5px}`);
   if (st.textContent !== c) {
     st.textContent = c;
   }
