@@ -548,28 +548,6 @@ export function renderMazeTab() {
     };
     pf.appendChild(b);
   }
-  const pa = document.createElement("div");
-  pa.className = "mzseg";
-  sm.appendChild(pa);
-  for (const [v, t, tip] of [
-    [
-      true,
-      "Switch on by itself",
-      "If a round keeps running slowly, performance mode switches on by itself (you're told)",
-    ],
-    [false, "Only when I choose", "Performance mode never switches on by itself"],
-  ]) {
-    const b = document.createElement("button");
-    b.className = "small" + ((SETTINGS.perfAuto !== false) === v ? "" : " grey");
-    b.textContent = t;
-    b.title = tip;
-    b.onclick = () => {
-      SETTINGS.perfAuto = v;
-      saveSettings();
-      renderMazeTab();
-    };
-    pa.appendChild(b);
-  }
   if (mode !== "game") {
     mzl("Light or dark:");
     const sh = document.createElement("div");
