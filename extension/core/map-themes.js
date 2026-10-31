@@ -340,8 +340,8 @@ function buildMapSheet(game, base, key) {
       mk.height = fr.h;
       mk.getContext("2d").drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h);
       piece(fr, (g, w, h) => bulletArt(g, mk, w, h, col, null, null, null));
-    } else if (/^(smoke|dust|puff)\d+$/.test(n)) {
-      // the grey smoke and dust behind a moving tank vanish on a dark floor, so there they're turned light (same shape)
+    } else if (/^(smoke|puff)\d+$/.test(n)) {
+      // the grey smoke behind a moving tank vanishes on a dark floor, so there it's turned light (same shape)
       const fl = floorAvg();
       if ((0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255 >= 0.45) {
         continue;
@@ -445,7 +445,8 @@ export function mapApplyNow(shadeOnly) {
   }
 }
 function applyDecorShown(game, key) {
-  // decorations already laid this round: only the current map's, and none with plain maps or performance mode
+  // decorations already laid this round: only the current map's, and none with plain maps or performance mode.
+  // The game's border and wall decoration pieces are hidden on Color Lab maps (blank, their edges still picked up specks from the sheet)
   const show = !perfOn() && SETTINGS.plainMaps !== true,
     own = "ttclDecor-" + key + "-";
   const walk = (o, depth) => {
@@ -454,6 +455,8 @@ function applyDecorShown(game, key) {
     }
     if (typeof o.key === "string" && o.key.startsWith("ttclDecor-")) {
       o.visible = show && o.key.startsWith(own);
+    } else if (o.key === "game" && /^(border|wallDecoration)\d/.test(String(o.frameName))) {
+      o.visible = !key;
     }
     for (const c of o.children || []) {
       walk(c, depth + 1);
@@ -986,6 +989,9 @@ export function hookMapGroups() {
       try {
         onMazeCreate(this, frame, x, y, first);
       } catch {}
+    }
+    if (r && key === "game" && typeof frame === "string" && /^(border|wallDecoration)\d/.test(frame)) {
+      r.visible = !mapTheme;
     }
     return r;
   };
