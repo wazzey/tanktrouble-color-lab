@@ -163,8 +163,8 @@ export function mapThumb(key) {
     }
   } else {
     const f = document.createElement("canvas");
-    f.width = f.height = 200;
-    T.floor(f.getContext("2d"), 0, 200, 200);
+    f.width = f.height = 100;
+    T.floor(f.getContext("2d"), 0, 100, 100); // (half a tile is plenty for 44px, and a quarter of the work)
     g.drawImage(f, 0, 0, 44, 44);
     const w = document.createElement("canvas");
     w.width = 216;

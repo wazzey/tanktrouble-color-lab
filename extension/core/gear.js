@@ -676,10 +676,10 @@ export function startGear() {
         if (gearShown()) {
           return;
         }
-        if (perfOn() && mazeTimer) {
+        if (mazeTimer) {
           setTimeout(warm, 5000);
           return;
-        } // (performance mode: not during a round)
+        } // (not during a round)
         const ks = mapThemeList(),
           pks = [...Object.keys(PAGE_SPECIAL), ...ks.filter((k) => k !== "standard")].filter(pageThemeOk); // (the map pictures and page-theme colours it shows are worked out a few at a time when the page is idle, so opening it is quick too)
         const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 200));
