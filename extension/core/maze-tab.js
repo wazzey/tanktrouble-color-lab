@@ -565,7 +565,7 @@ export function renderMazeTab() {
         SETTINGS.plainMaps = v;
         saveSettings();
         try {
-          mapApplyNow();
+          mapApplyNow(true);
         } catch {}
         renderMazeTab();
       };

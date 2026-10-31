@@ -394,6 +394,7 @@ export function applyMapTheme(game, key) {
     }
     mapTheme = null;
     MAP_FLOOR_NOW = stdFloorAvg(game, base);
+    applyDecorShown(game, "");
     try {
       laikaSkinChanged();
     } catch {}
@@ -413,6 +414,7 @@ export function applyMapTheme(game, key) {
   mapTheme = key;
   MAP_FLOOR_NOW = sheet.__floor || null;
   MAP_SHOT_STYLE = sheet.__style || null;
+  applyDecorShown(game, key);
   try {
     laikaSkinChanged();
   } catch {}
@@ -434,13 +436,30 @@ export function mapApplyNow(shadeOnly) {
     }
     return;
   } // light / dark switched: the same map, repainted
-  if (mode === "game") {
+  if (mode === "game" || SETTINGS.perfMode === "game") {
     applyMapTheme(game, null);
   } else if (mode === "fixed") {
     applyMapTheme(game, MAP_THEMES[SETTINGS.mapFixed] ? SETTINGS.mapFixed : null);
-  } else if (!mapTheme) {
-    applyMapTheme(game, pickMapTheme());
+  } else {
+    applyMapTheme(game, mapTheme || pickMapTheme());
   }
+}
+function applyDecorShown(game, key) {
+  // decorations already laid this round: only the current map's, and none with plain maps or performance mode
+  const show = !perfOn() && SETTINGS.plainMaps !== true,
+    own = "ttclDecor-" + key + "-";
+  const walk = (o, depth) => {
+    if (!o || depth > 12) {
+      return;
+    }
+    if (typeof o.key === "string" && o.key.startsWith("ttclDecor-")) {
+      o.visible = show && o.key.startsWith(own);
+    }
+    for (const c of o.children || []) {
+      walk(c, depth + 1);
+    }
+  };
+  walk(game.world, 0);
 }
 function mapDecorKey(game, key, i) {
   // a theme's floor decorations as their own small pictures

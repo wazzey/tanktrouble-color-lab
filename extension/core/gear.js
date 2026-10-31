@@ -224,7 +224,7 @@ function gearQuick() {
       SETTINGS.plainMaps = SETTINGS.plainMaps !== true;
       saveSettings();
       try {
-        mapApplyNow();
+        mapApplyNow(true);
       } catch {}
       try {
         renderMazeTab();
