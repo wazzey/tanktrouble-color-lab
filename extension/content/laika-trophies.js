@@ -27,6 +27,7 @@ export const PUBLIC_BOXES = new Set([
   "agent",
   "cursed",
   "streetwear",
+  "betabw",
 ]);
 // kind: what counts. 'laika'/'dimitri' = kills of that AI in a row without being destroyed; 'weapon' = kills with
 // those weapon types (the game's numbers: 0 laser, 1 double barrel, 2 shotgun, 3 homing missile, 4 mine, 5 gatling).
