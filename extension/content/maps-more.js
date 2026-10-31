@@ -57,24 +57,7 @@ export const MOTIF = {
     g.globalAlpha = 0.35;
     g.strokeStyle = p.spk[0];
     g.lineWidth = 1.5;
-    g.strokeRect(0.75, 0.75, w - 1.5, h - 1.5);
-    g.globalAlpha = 0.6; // faint seams, so the floor never looks like walls
-    g.fillStyle = p.spk[0];
-    for (const [x, y] of [
-      [12, 12],
-      [w - 12, 12],
-      [12, h - 12],
-      [w - 12, h - 12],
-    ]) {
-      g.beginPath();
-      g.arc(x, y, 4, 0, 7);
-      g.fill();
-      g.fillStyle = p.spk[1];
-      g.beginPath();
-      g.arc(x - 1, y - 1, 1.6, 0, 7);
-      g.fill();
-      g.fillStyle = p.spk[0];
-    }
+    g.strokeRect(0.75, 0.75, w - 1.5, h - 1.5); // faint seams, so the floor never looks like walls
     g.globalAlpha = 1;
   },
   flagstones: (g, w, h, p, i) => {
