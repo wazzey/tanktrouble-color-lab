@@ -114,6 +114,7 @@ export const BOX_ART_REV = {
   eyewear: "boxpic-2",
   holo: "boxpic-2",
   arsenal: "boxpic-2",
+  streetwear: "pic-clean-1",
 }; // box id -> version: bump one box's entry when only its pictures change (the rest stay saved)
 export const picDb = () =>
   new Promise((res, rej) => {
