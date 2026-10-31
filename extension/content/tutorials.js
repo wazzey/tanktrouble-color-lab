@@ -330,10 +330,17 @@ export const WHATS_NEW = [
   [
     17,
     "🚀",
-    "<b>Smoother</b>: the ⚙ menu, Settings and the colour panel open without a stall, and clicking your tank no longer stutters",
+    "<b>Smoother</b>: the ⚙ menu opens and closes smoothly, and Settings and the colour panel open without a stall",
   ],
   [17, "🧱", "<b>Clearer corners</b>: no more rivet dots where walls meet, so ricochets are easier to read"],
   [17, "🗺", "<b>Lobby maze</b> no longer flashes white before your page theme comes back"],
+  [17, "🏆", "<b>Color Lab achievements</b> show in your tank's achievements again"],
+  [17, "🧢", "<b>Streetwear</b> hats, headphones, chain and hood no longer show bits of the tank"],
+  [
+    17,
+    "✨",
+    "<b>Cleaner maps</b>: light smoke on dark maps, no specks round the maze and no lines between floor tiles",
+  ],
 ];
 // What a brand-new user sees (instead of every older version's notes): what Color Lab has, in short
 export const V1_OVERVIEW = [
