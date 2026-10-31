@@ -289,7 +289,7 @@ function gearQuick() {
     w.append(t, s);
     g.appendChild(w);
   };
-  const grid = (key, title, items, cur, fn, cap) => {
+  const grid = (key, title, readItems, cur, fn, cap) => {
     const op = !!gearG[key],
       hd2 = document.createElement("div");
     hd2.className = "ttgx";
@@ -330,7 +330,7 @@ function gearQuick() {
     gd.style.cssText =
       "display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:4px;max-height:132px;overflow-y:auto;margin:3px 0 5px;padding:2px";
     let selEl = null;
-    for (const [k, el, name] of items) {
+    for (const [k, el, name] of readItems()) {
       const on = k === cur,
         t = document.createElement("div");
       t.title = name;
@@ -395,26 +395,29 @@ function gearQuick() {
     grid(
       "page",
       "🖼 Theme",
-      [...Object.keys(PAGE_SPECIAL), ...mapThemeList().filter((k) => k !== "standard")].filter(pageThemeOk).map((k) => {
-        let P = null;
-        try {
-          P = pagePal(k);
-        } catch {}
-        const e = document.createElement("div");
-        e.style.cssText =
-          "width:100%;height:28px;border-radius:3px;" +
-          (P
-            ? "background:linear-gradient(" +
-              P.header +
-              " 0 7px,transparent 7px),linear-gradient(90deg," +
-              P.bgTop +
-              " 0 45%," +
-              P.panel +
-              " 45% 100%);box-shadow:inset 0 -5px 0 " +
-              P.accent
-            : "background:#666");
-        return [k, e, pageThemeName(k)];
-      }),
+      () =>
+        [...Object.keys(PAGE_SPECIAL), ...mapThemeList().filter((k) => k !== "standard")]
+          .filter(pageThemeOk)
+          .map((k) => {
+            let P = null;
+            try {
+              P = pagePal(k);
+            } catch {}
+            const e = document.createElement("div");
+            e.style.cssText =
+              "width:100%;height:28px;border-radius:3px;" +
+              (P
+                ? "background:linear-gradient(" +
+                  P.header +
+                  " 0 7px,transparent 7px),linear-gradient(90deg," +
+                  P.bgTop +
+                  " 0 45%," +
+                  P.panel +
+                  " 45% 100%);box-shadow:inset 0 -5px 0 " +
+                  P.accent
+                : "background:#666");
+            return [k, e, pageThemeName(k)];
+          }),
       pk,
       (v) => {
         SETTINGS.pageFixed = v;
@@ -456,7 +459,7 @@ function gearQuick() {
     grid(
       "map",
       "🗺 Maze",
-      mapThemeList().map((k) => [k, thumb(k), MAP_THEMES[k].name]),
+      () => mapThemeList().map((k) => [k, thumb(k), MAP_THEMES[k].name]),
       mk2,
       (v) => {
         SETTINGS.mapFixed = v;
@@ -498,7 +501,7 @@ function gearQuick() {
     grid(
       "laika",
       "🐕 Laika",
-      [
+      () => [
         ["off", txt("🚫 Off"), "Laika doesn't dress up"],
         ["map", txt("🗺 Map"), "Laika follows the map"],
         ...Object.keys(LAIKA_SKINS).map((k) => [k, thumb(k), "Always " + (MAP_THEMES[k] ? MAP_THEMES[k].name : k)]),
@@ -544,17 +547,18 @@ function gearQuick() {
     grid(
       "bullets",
       "💥 Your bullets",
-      bo.map(([v, tx]) => [
-        v,
-        v && v !== "turret" && !isPat(v)
-          ? (() => {
-              const c = bulletIcon(v, 20);
-              c.style.cssText = "display:block;margin:auto";
-              return c;
-            })()
-          : txt(v === "turret" ? "Turret" : v ? "🎨" : "Same"),
-        tx,
-      ]),
+      () =>
+        bo.map(([v, tx]) => [
+          v,
+          v && v !== "turret" && !isPat(v)
+            ? (() => {
+                const c = bulletIcon(v, 20);
+                c.style.cssText = "display:block;margin:auto";
+                return c;
+              })()
+            : txt(v === "turret" ? "Turret" : v ? "🎨" : "Same"),
+          tx,
+        ]),
       my,
       (v) => {
         SETTINGS.myBullet = v || null;
@@ -636,20 +640,29 @@ export function startGear() {
         if (gearShown()) {
           return;
         }
-        const ks = mapThemeList(); // (the pictures it shows are drawn a few at a time when the page is idle, so opening it is quick too)
+        const ks = mapThemeList(),
+          pks = [...Object.keys(PAGE_SPECIAL), ...ks.filter((k) => k !== "standard")].filter(pageThemeOk); // (the map pictures and page-theme colours it shows are worked out a few at a time when the page is idle, so opening it is quick too)
         const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 200));
-        idle((dl) => {
-          try {
-            while (gw < ks.length && dl.timeRemaining() > 4) {
-              mapThumb(ks[gw++]);
+        idle(
+          (dl) => {
+            try {
+              do {
+                if (gw < ks.length) {
+                  mapThumb(ks[gw]);
+                } else {
+                  pagePal(pks[gw - ks.length]);
+                }
+                gw++;
+              } while (gw < ks.length + pks.length && dl.timeRemaining() > 4);
+            } catch {
+              gw = ks.length + pks.length;
             }
-          } catch {
-            gw = ks.length;
-          }
-          if (gw < ks.length) {
-            warm();
-          }
-        });
+            if (gw < ks.length + pks.length) {
+              warm();
+            }
+          },
+          { timeout: 500 },
+        ); // (at least one each time, even while the game keeps the page busy: it never gets a long idle moment)
       } catch {}
     };
     setTimeout(warm, 6000);
@@ -676,7 +689,9 @@ export function startGear() {
       for (const t of [60, 400]) {
         setTimeout(() => {
           try {
-            gearQuick();
+            if (gearShown()) {
+              gearQuick();
+            }
             gearPlace();
           } catch {}
         }, t);
