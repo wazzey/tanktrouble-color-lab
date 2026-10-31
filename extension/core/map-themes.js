@@ -340,6 +340,21 @@ function buildMapSheet(game, base, key) {
       mk.height = fr.h;
       mk.getContext("2d").drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h);
       piece(fr, (g, w, h) => bulletArt(g, mk, w, h, col, null, null, null));
+    } else if (/^(smoke|dust|puff)\d+$/.test(n)) {
+      // the grey smoke and dust behind a moving tank vanish on a dark floor, so there they're turned light (same shape)
+      const fl = floorAvg();
+      if ((0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255 >= 0.45) {
+        continue;
+      }
+      piece(fr, (g, w, h) => {
+        g.drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, w, h);
+        g.globalCompositeOperation = "difference";
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, w, h);
+        g.globalCompositeOperation = "destination-in";
+        g.drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, w, h);
+        g.globalCompositeOperation = "source-over";
+      });
     } else if (/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(n) && !shots && bulletMode() === "normal") {
       const fl = floorAvg(),
         lum = (0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255;
