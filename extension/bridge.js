@@ -282,6 +282,10 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
       if (!e.isTrusted) {
         return;
       }
+      if (!alive()) {
+        location.reload();
+        return;
+      } // (Color Lab was updated or reloaded since this page opened: the page needs its new copy)
       consentCard.remove();
       consentCard = null;
       consent = value;

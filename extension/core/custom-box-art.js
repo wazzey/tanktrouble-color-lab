@@ -36,6 +36,7 @@ import {
   gxIcons,
   paintLabel,
   paintLayout,
+  readBetaBwPixel,
   recolour,
   savedReq,
   spectralPixel,
@@ -810,7 +811,7 @@ function drawCustomArt(key) {
         return null;
       }
       if (ic) {
-        CUSTOM_ICONS[key] = recolour(ic, spectralPixel);
+        CUSTOM_ICONS[key] = recolour(ic, box.pix === "bw" ? readBetaBwPixel(item) : spectralPixel);
       } // the game's own shelf picture, recoloured
       if (item === "turret18") {
         // the ghost was nearly invisible once recoloured: a glowing spectral blue instead, a little more solid
@@ -832,7 +833,7 @@ function drawCustomArt(key) {
         gg.drawImage(ghost, 0, 0);
         CUSTOM_ART[key] = gc;
       } else {
-        CUSTOM_ART[key] = recolour(img, spectralPixel);
+        CUSTOM_ART[key] = recolour(img, box.pix === "bw" ? readBetaBwPixel(item) : spectralPixel);
       }
       setTimeout(() => garageArtReady(key), 0);
       // tanks already drawn without it get redrawn now the art exists (none, usually: nothing drew it yet)
@@ -1038,8 +1039,15 @@ export function gxPaintIcon(key) {
   }
   return gxIcons[key];
 }
-export let galaxyArtReq = null,
-  GALAXY_BOX = null;
+export let galaxyArtReq = null;
+let GALAXY_BOX = null;
+// The Galaxy 'box' is an actual black hole, drawn on its own (the box's paints and items aren't needed for it)
+export function readGalaxyBox() {
+  if (!GALAXY_BOX) {
+    GALAXY_BOX = drawBlackHoleBox().toDataURL();
+  }
+  return GALAXY_BOX;
+}
 export function galaxyArt() {
   if (!galaxyArtReq) {
     galaxyArtReq = getAssetMap()
@@ -1049,9 +1057,7 @@ export function galaxyArt() {
           const u = m && (map["acc640/" + m[1]] || map["accessories/" + m[1]]);
           return u ? loadImg(u) : Promise.resolve(null);
         };
-        const art = await buildGalaxyArt(load);
-        GALAXY_BOX = drawBlackHoleBox().toDataURL(); // the Galaxy 'box' is an actual black hole
-        return art;
+        return buildGalaxyArt(load);
       })
       .catch(() => {
         galaxyArtReq = null;
@@ -1119,6 +1125,15 @@ export function startCustomBoxArt() {
       from: 3,
       prefix: "sp-",
       paints: ["0x39ff14", "0x00ffc8", "0x00b3ff", "0xff00e6", "0xb026ff", "0x5a00b5", "0x1a0033", "0xe6d6ff"],
+    },
+    // the Beta box in black and white
+    {
+      id: "betabw",
+      name: "Beta B&W",
+      from: 7,
+      prefix: "bw-",
+      pix: "bw",
+      paints: ["0xe5e5e5", "0x7f7f7f", "0x4c4c4c", "0x000000", "0xffffff"],
     },
     // the Laika trophy bones live here; the box appears once you've earned one
     {

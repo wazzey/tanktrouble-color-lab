@@ -31,22 +31,21 @@ import { EXT_ITEM } from "../content/registries.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import {
   CUSTOM_BOXES,
-  GALAXY_BOX,
   afterCustomArt,
   boxOfKey,
   boxShown,
   customItems,
-  galaxyArt,
   garageArtReady,
   getCustomArt,
   isCustomKey,
+  readGalaxyBox,
 } from "./custom-box-art.js";
 import { trophyAccValue } from "./draw-swap.js";
 import { garageSig, garageSnap, lookupById, refreshSoon, refreshTanks, warmLooks } from "./game-socket.js";
 import { garageGame, hookPhaser, noteGaragePid, selPid, wantGarageBox } from "./garage.js";
 import { buildGarageIndex, gsPicSoon } from "./garage-search.js";
 import { PLAYER_COLOR_MAP, SETTINGS, allBoxes, mkColour, saveSettings } from "./storage.js";
-import { TROPHY_ART, cropCanvas, getTrophyArt, noteBoneCarrier, readPixels } from "./trophy-art.js";
+import { TROPHY_ART, cropCanvas, getTrophyArt, noteBoneCarrier } from "./trophy-art.js";
 
 // ---------- tutorial arrows ----------
 // The game points arrows at your tank for its tutorials. Only the first-hat one is kept (earn your first gold,
@@ -85,7 +84,7 @@ function syncTutorialArrows() {
 export const hatTutorial = (id) => TUT[id] === 0 || TUT[id] === 1;
 
 // ---------- in-game garage: Real / All ----------
-// "Real" = the garage as the game sends it. "All" = every box, paint and accessory is added to the garage.
+// "Real" = the garage as the game sends it. "Color Lab" (All) = every box, paint and accessory is added to the garage.
 // Picking something you own goes to the server as normal; picking something you don't own is NOT sent —
 // it's saved as this tank's Color Lab look instead (only you see it) and the garage is told it worked.
 export const ownedRaw = {},
@@ -334,7 +333,7 @@ export function openBoxFolder(f) {
   }, 30);
 }
 export function syncGarageBack() {
-  // the ← Back button next to All / Done: shown inside a folder (All view), goes up one level
+  // the ← Back button next to Color Lab / Done: shown inside a folder (Color Lab view), goes up one level
   const form = document.querySelector(".garage form");
   if (!form) {
     return;
@@ -650,10 +649,10 @@ export function picCacheSave() {
 export const artOf = (key) =>
   (TROPHY_ART && TROPHY_ART[key] && TROPHY_ART[key].frame) || CUSTOM_ART[key] || GARAGE_ART[key] || null;
 export function artCacheSave(key) {
-  const f = GX_PAINT[key] ? MAZE_TILE[key] : artOf(key);
+  const f = (GX_PAINT[key] && MAZE_TILE[key]) || artOf(key);
   if (!f || ART_BLOBS[key] || !PIC_CACHE || typeof f.toBlob !== "function" || isBlankPic(f)) {
     return;
-  } // (a paint: its tile; never an empty picture)
+  } // (a paint: its tile, or its whole picture when it has no maze tile, like the Shadow paints; never an empty picture)
   ART_BLOBS[key] = true; // (being saved)
   f.toBlob(async (blob) => {
     if (!blob) {
@@ -927,7 +926,7 @@ export function customBoxSheet(customBox) {
     return customBox.picFn();
   }
   if (customBox.trophies === "galaxy") {
-    return galaxyArt().then(() => GALAXY_BOX);
+    return Promise.resolve(readGalaxyBox());
   }
   const from = customBox.picFrom || customBox.from;
   return getAssetMap()
@@ -982,28 +981,34 @@ export function wornIcon(key, frame) {
   if (!P || !frame || isBlankPic(frame)) {
     return null;
   } // (no shelf picture of a bare tank)
+  const aura =
+      /^(gx-aura-|sh-aura$|hk-aura$|ho-aura$|sk-aura$|rc-aura$|gf-aura$|ds-aura$|cn-aura$|ac-aura$|sf-aura$|sm-aura$|kg-aura$|ww-aura$|tp-aura$|mc-aura$|cs-aura$)/.test(
+        key,
+      ) ||
+      (EXT_ITEM[key] !== undefined && EXT_ITEM[key].aura !== undefined),
+    bx = GX_ACC[key] && GX_ACC[key].box,
+    ic = document.createElement("canvas");
+  ic.width = ic.height = 120;
+  if (!aura) {
+    const crop = cropCanvas(frame),
+      k = Math.min(110 / crop.width, 110 / crop.height),
+      w = crop.width * k,
+      h = crop.height * k;
+    ic.getContext("2d").drawImage(crop, (120 - w) / 2, (120 - h) / 2, w, h);
+    return ic;
+  } // the item on its own, like the game's boxes; only an aura needs a tank to show round
   const t = document.createElement("canvas");
   t.width = 640;
   t.height = 384;
   const tg = t.getContext("2d");
-  const tank = document.createElement("canvas");
-  tank.width = 640;
-  tank.height = 384;
-  const kg = tank.getContext("2d");
   for (const k of ["leftTread", "turret", "base", "rightTread", "barrel"]) {
     if (P[k]) {
-      kg.drawImage(P[k], 0, 0, 640, 384);
+      tg.drawImage(P[k], 0, 0, 640, 384);
     }
   }
-  const aura =
-      /^(gx-aura-|sh-aura$|hk-aura$|ho-aura$|sk-aura$|rc-aura$|gf-aura$|ds-aura$|cn-aura$|ac-aura$|sf-aura$|sm-aura$|kg-aura$|ww-aura$|tp-aura$|mc-aura$|cs-aura$)/.test(
-        key,
-      ) || !!(EXT_ITEM[key] && EXT_ITEM[key].aura),
-    bx = GX_ACC[key] && GX_ACC[key].box;
-  kg.globalCompositeOperation = "source-atop";
-  kg.fillStyle = !aura
-    ? "rgba(112,120,140,.9)"
-    : bx === "shadow"
+  tg.globalCompositeOperation = "source-atop";
+  tg.fillStyle =
+    bx === "shadow"
       ? "#1e1236"
       : bx === "hacker"
         ? "#0f2412"
@@ -1012,91 +1017,11 @@ export function wornIcon(key, frame) {
           : bx === "sakura"
             ? "#5a2a44"
             : "#2b2f5a";
-  kg.fillRect(0, 0, 640, 384);
-  const back = GX_ACC[key] && GX_ACC[key].slot === "back";
-  // the item's own outline, and how much of it the tank would cover
-  const fc = document.createElement("canvas");
-  fc.width = 640;
-  fc.height = 384;
-  fc.getContext("2d").drawImage(frame, 0, 0, 640, 384);
-  const fd = readPixels(fc),
-    td = readPixels(tank);
-  let fx0 = 640,
-    fy0 = 384,
-    fx1 = -1,
-    fy1 = -1,
-    fn = 0,
-    hid = 0;
-  for (let y = 0; y < 384; y++) {
-    for (let x = 0; x < 640; x++) {
-      const i = (y * 640 + x) * 4 + 3;
-      if (fd[i] > 20) {
-        fn++;
-        if (td[i] > 20) {
-          hid++;
-        }
-        if (x < fx0) {
-          fx0 = x;
-        }
-        if (x > fx1) {
-          fx1 = x;
-        }
-        if (y < fy0) {
-          fy0 = y;
-        }
-        if (y > fy1) {
-          fy1 = y;
-        }
-      }
-    }
-  }
-  if (back && fn && hid / fn < 0.5) {
-    tg.drawImage(fc, 0, 0);
-    tg.drawImage(tank, 0, 0);
-  } else {
-    tg.drawImage(tank, 0, 0);
-    tg.drawImage(fc, 0, 0);
-  } // (a back item the tank would mostly hide, e.g. a boombox or hood, goes on top so it shows)
-  const eyes = /^ew-|^hk-visor$|^sk-kanzashi$/.test(key),
-    head = () => {
-      const h = document.createElement("canvas");
-      h.width = 190;
-      h.height = 150;
-      h.getContext("2d").drawImage(t, 185, 92, 190, 150, 0, 0, 190, 150);
-      return h;
-    };
-  // a small item hanging off the tank (e.g. sneakers on the barrel): zoom in on the item, with a bit of tank around it
-  const near = () => {
-    const w = fx1 - fx0 + 1,
-      h = fy1 - fy0 + 1,
-      m = Math.max(w, h) * 0.35,
-      x0 = Math.max(0, Math.floor(fx0 - m)),
-      y0 = Math.max(0, Math.floor(fy0 - m)),
-      x1 = Math.min(640, Math.ceil(fx1 + m)),
-      y1 = Math.min(384, Math.ceil(fy1 + m)),
-      c = document.createElement("canvas");
-    c.width = x1 - x0;
-    c.height = y1 - y0;
-    c.getContext("2d").drawImage(t, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
-    return cropCanvas(c);
-  };
-  const full = !aura && !eyes ? cropCanvas(t) : null,
-    small =
-      full &&
-      fx1 >= 0 &&
-      (fx1 - fx0 + 1) * (fy1 - fy0 + 1) <
-        full.width * full.height * (GX_ACC[key] && GX_ACC[key].slot === "barrel" ? 0.45 : 0.3);
-  const crop = aura ? t : eyes ? head() : small ? near() : full,
-    ic = document.createElement("canvas");
-  ic.width = ic.height = 120;
-  const k = Math.min(116 / crop.width, 116 / crop.height) * (aura ? 1.05 : 1);
-  ic.getContext("2d").drawImage(
-    crop,
-    (120 - crop.width * k) / 2,
-    (120 - crop.height * k) / 2,
-    crop.width * k,
-    crop.height * k,
-  );
+  tg.fillRect(0, 0, 640, 384);
+  tg.globalCompositeOperation = "source-over";
+  tg.drawImage(frame, 0, 0, 640, 384);
+  const k = Math.min(116 / 640, 116 / 384) * 1.05;
+  ic.getContext("2d").drawImage(t, (120 - 640 * k) / 2, (120 - 384 * k) / 2, 640 * k, 384 * k);
   return ic;
 }
 export function garagePicFor(key) {

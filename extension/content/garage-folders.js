@@ -28,7 +28,7 @@ export const BOX_GROUPS = [
     color: "#ff4f8a",
     boxes: ["racing", "graffiti", "agent", "wildwest", "eyewear", "streetwear"],
   },
-  { id: "fun", name: "Fun & Games", icon: "🎲", color: "#ff8a1f", boxes: ["arcade", "casino", "sweets"] },
+  { id: "fun", name: "Fun & Games", icon: "🎲", color: "#ff8a1f", boxes: ["arcade", "casino", "sweets", "betabw"] },
   { id: "nature", name: "Nature", icon: "🌴", color: "#2fb070", boxes: ["safari", "deepsea", "tropical"] },
 ];
 export const isLabBoxId = (id) => Number(id) >= 9000;
@@ -97,10 +97,11 @@ export const CUSTOM_BOX_IDS = {
   hall: 9026,
   cursed: 9027,
   streetwear: 9028,
+  betabw: 9029,
 };
 export const GARAGE_PICS = {}; // picture address marker → data URL for the garage loader
 // ART_REV changes only when Color Lab's pictures change (not on every update), so saved pictures survive updates
-export const ART_REV = "art-2026-10-28-v1e"; // (m: drops pictures saved blank while an item's picture file hadn't loaded)
+export const ART_REV = "art-2026-10-31-v1f"; // (f: items shown on their own, tank bits cleaned off)
 export const BOX_ART_REV = {
   agent: "pic-items-3",
   ninja: "pic-items-3",
@@ -113,6 +114,8 @@ export const BOX_ART_REV = {
   eyewear: "boxpic-2",
   holo: "boxpic-2",
   arsenal: "boxpic-2",
+  streetwear: "pic-clean-1",
+  betabw: "pic-plaster-1",
 }; // box id -> version: bump one box's entry when only its pictures change (the rest stay saved)
 export const picDb = () =>
   new Promise((res, rej) => {

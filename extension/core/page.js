@@ -20,6 +20,7 @@ import {
   tabMap,
 } from "../content/page-themes.js";
 import { mapApplyNow, mapNext, mapShade, mapTheme } from "./map-themes.js";
+import { perfOn } from "./maze.js";
 import { root } from "./panel.js";
 import { SETTINGS, storageLoaded } from "./storage.js";
 
@@ -161,7 +162,7 @@ function pageImgCss(P) {
 }
 let pageReady = false,
   pageCssSaved = null; // (true once your settings have loaded; until then the last page theme is put up straight away, so pages don't flash unthemed)
-function pageTick() {
+export function pageTick() {
   if (!pageReady) {
     if (!storageLoaded) {
       return;
@@ -171,7 +172,9 @@ function pageTick() {
   const key = pageKeyWanted(),
     P = key ? pagePal(key) : null,
     forum = /^\/forum/.test(location.pathname);
-  const base = P ? pageCss(P, true) + newsCss(P) + pageImgCss(P) : "",
+  const base = P
+      ? pageCss(P.deco && perfOn() ? Object.assign({}, P, { deco: "" }) : P, true) + newsCss(P) + pageImgCss(P)
+      : "",
     css = base + (P && forum ? forumCss(P) : ""); // (every page gets the whole theme; the forum setting only changes the posts)
   if (pageCssSaved !== base) {
     pageCssSaved = base;
@@ -227,7 +230,7 @@ function pageTick() {
   }
 }
 let pageBurstT = 0;
-const pageBurst = () => {
+export const pageBurst = () => {
   let n = 0;
   clearInterval(pageBurstT);
   pageBurstT = setInterval(() => {

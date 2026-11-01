@@ -13,7 +13,7 @@ import { laikaSkinFor, laikaSkinOn } from "./laika-look.js";
 import { pageKeyNow, pagePal } from "./page.js";
 import { toast } from "./panel.js";
 import { renderSettings } from "./settings.js";
-import { PLAYER_COLOR_MAP, SETTINGS, saveSettings } from "./storage.js";
+import { PLAYER_COLOR_MAP, SETTINGS, saveSettings, saveToStorage } from "./storage.js";
 import { setOpen } from "./tabs.js";
 import { tutClose } from "./tutorial-run.js";
 import { updateNeeded } from "./updates.js";
@@ -227,6 +227,8 @@ function labLookOf(id) {
   const e = PLAYER_COLOR_MAP[id];
   return e ? (e.enabled !== false ? e : null) : sharedLook(id);
 }
+// your tank switched to Real in the garage: its Color Lab look is kept, only switched off
+const garageReal = (id) => PLAYER_COLOR_MAP[id] !== undefined && (SETTINGS.garageOff || []).includes(id);
 let profSeq = 0;
 async function drawProfileTank(cv, id, real) {
   // the profile's big tank picture, in its real or its Color Lab look
@@ -428,7 +430,9 @@ export function needProof(ids) {
     true,
   );
 }
-export function shareMyLooks(force) {
+// A look goes up once it has stayed the same for a few seconds (clicking 🎲 over and over sends only the one kept);
+// Done in the garage, Save in the panel or a refresh send it straight away
+export function shareMyLooks(force, soon) {
   clearTimeout(shareUpTimer);
   shareUpTimer = setTimeout(
     async () => {
@@ -529,7 +533,7 @@ export function shareMyLooks(force) {
         needProof(proof);
       }
     },
-    force ? 500 : 500,
+    force || soon ? 500 : 5000,
   );
 }
 export function getOverride(id, now) {
@@ -572,6 +576,15 @@ export function hasOverrides() {
 }
 
 export function startLookSharing() {
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (e.target && e.target.closest && e.target.closest(".garage form button[type=submit]")) {
+        shareMyLooks(false, true);
+      }
+    },
+    true,
+  );
   window.addEventListener("message", (e) => {
     const d = e.data;
     if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toPage") {
@@ -624,7 +637,7 @@ export function startLookSharing() {
         ? (box.querySelector(".username stroked-text") || {}).getAttribute?.("text")
         : null;
     const id = name ? NAME_TO_ID[name] : null;
-    if (!id || !SETTINGS.on || !labLookOf(id)) {
+    if (!id || !SETTINGS.on || !(labLookOf(id) || garageReal(id))) {
       if (bar) {
         bar.remove();
       }
@@ -666,9 +679,16 @@ export function startLookSharing() {
             ev.stopPropagation();
             const pid = bar.dataset.pid,
               real = el.dataset.k === "real";
-            if (real === VIEW_REAL.has(pid)) {
+            if (real === (VIEW_REAL.has(pid) || garageReal(pid))) {
               return;
             }
+            if (!real && garageReal(pid)) {
+              PLAYER_COLOR_MAP[pid].enabled = true;
+              SETTINGS.garageOff = SETTINGS.garageOff.filter((x) => x !== pid);
+              SETTINGS.garageAllFor = Object.assign({}, SETTINGS.garageAllFor, { [pid]: true });
+              saveSettings();
+              saveToStorage();
+            } // (back to Color Lab, as the garage's switch would)
             if (real) {
               VIEW_REAL.add(pid);
             } else {
@@ -763,7 +783,7 @@ export function startLookSharing() {
       }
       (box.querySelector(".content") || box).appendChild(bar);
     }
-    const real = VIEW_REAL.has(id),
+    const real = VIEW_REAL.has(id) || garageReal(id),
       P = pageKeyNow ? pagePal(pageKeyNow) : null,
       on = P ? "linear-gradient(" + P.pBtnTop + "," + P.pBtnBot + ")" : "linear-gradient(#427fff,#0014ab)";
     for (const l of bar.querySelectorAll("[data-k]")) {

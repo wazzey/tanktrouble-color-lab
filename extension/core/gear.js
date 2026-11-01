@@ -7,6 +7,7 @@ import { colourName } from "./garage-search.js";
 import { laikaDog, laikaSkinChanged, redoLaikaSkin } from "./laika-look.js";
 import { shareCall, shareMine, shareMyLooks, shareWatch } from "./look-sharing.js";
 import { mapApplyNow } from "./map-themes.js";
+import { mazeTimer, perfOn } from "./maze.js";
 import { BULLET_COLS, bulletIcon, bulletWarn, mapThumb, renderMazeTab } from "./maze-tab.js";
 import { onlineFetch } from "./online.js";
 import { pageKeyNow, pagePal } from "./page.js";
@@ -28,13 +29,16 @@ function gearTheme() {
     st.id = "ttclGearCss";
     document.head.appendChild(st);
   }
-  const c = P
-    ? `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto;background:linear-gradient(${P.panel},${P.panel2})!important;color:${P.ink}!important;border:1px solid ${P.accent}88}#settings .spaced{color:${P.ink}!important}#settings .tab{background:${P.panel2}!important}
+  // the box on its own layer, so opening or closing it doesn't redraw the whole (much taller) box and its shadow every frame
+  const c =
+    "#settings{will-change:transform,opacity}" +
+    (P
+      ? `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto;background:linear-gradient(${P.panel},${P.panel2})!important;color:${P.ink}!important;border:1px solid ${P.accent}88}#settings .spaced{color:${P.ink}!important}#settings .tab{background:${P.panel2}!important}
 #settings .ui-selectmenu-button{background:rgba(0,0,0,.35)!important;color:${P.ink}!important;border:1px solid ${P.accent}88!important}#settings .ui-selectmenu-button .ui-icon{filter:invert(1)}
 .ui-selectmenu-menu .ui-menu{background:${P.panel2}!important;color:${P.ink}!important;border:1px solid ${P.accent}88!important}.ui-selectmenu-menu .ui-menu .ui-menu-item-wrapper{color:${P.ink}!important;background:none!important;border:0!important}
 .ui-selectmenu-menu .ui-menu .ui-state-active,.ui-selectmenu-menu .ui-menu .ui-state-focus{background:linear-gradient(${P.pBtnTop},${P.pBtnBot})!important;color:#fff!important}
 #settings .content{box-sizing:border-box;overflow-x:hidden}#ttclGear .ttgx:hover{background:rgba(127,127,127,.18)}#ttclGear .h:hover{opacity:.85}#ttclGear{margin-top:8px;padding-top:6px;max-width:100%;border-top:1px solid ${P.accent}77}#ttclGear .h{font:bold 13px Arial;color:${P.head};margin-bottom:5px;cursor:pointer;user-select:none}#ttclGear label.ttg{display:flex;align-items:center;gap:6px;margin:3px 0;font:12px Arial;color:${P.ink}}#ttclGear label.ttg span{flex:0 0 72px;white-space:pre}#ttclGear select{flex:1;min-width:0;font:12px Arial;padding:3px 4px;border-radius:5px;background:rgba(0,0,0,.4);color:${P.ink};border:1px solid ${P.accent}88}#ttclGear select option{background:${P.panel2};color:${P.ink}}`
-    : `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto}#settings .content{box-sizing:border-box;overflow-x:hidden}#ttclGear .ttgx:hover{background:rgba(127,127,127,.18)}#ttclGear .h:hover{opacity:.85}#ttclGear{margin-top:8px;padding-top:6px;max-width:100%;border-top:1px solid #9998}#ttclGear .h{font:bold 13px Arial;color:#444;margin-bottom:5px;cursor:pointer;user-select:none}#ttclGear label.ttg{display:flex;align-items:center;gap:6px;margin:3px 0;font:12px Arial;color:#222}#ttclGear label.ttg span{flex:0 0 72px;white-space:pre}#ttclGear select{flex:1;min-width:0;font:12px Arial;padding:3px 4px;border-radius:5px}`;
+      : `#settings .content{max-height:calc(100vh - 120px);overflow-y:auto}#settings .content{box-sizing:border-box;overflow-x:hidden}#ttclGear .ttgx:hover{background:rgba(127,127,127,.18)}#ttclGear .h:hover{opacity:.85}#ttclGear{margin-top:8px;padding-top:6px;max-width:100%;border-top:1px solid #9998}#ttclGear .h{font:bold 13px Arial;color:#444;margin-bottom:5px;cursor:pointer;user-select:none}#ttclGear label.ttg{display:flex;align-items:center;gap:6px;margin:3px 0;font:12px Arial;color:#222}#ttclGear label.ttg span{flex:0 0 72px;white-space:pre}#ttclGear select{flex:1;min-width:0;font:12px Arial;padding:3px 4px;border-radius:5px}`);
   if (st.textContent !== c) {
     st.textContent = c;
   }
@@ -72,6 +76,8 @@ function gearQuick() {
       shareMine(),
       SETTINGS.goOffline === true,
       SETTINGS.invisible === true,
+      SETTINGS.perfMode || "off",
+      SETTINGS.plainMaps === true,
       gearVer,
       SETTINGS.updPending || "",
       Object.keys(gearG)
@@ -198,6 +204,36 @@ function gearQuick() {
       }, 2500);
     },
   );
+  mk(
+    perfOn() ? "⚡ Performance mode: on" : "⚡ Performance mode: off",
+    perfOn(),
+    "Performance mode: fewer map effects in a round (more in the 🗺 Maze tab)",
+    () => {
+      SETTINGS.perfMode = perfOn() ? "off" : "on";
+      saveSettings();
+      try {
+        mapApplyNow();
+      } catch {}
+      try {
+        renderMazeTab();
+      } catch {}
+    },
+  );
+  mk(
+    SETTINGS.plainMaps === true ? "🧹 Plain maps: on" : "🧹 Plain maps: off",
+    SETTINGS.plainMaps === true,
+    "Plain maps: Color Lab's map floors and walls in their colours only, no cracks, patterns or decorations",
+    () => {
+      SETTINGS.plainMaps = SETTINGS.plainMaps !== true;
+      saveSettings();
+      try {
+        mapApplyNow(true);
+      } catch {}
+      try {
+        renderMazeTab();
+      } catch {}
+    },
+  );
   mk("🎨 Open", true, "Open the Color Lab panel", () => setOpen(true));
   if (gearVer === null) {
     gearVer = "";
@@ -289,7 +325,7 @@ function gearQuick() {
     w.append(t, s);
     g.appendChild(w);
   };
-  const grid = (key, title, items, cur, fn, cap) => {
+  const grid = (key, title, readItems, cur, fn, cap) => {
     const op = !!gearG[key],
       hd2 = document.createElement("div");
     hd2.className = "ttgx";
@@ -330,7 +366,7 @@ function gearQuick() {
     gd.style.cssText =
       "display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:4px;max-height:132px;overflow-y:auto;margin:3px 0 5px;padding:2px";
     let selEl = null;
-    for (const [k, el, name] of items) {
+    for (const [k, el, name] of readItems()) {
       const on = k === cur,
         t = document.createElement("div");
       t.title = name;
@@ -395,26 +431,29 @@ function gearQuick() {
     grid(
       "page",
       "🖼 Theme",
-      [...Object.keys(PAGE_SPECIAL), ...mapThemeList().filter((k) => k !== "standard")].filter(pageThemeOk).map((k) => {
-        let P = null;
-        try {
-          P = pagePal(k);
-        } catch {}
-        const e = document.createElement("div");
-        e.style.cssText =
-          "width:100%;height:28px;border-radius:3px;" +
-          (P
-            ? "background:linear-gradient(" +
-              P.header +
-              " 0 7px,transparent 7px),linear-gradient(90deg," +
-              P.bgTop +
-              " 0 45%," +
-              P.panel +
-              " 45% 100%);box-shadow:inset 0 -5px 0 " +
-              P.accent
-            : "background:#666");
-        return [k, e, pageThemeName(k)];
-      }),
+      () =>
+        [...Object.keys(PAGE_SPECIAL), ...mapThemeList().filter((k) => k !== "standard")]
+          .filter(pageThemeOk)
+          .map((k) => {
+            let P = null;
+            try {
+              P = pagePal(k);
+            } catch {}
+            const e = document.createElement("div");
+            e.style.cssText =
+              "width:100%;height:28px;border-radius:3px;" +
+              (P
+                ? "background:linear-gradient(" +
+                  P.header +
+                  " 0 7px,transparent 7px),linear-gradient(90deg," +
+                  P.bgTop +
+                  " 0 45%," +
+                  P.panel +
+                  " 45% 100%);box-shadow:inset 0 -5px 0 " +
+                  P.accent
+                : "background:#666");
+            return [k, e, pageThemeName(k)];
+          }),
       pk,
       (v) => {
         SETTINGS.pageFixed = v;
@@ -456,7 +495,7 @@ function gearQuick() {
     grid(
       "map",
       "🗺 Maze",
-      mapThemeList().map((k) => [k, thumb(k), MAP_THEMES[k].name]),
+      () => mapThemeList().map((k) => [k, thumb(k), MAP_THEMES[k].name]),
       mk2,
       (v) => {
         SETTINGS.mapFixed = v;
@@ -498,7 +537,7 @@ function gearQuick() {
     grid(
       "laika",
       "🐕 Laika",
-      [
+      () => [
         ["off", txt("🚫 Off"), "Laika doesn't dress up"],
         ["map", txt("🗺 Map"), "Laika follows the map"],
         ...Object.keys(LAIKA_SKINS).map((k) => [k, thumb(k), "Always " + (MAP_THEMES[k] ? MAP_THEMES[k].name : k)]),
@@ -544,17 +583,18 @@ function gearQuick() {
     grid(
       "bullets",
       "💥 Your bullets",
-      bo.map(([v, tx]) => [
-        v,
-        v && v !== "turret" && !isPat(v)
-          ? (() => {
-              const c = bulletIcon(v, 20);
-              c.style.cssText = "display:block;margin:auto";
-              return c;
-            })()
-          : txt(v === "turret" ? "Turret" : v ? "🎨" : "Same"),
-        tx,
-      ]),
+      () =>
+        bo.map(([v, tx]) => [
+          v,
+          v && v !== "turret" && !isPat(v)
+            ? (() => {
+                const c = bulletIcon(v, 20);
+                c.style.cssText = "display:block;margin:auto";
+                return c;
+              })()
+            : txt(v === "turret" ? "Turret" : v ? "🎨" : "Same"),
+          tx,
+        ]),
       my,
       (v) => {
         SETTINGS.myBullet = v || null;
@@ -636,20 +676,33 @@ export function startGear() {
         if (gearShown()) {
           return;
         }
-        const ks = mapThemeList(); // (the pictures it shows are drawn a few at a time when the page is idle, so opening it is quick too)
+        if (mazeTimer) {
+          setTimeout(warm, 5000);
+          return;
+        } // (not during a round)
+        const ks = mapThemeList(),
+          pks = [...Object.keys(PAGE_SPECIAL), ...ks.filter((k) => k !== "standard")].filter(pageThemeOk); // (the map pictures and page-theme colours it shows are worked out a few at a time when the page is idle, so opening it is quick too)
         const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 200));
-        idle((dl) => {
-          try {
-            while (gw < ks.length && dl.timeRemaining() > 4) {
-              mapThumb(ks[gw++]);
+        idle(
+          (dl) => {
+            try {
+              do {
+                if (gw < ks.length) {
+                  mapThumb(ks[gw]);
+                } else {
+                  pagePal(pks[gw - ks.length]);
+                }
+                gw++;
+              } while (gw < ks.length + pks.length && dl.timeRemaining() > 4);
+            } catch {
+              gw = ks.length + pks.length;
             }
-          } catch {
-            gw = ks.length;
-          }
-          if (gw < ks.length) {
-            warm();
-          }
-        });
+            if (gw < ks.length + pks.length) {
+              warm();
+            }
+          },
+          { timeout: 500 },
+        ); // (at least one each time, even while the game keeps the page busy: it never gets a long idle moment)
       } catch {}
     };
     setTimeout(warm, 6000);
@@ -676,7 +729,9 @@ export function startGear() {
       for (const t of [60, 400]) {
         setTimeout(() => {
           try {
-            gearQuick();
+            if (gearShown()) {
+              gearQuick();
+            }
             gearPlace();
           } catch {}
         }, t);

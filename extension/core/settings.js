@@ -41,8 +41,9 @@ export function syncHelp() {
   $("helpBtn").classList.toggle("grey", !helpOpen);
 }
 const boxDots = {},
-  boxDotWait = [],
+  boxDotLater = [],
   boxDotTried = new Set();
+let boxDotBusy = false;
 export function renderSettings() {
   const row = (host, on, title, sub, fn) => {
     const r = document.createElement("div");
@@ -291,7 +292,7 @@ export function renderSettings() {
   $("raceNo").value = SETTINGS.raceNo || "";
   const sb = $("setBoxes");
   sb.innerHTML = "";
-  boxDotWait.length = 0;
+  boxDotLater.length = 0;
   for (const b of CUSTOM_BOXES.filter(boxAvailable)) {
     const on = boxEnabled(b.id),
       r = document.createElement("div");
@@ -303,19 +304,12 @@ export function renderSettings() {
       const d = document.createElement("i");
       d.className = "bdot";
       if (isPat(v) && GX_PAINT[patId(v)]) {
-        const k = patId(v),
-          t = MAZE_TILE[k] || CUSTOM_ART[k]; // a small piece of the pattern itself
-        if (t) {
-          if (!boxDots[k]) {
-            boxDots[k] = paintLabel(t, 30, 30, false).toDataURL();
-          }
+        const k = patId(v);
+        d.style.background = toCss(v);
+        if (boxDots[k]) {
           d.style.backgroundImage = "url(" + boxDots[k] + ")";
         } else {
-          d.style.background = toCss(v);
-          if (!boxDotTried.has(k)) {
-            boxDotTried.add(k);
-            boxDotWait.push(getCustomArt(k));
-          }
+          boxDotLater.push([k, d]);
         }
       } else {
         d.style.background = toCss(v) || "#888";
@@ -344,17 +338,52 @@ export function renderSettings() {
     };
     sb.appendChild(r);
   }
-  if (boxDotWait.length && !renderSettings.__again) {
-    renderSettings.__again = true;
-    Promise.all(boxDotWait.splice(0))
-      .catch(() => {})
-      .then(() => {
-        renderSettings.__again = false;
-        if (curTab === "settings") {
-          renderSettings();
+  applyBoxDotsLater();
+}
+// The pattern dots show their main colour first and get their pattern a few at a time when the page is idle, so the
+// settings open straight away instead of drawing every pattern at once
+function applyBoxDotsLater() {
+  if (boxDotBusy) {
+    return;
+  }
+  boxDotBusy = true;
+  const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 50));
+  const step = (dl) => {
+    const until = performance.now() + 6; // (a few ms each time even while the game keeps the page busy)
+    try {
+      do {
+        const job = boxDotLater.shift();
+        if (!job) {
+          break;
         }
-      });
-  } // the pattern previews, once they're drawn
+        const [k, d] = job;
+        if (!boxDots[k]) {
+          const t = MAZE_TILE[k] || CUSTOM_ART[k]; // a small piece of the pattern itself
+          if (!t) {
+            if (!boxDotTried.has(k)) {
+              boxDotTried.add(k);
+              boxDotLater.unshift(job);
+              getCustomArt(k)
+                .catch(() => null)
+                .then(() => idle(step, { timeout: 20 }));
+              return;
+            } // (its picture drawn first, one at a time: drawing them all at once froze the page for a moment)
+            continue;
+          }
+          boxDots[k] = paintLabel(t, 30, 30, false).toDataURL();
+        }
+        d.style.backgroundImage = "url(" + boxDots[k] + ")";
+      } while (boxDotLater.length && (performance.now() < until || dl.timeRemaining() > 4));
+    } catch {
+      boxDotLater.length = 0;
+    }
+    if (boxDotLater.length) {
+      idle(step, { timeout: 20 });
+      return;
+    }
+    boxDotBusy = false;
+  };
+  idle(step, { timeout: 20 });
 }
 export function applyShown() {
   const vis = (el, on) => {

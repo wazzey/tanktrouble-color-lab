@@ -88,13 +88,69 @@ function arsenalPixel(d, i) {
 export const boxPixelFn = (b) =>
   b.trophies
     ? arsenalPixel
-    : b.pix === "fire"
-      ? firePixel
-      : b.pix === "chrome"
-        ? chromePixel
-        : b.pix === "holo"
-          ? holoPixel
-          : spectralPixel;
+    : b.pix === "bw"
+      ? readBetaBwPixel("")
+      : b.pix === "fire"
+        ? firePixel
+        : b.pix === "chrome"
+          ? chromePixel
+          : b.pix === "holo"
+            ? holoPixel
+            : spectralPixel;
+// Beta B&W turns the Beta box's orange black and its yellow white, item by item, keeping the shading
+export function readBetaBwPixel(item) {
+  return (d, i) => {
+    const r = d[i] / 255,
+      g = d[i + 1] / 255,
+      b = d[i + 2] / 255;
+    const v = Math.max(r, g, b),
+      dl = v - Math.min(r, g, b),
+      s = v ? dl / v : 0;
+    let h = 0;
+    if (dl > 0.0001) {
+      h = v === r ? ((g - b) / dl) % 6 : v === g ? (b - r) / dl + 2 : (r - g) / dl + 4;
+      h *= 60;
+      if (h < 0) {
+        h += 360;
+      }
+    }
+    const warm = s > 0.35 && (h < 75 || h >= 330),
+      yellow = warm && h >= 38 && h < 75,
+      orange = warm && h >= 12 && h < 38,
+      red = warm && !yellow && !orange;
+    let x = -1;
+    if (item === "turret40" || item === "turret38") {
+      if (orange || red) {
+        x = 30 + 45 * v;
+      }
+    } else if (item === "front39") {
+      if (yellow || orange) {
+        x = 22 + 60 * (1 - s) * v;
+      } else if (v < 0.65) {
+        x = 238 + 17 * v;
+      }
+    } else if (item === "back37") {
+      if (yellow || orange) {
+        x = Math.min(255, 90 + 165 * v);
+      } else if (red) {
+        x = 30 + 45 * v;
+      }
+    } else if (item === "barrel38" || item === "front41") {
+      if (s > 0.15 && (h < 60 || h >= 330)) {
+        x = Math.max(6, Math.min(72, 6 + 132 * (v - 0.5)));
+      }
+    } else if (item !== "front40") {
+      if (yellow || orange) {
+        x = Math.min(255, 90 + 165 * v);
+      }
+    }
+    if (x >= 0) {
+      d[i] = x;
+      d[i + 1] = x;
+      d[i + 2] = x;
+    }
+  };
+}
 function firePixel(d, i) {
   const l = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255;
   const c = sampleRamp(

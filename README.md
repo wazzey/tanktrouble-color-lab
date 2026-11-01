@@ -191,4 +191,6 @@ Modules only define things when they load. What a feature does at start-up is in
 
 © 2026 wazzey. Color Lab is free software under the [GNU General Public License v3.0](LICENSE): you may use, study, share and change it, and anything you share that's based on it must be under the same licence, with its source. Please give a modified version its own name, so players can tell it apart from the official one.
 
+The maze pictures of tanks in the game's own pattern paints are from [Textured Tanks](https://github.com/kamarov-therussiantank/Textured-Tanks) by Kamarov, under the MIT licence (`extension/art/TEXTURED-TANKS-LICENSE.txt`).
+
 TankTrouble, its name, logo, artwork and characters (including Laika) belong to their owners. Color Lab is a fan project, not made, endorsed or supported by TankTrouble, and comes without any warranty.

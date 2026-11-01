@@ -39,7 +39,9 @@ function fillSelect(sel, opts, value) {
 }
 export function renderSources() {
   const sets = colourSets();
-  renderSwatchTabs(sets);
+  if (!$("swatches").hidden) {
+    renderSwatchTabs(sets);
+  } // (folded away: drawn when Swatches is opened)
   fillSelect(
     $("rndSrc"),
     [

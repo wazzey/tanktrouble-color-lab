@@ -428,7 +428,7 @@ select:focus{border-color:#427fff}
       <dt><kbd>🎩</kbd></dt><dd>Light up slots (e.g. Turret + Barrel) so 🎲 Random and party mode roll accessories for them too</dd>
       <dt><kbd>+ Preset</kbd></dt><dd>Save these colours as another preset for the tank</dd>
       <dt><kbd>Right-click</kbd></dt><dd>Remove a recent swatch</dd>
-      <dt><kbd>Garage</kbd></dt><dd>In the game's garage, the small Real / All button next to Done shows every box. Everything you pick in All only changes your tank for you; use Real to change your real tank</dd>
+      <dt><kbd>Garage</kbd></dt><dd>In the game's garage, the small Real / Color Lab button next to Done shows every box. Everything you pick in Color Lab only changes your tank for you; use Real to change your real tank</dd>
     </dl>
     <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtn" title="Replay the tutorial (garage or panel)">▶ Tutorial</button><button class="small grey" id="newBtn" title="Update notes for this version">✨ Update notes</button></div>
   </div>

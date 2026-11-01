@@ -51,7 +51,7 @@ export function tutChoose(first) {
       "</h3><p>Custom tank colours, paints, items and map themes that only <b>you</b> see. How would you like to learn it?</p>",
     [
       [
-        "🏠 <b>The in-game garage</b><br><small>Real / All, search, random looks, right inside the game's garage</small>",
+        "🏠 <b>The in-game garage</b><br><small>Real / Color Lab, search, random looks, right inside the game's garage</small>",
         "big",
         () => tutRun("garage"),
       ],
@@ -243,8 +243,8 @@ export function openHelp(where) {
       ? [
           ["⏻", "Custom colours on (green) or paused (grey): paused shows everyone's real tanks"],
           [
-            "Real / All",
-            "Real = your normal garage (saved to your account). All = every box and item plus the Color Lab boxes; everything you pick there only changes your tank for you",
+            "Real / Color Lab",
+            "Real = your normal garage (saved to your account). Color Lab = every box and item plus the Color Lab boxes; everything you pick there only changes your tank for you",
           ],
           ["🎲", "Random look: choose parts, item slots and boxes, then Roll"],
           [
@@ -441,12 +441,12 @@ export function startTutorialRun() {
       {
         el: () => null,
         t: "Folders 📁",
-        x: "In <b>All</b>, the shelf starts with two folders: <b>Original</b> (the game's own boxes) and <b>Custom</b> (Color Lab's boxes, sorted by genre). Click a folder to open it and <b>← Back</b> to go up.",
+        x: "In <b>Color Lab</b>, the shelf starts with two folders: <b>Original</b> (the game's own boxes) and <b>Custom</b> (Color Lab's boxes, sorted by genre). Click a folder to open it and <b>← Back</b> to go up.",
       },
       {
         el: () => gq("button.ttcl-garage"),
-        t: "Real / All",
-        x: "<b>Real</b> = your normal garage: changes are saved to your account. <b>All</b> = every box, paint and item, plus the Color Lab boxes. Everything you pick in All only changes your tank for you; nothing is sent to TankTrouble. Real / All, 🎲 and Find only change the tank that's open (the highlighted tank at the bottom).",
+        t: "Real / Color Lab",
+        x: "<b>Real</b> = your normal garage: changes are saved to your account. <b>Color Lab</b> = every box, paint and item, plus the Color Lab boxes. Everything you pick in Color Lab only changes your tank for you; nothing is sent to TankTrouble. Real / Color Lab, 🎲 and Find only change the tank that's open (the highlighted tank at the bottom).",
       },
       {
         el: () => gq(".ttcl-gdice"),
@@ -474,7 +474,7 @@ export function startTutorialRun() {
       {
         el: () => gq(".ttcl-mz"),
         t: "Pattern in-maze",
-        x: "When your tank has a pattern paint (in All), buttons appear here to choose if each part's pattern also shows in the maze.",
+        x: "When your tank has a pattern paint (in Color Lab), buttons appear here to choose if each part's pattern also shows in the maze.",
       },
     ],
   };

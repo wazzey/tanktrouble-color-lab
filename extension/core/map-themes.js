@@ -31,7 +31,7 @@ import { flatHex, toCss } from "../content/registries.js";
 import { loggedInIds, lookupById } from "./game-socket.js";
 import { laikaSkinChanged } from "./laika-look.js";
 import { SHARED, VIEW_REAL, getOverride, shareSee } from "./look-sharing.js";
-import { forgetMazeTanks, mazeFeature, mazeGame, mazePatternTick, patternSourceFor } from "./maze.js";
+import { forgetMazeTanks, mazeFeature, mazeGame, mazePatternTick, patternSourceFor, perfOn } from "./maze.js";
 import { mapT, pageForMaze } from "./page.js";
 import { SETTINGS } from "./storage.js";
 
@@ -60,7 +60,7 @@ function pickMapTheme() {
     }
   } // a fixed or daily page theme the maze follows too
   const mode = SETTINGS.mapMode || "game";
-  if (mode === "game") {
+  if (mode === "game" || SETTINGS.perfMode === "game") {
     return null;
   }
   if (mode === "fixed") {
@@ -173,14 +173,16 @@ function buildMapSheet(game, base, key) {
       "|" +
       (SETTINGS.bulletPatterns !== false) +
       "|" +
-      (SETTINGS.crateStyle !== "box" ? "o" : "b");
+      (SETTINGS.crateStyle !== "box" && !perfOn() ? "o" : "b") +
+      "|" +
+      (SETTINGS.plainMaps === true);
   if (mapSheets[id]) {
     return mapSheets[id];
   }
   const sheet = document.createElement("canvas");
   sheet.width = src.width;
   sheet.height = src.height;
-  const sg = sheet.getContext("2d");
+  const sg = sheet.getContext("2d", { willReadFrequently: true }); // (read back for each floor tile edge)
   sg.drawImage(src, 0, 0);
   const fd = game.cache.getFrameData("game");
   if (!fd) {
@@ -194,6 +196,46 @@ function buildMapSheet(game, base, key) {
     draw(g, fr.w, fr.h);
     sg.clearRect(fr.x, fr.y, fr.w, fr.h);
     sg.drawImage(c, fr.x, fr.y);
+  };
+  const padEdges = (fr) => {
+    // the game's sheet repeats each floor tile's edge 2px round it, so a tile drawn scaled down has no seam.
+    // That border still held the game's own floor, which showed as thin lines between tiles, so it's redone from the new tile
+    const x0 = Math.max(0, fr.x - 2),
+      y0 = Math.max(0, fr.y - 2),
+      x1 = Math.min(sheet.width, fr.x + fr.w + 2),
+      y1 = Math.min(sheet.height, fr.y + fr.h + 2),
+      w = x1 - x0,
+      was = document.createElement("canvas");
+    was.width = w;
+    was.height = y1 - y0;
+    const wg = was.getContext("2d", { willReadFrequently: true });
+    wg.drawImage(src, x0, y0, w, y1 - y0, 0, 0, w, y1 - y0);
+    const o = wg.getImageData(0, 0, w, y1 - y0).data,
+      d = sg.getImageData(x0, y0, w, y1 - y0),
+      p = d.data;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (x >= fr.x && x < fr.x + fr.w && y >= fr.y && y < fr.y + fr.h) {
+          continue;
+        }
+        const i = ((y - y0) * w + (x - x0)) * 4,
+          j =
+            ((Math.min(fr.y + fr.h - 1, Math.max(fr.y, y)) - y0) * w +
+              (Math.min(fr.x + fr.w - 1, Math.max(fr.x, x)) - x0)) *
+            4;
+        const copied =
+          Math.abs(o[i] - o[j]) + Math.abs(o[i + 1] - o[j + 1]) + Math.abs(o[i + 2] - o[j + 2]) < 24 &&
+          Math.abs(o[i + 3] - o[j + 3]) < 8;
+        if (o[i + 3] !== 0 && !copied) {
+          continue;
+        } // (part of something else on the sheet)
+        p[i] = p[j];
+        p[i + 1] = p[j + 1];
+        p[i + 2] = p[j + 2];
+        p[i + 3] = p[j + 3];
+      }
+    }
+    sg.putImageData(d, x0, y0);
   };
   const orig = (name) => mapFrame(game, name);
   let fav = null;
@@ -241,7 +283,16 @@ function buildMapSheet(game, base, key) {
       if (m[1] === "0" && T.keepStandard) {
         continue;
       }
-      piece(fr, (g, w, h) => T.floor(g, +m[2], w, h, src, orig));
+      piece(fr, (g, w, h) => {
+        if (SETTINGS.plainMaps === true) {
+          const [r, gr, b] = floorAvg();
+          g.fillStyle = `rgb(${r},${gr},${b})`;
+          g.fillRect(0, 0, w, h);
+          return;
+        }
+        T.floor(g, +m[2], w, h, src, orig);
+      });
+      padEdges(fr);
     } else if (/^space\d+-\d+$/.test(n)) {
       piece(fr, (g, w, h) => (T.space ? T.space(g, w, h, src, orig) : null));
     } else if (/^(border|wallDecoration)\d+-\d+$/.test(n)) {
@@ -255,10 +306,57 @@ function buildMapSheet(game, base, key) {
         g.translate((w - 216) / 2, (h - 16) / 2);
         g.drawImage(wallSym(T, src, orig), 0, 0);
         g.restore();
+        if (SETTINGS.plainMaps === true) {
+          // plain walls: one of the wall's own colours, same shape
+          const d = g.getImageData(0, 0, w, h).data,
+            fl = floorAvg(),
+            floorLum = 0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2],
+            tally = {};
+          let count = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            if (d[i + 3] > 128) {
+              const k = (d[i] >> 4) + "," + (d[i + 1] >> 4) + "," + (d[i + 2] >> 4),
+                t = tally[k] || (tally[k] = [0, 0, 0, 0]);
+              t[0] += d[i];
+              t[1] += d[i + 1];
+              t[2] += d[i + 2];
+              t[3]++;
+              count++;
+            }
+          }
+          // the wall's most common colour, unless it hardly shows on the floor: then the one that stands out most
+          const gapOf = (t) => Math.abs((0.3 * t[0] + 0.59 * t[1] + 0.11 * t[2]) / t[3] - floorLum),
+            main = Object.values(tally)
+              .filter((t) => t[3] >= count * 0.05)
+              .sort((x, y) => y[3] - x[3]);
+          let best = main[0];
+          if (best && gapOf(best) < 40) {
+            for (const t of main) {
+              if (gapOf(t) > gapOf(best)) {
+                best = t;
+              }
+            }
+          }
+          if (!best && count) {
+            best = Object.values(tally).reduce(
+              (a, t) => [a[0] + t[0], a[1] + t[1], a[2] + t[2], a[3] + t[3]],
+              [0, 0, 0, 0],
+            );
+          }
+          if (best) {
+            const r = best[0] / best[3],
+              gr = best[1] / best[3],
+              b = best[2] / best[3];
+            g.globalCompositeOperation = "source-atop";
+            g.fillStyle = `rgb(${r},${gr},${b})`;
+            g.fillRect(0, 0, w, h);
+            g.globalCompositeOperation = "source-over";
+          }
+        }
       });
     } else if ((m = /^crate(\d+)-(\d)$/.exec(n))) {
       const k = +m[2],
-        obj = SETTINGS.crateStyle !== "box" && OBJ_CRATES[key];
+        obj = SETTINGS.crateStyle !== "box" && !perfOn() && OBJ_CRATES[key];
       if (obj) {
         piece(fr, (g) => obj(g, glyphs[k], k, T.shade === "dark"));
       } else {
@@ -308,6 +406,21 @@ function buildMapSheet(game, base, key) {
       mk.height = fr.h;
       mk.getContext("2d").drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h);
       piece(fr, (g, w, h) => bulletArt(g, mk, w, h, col, null, null, null));
+    } else if (/^(smoke|puff)\d+$/.test(n)) {
+      // the grey smoke behind a moving tank vanishes on a dark floor, so there it's turned light (same shape)
+      const fl = floorAvg();
+      if ((0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255 >= 0.45) {
+        continue;
+      }
+      piece(fr, (g, w, h) => {
+        g.drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, w, h);
+        g.globalCompositeOperation = "difference";
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, w, h);
+        g.globalCompositeOperation = "destination-in";
+        g.drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, w, h);
+        g.globalCompositeOperation = "source-over";
+      });
     } else if (/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(n) && !shots && bulletMode() === "normal") {
       const fl = floorAvg(),
         lum = (0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255;
@@ -347,6 +460,7 @@ export function applyMapTheme(game, key) {
     }
     mapTheme = null;
     MAP_FLOOR_NOW = stdFloorAvg(game, base);
+    applyDecorShown(game, "");
     try {
       laikaSkinChanged();
     } catch {}
@@ -366,6 +480,7 @@ export function applyMapTheme(game, key) {
   mapTheme = key;
   MAP_FLOOR_NOW = sheet.__floor || null;
   MAP_SHOT_STYLE = sheet.__style || null;
+  applyDecorShown(game, key);
   try {
     laikaSkinChanged();
   } catch {}
@@ -387,13 +502,33 @@ export function mapApplyNow(shadeOnly) {
     }
     return;
   } // light / dark switched: the same map, repainted
-  if (mode === "game") {
+  if (mode === "game" || SETTINGS.perfMode === "game") {
     applyMapTheme(game, null);
   } else if (mode === "fixed") {
     applyMapTheme(game, MAP_THEMES[SETTINGS.mapFixed] ? SETTINGS.mapFixed : null);
-  } else if (!mapTheme) {
-    applyMapTheme(game, pickMapTheme());
+  } else {
+    applyMapTheme(game, mapTheme || pickMapTheme());
   }
+}
+function applyDecorShown(game, key) {
+  // decorations already laid this round: only the current map's, and none with plain maps or performance mode.
+  // The game's border and wall decoration pieces are hidden on Color Lab maps (blank, their edges still picked up specks from the sheet)
+  const show = !perfOn() && SETTINGS.plainMaps !== true,
+    own = "ttclDecor-" + key + "-";
+  const walk = (o, depth) => {
+    if (!o || depth > 12) {
+      return;
+    }
+    if (typeof o.key === "string" && o.key.startsWith("ttclDecor-")) {
+      o.visible = show && o.key.startsWith(own);
+    } else if (o.key === "game" && /^(border|wallDecoration)\d/.test(String(o.frameName))) {
+      o.visible = !key;
+    }
+    for (const c of o.children || []) {
+      walk(c, depth + 1);
+    }
+  };
+  walk(game.world, 0);
 }
 function mapDecorKey(game, key, i) {
   // a theme's floor decorations as their own small pictures
@@ -425,7 +560,7 @@ function onMazeCreate(group, frame, x, y, first) {
     mapNext = undefined;
     applyMapTheme(game, k);
   } // a new maze
-  if (!mapTheme || !/^floor/.test(frame)) {
+  if (!mapTheme || !/^floor/.test(frame) || perfOn() || SETTINGS.plainMaps === true) {
     return;
   }
   const T = mapT(mapTheme);
@@ -471,7 +606,7 @@ function ownerTurret(id) {
   return null;
 }
 function bulletSkin(sprite, id, frame) {
-  if (!/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(frame)) {
+  if (!/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(frame) || perfOn()) {
     return;
   }
   const p = sprite.gameController && sprite.gameController.getProjectile && sprite.gameController.getProjectile(id);
@@ -607,7 +742,7 @@ function patchProjectiles(obj) {
     P.update = function () {
       const r = origUp.apply(this, arguments);
       try {
-        if (MAP_SHOT_STYLE && FACE_TRAVEL.has(MAP_SHOT_STYLE) && !this.__ttclBullet && this.exists) {
+        if (MAP_SHOT_STYLE && FACE_TRAVEL.has(MAP_SHOT_STYLE) && !this.__ttclBullet && this.exists && !perfOn()) {
           const L = this.__ttclLast,
             x = this.x,
             y = this.y;
@@ -920,6 +1055,9 @@ export function hookMapGroups() {
       try {
         onMazeCreate(this, frame, x, y, first);
       } catch {}
+    }
+    if (r && key === "game" && typeof frame === "string" && /^(border|wallDecoration)\d/.test(frame)) {
+      r.visible = !mapTheme;
     }
     return r;
   };

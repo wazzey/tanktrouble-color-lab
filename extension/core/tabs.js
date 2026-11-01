@@ -3,6 +3,7 @@ import { collectBoxes } from "./accessories.js";
 import { DEV_TROPHIES, h2StatsCheck } from "./achievements.js";
 import { fbRefresh } from "./feedback.js";
 import { loggedInIds } from "./game-socket.js";
+import { mazeTimer } from "./maze.js";
 import { renderMazeTab } from "./maze-tab.js";
 import { renderPalette, renderSources } from "./palette.js";
 import { $, freePreviewMemory, panel, panelHost, refreshRealLabels, schedulePreview, toast } from "./panel.js";
@@ -10,7 +11,7 @@ import { syncPower } from "./panel-actions.js";
 import { syncDev, syncParty } from "./random.js";
 import { renderList, updateSaveLabel } from "./saved-looks.js";
 import { applyShown, keepOnScreen, renderSettings, syncHelp } from "./settings.js";
-import { STATS, saveStats } from "./storage.js";
+import { STATS, saveStats, whenStorage } from "./storage.js";
 import { TROPHY_ART, getTrophyArt } from "./trophy-art.js";
 import { unlockTrophy } from "./trophy-counting.js";
 
@@ -39,6 +40,36 @@ export function setOpen(open) {
     panelHost.remove();
     freePreviewMemory();
   }
+}
+// The first open after a page load did the one-off work (styles, pictures, the saved tanks list) right when Alt+C was pressed.
+// It's done once beforehand instead, hidden, when the browser is idle and not during a round
+function warmPanel() {
+  const idle = window.requestIdleCallback || ((f) => setTimeout(f, 2000));
+  idle(
+    () => {
+      if (panelHost.isConnected || !document.body) {
+        return;
+      }
+      if (mazeTimer) {
+        setTimeout(warmPanel, 5000);
+        return;
+      }
+      try {
+        panelHost.style.visibility = "hidden";
+        panel.classList.add("open");
+        document.body.appendChild(panelHost);
+        renderSources();
+        renderPalette();
+        renderList();
+        applyShown();
+        void panel.offsetWidth;
+      } catch {}
+      panelHost.remove();
+      panel.classList.remove("open");
+      panelHost.style.visibility = "";
+    },
+    { timeout: 15000 },
+  );
 }
 export function showTab(t) {
   if (t === "settings") {
@@ -250,6 +281,7 @@ export function renderAch() {
 export let curTab = "paint";
 
 export function startTabs() {
+  whenStorage().then(warmPanel);
   $("close").onclick = () => setOpen(false);
   $("tabPaint").onclick = () => showTab("paint");
   $("tabSaved").onclick = () => showTab("saved");

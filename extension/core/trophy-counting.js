@@ -240,18 +240,27 @@ export function achievementCall(body, input, init) {
   }
   return Promise.all([origFetch(input, init), getTrophyArt(myTrophies(pid).map((t) => t.key))]).then(async ([res]) => {
     try {
-      const json = JSON.parse(await res.clone().text());
-      if (!json.result || !Array.isArray(json.result.data)) {
+      const json = JSON.parse(await res.clone().text()),
+        data = json.result && json.result.data,
+        entries = Array.isArray(data) ? data : data && Array.isArray(data.achievements) ? data.achievements : null;
+      if (!entries) {
         return res;
+      }
+      // the full list now comes as { achievements, total, unlockedSeen }
+      if (!Array.isArray(data) && typeof data.total === "number") {
+        data.total += myTrophies(pid).length;
       }
       for (const t of myTrophies(pid)) {
         const seen = !!(STATS.seen[pid] && STATS.seen[pid][t.id]);
         if (list === "unseen" && seen) {
           continue;
         }
-        json.result.data.push(achEntry(pid, t, seen ? "seen" : "reveal"));
+        entries.push(achEntry(pid, t, seen ? "seen" : "reveal"));
+        if (seen && !Array.isArray(data) && typeof data.unlockedSeen === "number") {
+          data.unlockedSeen++;
+        }
       }
-      return jsonReply(json.result.data, json.id);
+      return jsonReply(data, json.id);
     } catch {
       return res;
     }

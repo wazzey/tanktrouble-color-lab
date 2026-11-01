@@ -163,8 +163,8 @@ export function mapThumb(key) {
     }
   } else {
     const f = document.createElement("canvas");
-    f.width = f.height = 200;
-    T.floor(f.getContext("2d"), 0, 200, 200);
+    f.width = f.height = 100;
+    T.floor(f.getContext("2d"), 0, 100, 100); // (half a tile is plenty for 44px, and a quarter of the work)
     g.drawImage(f, 0, 0, 44, 44);
     const w = document.createElement("canvas");
     w.width = 216;
@@ -520,7 +520,57 @@ export function renderMazeTab() {
     };
     seg.appendChild(b);
   }
+  mzl("⚡ Performance mode:");
+  const pf = document.createElement("div");
+  pf.className = "mzseg";
+  sm.appendChild(pf);
+  const pcur = ["on", "game"].includes(SETTINGS.perfMode) ? SETTINGS.perfMode : "off";
+  for (const [v, t, tip] of [
+    ["off", "Off", "Every map effect on"],
+    [
+      "on",
+      "⚡ On",
+      "Fewer effects in a round: no floor decorations, pattern paints in their main colour in the maze, plain crates and bullets. Your looks and the map colours stay",
+    ],
+    ["game", "⚡ On + game's maps", "Like On, with the game's own maps instead of Color Lab's"],
+  ]) {
+    const b = document.createElement("button");
+    b.className = "small" + (pcur === v ? "" : " grey");
+    b.textContent = t;
+    b.title = tip;
+    b.onclick = () => {
+      SETTINGS.perfMode = v;
+      saveSettings();
+      try {
+        mapApplyNow();
+      } catch {}
+      renderMazeTab();
+    };
+    pf.appendChild(b);
+  }
   if (mode !== "game") {
+    mzl("🧹 Plain maps:");
+    const pl = document.createElement("div");
+    pl.className = "mzseg";
+    sm.appendChild(pl);
+    for (const [v, t, tip] of [
+      [false, "Off", "Every map with its floor details, wall patterns and decorations"],
+      [true, "🧹 On", "Floors and walls in the map's colours only, no cracks, patterns or decorations"],
+    ]) {
+      const b = document.createElement("button");
+      b.className = "small" + ((SETTINGS.plainMaps === true) === v ? "" : " grey");
+      b.textContent = t;
+      b.title = tip;
+      b.onclick = () => {
+        SETTINGS.plainMaps = v;
+        saveSettings();
+        try {
+          mapApplyNow(true);
+        } catch {}
+        renderMazeTab();
+      };
+      pl.appendChild(b);
+    }
     mzl("Light or dark:");
     const sh = document.createElement("div");
     sh.className = "mzseg";

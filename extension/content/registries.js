@@ -1,4 +1,4 @@
-import { GX_ACC, GX_PAINT, PATTERN_AVG, isPat, normHex, patId } from "./colours.js";
+import { GX_ACC, GX_PAINT, PATTERN_AVG, PATTERN_NAMES, isPat, normHex, patId } from "./colours.js";
 
 // ---- add-on registries (filled in by the box, award and map modules; read lazily) ----
 // EXT_ITEM[key] = { draw(g, K, P, A), uses: [game accessory names to load into A], aura: 'kind' (drawn by drawAura instead) }
@@ -608,7 +608,7 @@ export function normVal(v) {
   const m = String(v)
     .trim()
     .toLowerCase()
-    .match(/^(?:p:|pattern\s*#?)(\d+)$/);
+    .match(/^(?:p:|pattern\s*#?|0x[0-9a-f]{6}\s+)(\d+)$/); // (the last is how the game sends its own: "0x1579fb 60")
   if (m) {
     return PATTERN_AVG[m[1]] ? "p:" + m[1] : null;
   }
@@ -627,7 +627,11 @@ export const toCss = (v) => {
   return n ? "#" + n.slice(2) : null;
 };
 export const showVal = (v) =>
-  isPat(v) ? (GX_PAINT[patId(v)] ? GX_PAINT[patId(v)].name : "pattern " + patId(v)) : v || "";
+  isPat(v)
+    ? GX_PAINT[patId(v)]
+      ? GX_PAINT[patId(v)].name
+      : PATTERN_NAMES[patId(v)] || "pattern " + patId(v)
+    : v || "";
 
 // Which colours apply to a tank right now: nothing when switched off, party colours when partying,
 // otherwise its saved (and enabled) colours.
