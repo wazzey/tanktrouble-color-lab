@@ -1,4 +1,4 @@
-import { ACC_SLOTS, GX_PAINT, boxLabel, isPat, patId } from "../content/colours.js";
+import { ACC_SLOTS, GX_PAINT, PATTERN_AVG, boxLabel, isPat, patId } from "../content/colours.js";
 import { CUSTOM_BOX_IDS, GARAGE_PICS, placeGarageSearch, renderBoxNav } from "../content/garage-folders.js";
 import { GAME_NAMES, RESTYLE_ITEMS, normVal, showVal, toCss } from "../content/registries.js";
 import { tutCard, tutLayer } from "../content/tutorials.js";
@@ -6,10 +6,10 @@ import { ASSET_MAP } from "./assets.js";
 import { CUSTOM_BOXES, customTitle, gxPaintIcon } from "./custom-box-art.js";
 import { liveSockets, loggedInIds, refreshTanks, rpc } from "./game-socket.js";
 import { garageGame, garageLocal, onGarageTank, placeGarageBar, selPid, wantGarageBox } from "./garage.js";
-import { bgAdd, garageAllOn, garageAllRaw, syncGarageBack } from "./garage-boxes.js";
+import { bgAdd, garageAllOn, garageAllRaw, garageMode, syncGarageBack } from "./garage-boxes.js";
 import { mazeFeature } from "./maze.js";
 import { lightUrl } from "./palette.js";
-import { $, PARTS, iconMap, toast } from "./panel.js";
+import { $, PARTS, toast } from "./panel.js";
 import { MAX_PRESETS } from "./panel-actions.js";
 import { afterPresetChange, renderList, updateSaveLabel } from "./saved-looks.js";
 import { uiConfirm } from "./settings.js";
@@ -18,7 +18,7 @@ import { esc } from "./trophy-counting.js";
 import { openHelp, tutClose } from "./tutorial-run.js";
 
 // ---------- Garage search ----------
-// A box next to Real / All that finds any item or paint in the garage by name, box or key, and puts it on the
+// A box next to Real / Color Lab that finds any item or paint in the garage by name, box or key, and puts it on the
 // garage tank with one click. It can be minimised to a small button (remembered).
 let GARAGE_INDEX = [];
 const COLOUR_NAMES = [
@@ -113,19 +113,32 @@ export function buildGarageIndex(g) {
         continue;
       }
       const v = String(c.rawValue),
-        k = "p|" + v;
+        shown = normVal(v) || v, // (the game sends its own pattern paints as "0x1579fb 60")
+        k = "p|" + shown;
       if (seen.has(k)) {
         continue;
       }
       seen.add(k);
-      const pat = isPat(v),
-        name = pat ? showVal(v).replace(/^pattern /, "Pattern ") : colourName(v) + " #" + v.replace(/^0x/, "");
+      const pat = isPat(shown),
+        matteOf = pat
+          ? null
+          : Object.keys(PATTERN_AVG).find(
+              (id) =>
+                PATTERN_AVG[id] === shown &&
+                b.sprayCans.some((o) => o.colour && normVal(o.colour.rawValue) === "p:" + id),
+            ), // the matte can that comes with a pattern paint in its box
+        name = pat
+          ? showVal(shown).replace(/^pattern /, "Pattern ")
+          : matteOf
+            ? showVal("p:" + matteOf) + " matte"
+            : colourName(shown) + " #" + shown.replace(/^0x/, "");
       out.push({
         kind: "paint",
         value: v,
+        shown,
         name,
         box: boxName(b.id),
-        key: pat ? v : "#" + v.replace(/^0x/, ""),
+        key: pat ? shown : "#" + shown.replace(/^0x/, ""),
         fid: favPaintId(v),
       });
     }
@@ -216,15 +229,28 @@ function garageRedraw() {
     } catch {}
   }, 30); // the garage redraws with it
 }
+// Right after Real / Color Lab is switched, the garage reloads: until it has, the search list and 🎲 still hold the
+// other view's things (e.g. paints you don't own, sent as real changes)
+function garageSwitching() {
+  const pid = selPid();
+  if ((garageMode[pid] === true) === garageAllOn(pid)) {
+    return false;
+  }
+  toast(
+    "The garage is still switching to " + (garageAllOn(pid) ? "Color Lab" : "Real") + ", try again in a moment",
+    true,
+  );
+  return true;
+}
 function garageApply(r, part) {
   // put a found item / paint on the garage tank, the same way the garage itself does
-  if (!selPid()) {
+  if (!selPid() || garageSwitching()) {
     return;
   }
   garageSend(r, part)
     .then((ok) => {
       if (!ok) {
-        return toast("Couldn't put that on (do you own it? Try the All view)", true);
+        return toast("Couldn't put that on (do you own it? Try the Color Lab view)", true);
       }
       garageRedraw();
       toast((r.kind === "paint" ? r.name + " on the " + part : r.name) + " ✓");
@@ -232,7 +258,7 @@ function garageApply(r, part) {
     .catch(() => toast("Couldn't reach the game", true));
 }
 // 🎲 in the garage: a random paint on the turret, base and treads, plus a random item for each slot lit under 🎩 in the
-// panel. It picks from what the garage is showing: Real = only what you own (saved for real), All = everything
+// panel. It picks from what the garage is showing: Real = only what you own (saved for real), Color Lab = everything
 let garageRolling = false;
 // The garage 🎲 opens its options: which parts get paint, which item slots roll, which boxes it picks from,
 // and whether every part gets the same paint. 🎲 Roll uses them. Remembered (SETTINGS.gRnd).
@@ -260,6 +286,9 @@ async function garageRandom() {
   }
   if (!GARAGE_INDEX.length) {
     return toast("The garage is still loading", true);
+  }
+  if (garageSwitching()) {
+    return;
   }
   const g = gRnd(),
     pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -513,7 +542,7 @@ function garageRndPanel(btn) {
     note.style.cssText = "margin:8px 10px 0;font-size:11px;color:#8a93a8";
     note.textContent =
       (garageAllRaw(selPid())
-        ? "All view: picks from everything, seen only by you and other Color Lab users. "
+        ? "Color Lab view: picks from everything, seen only by you and other Color Lab users. "
         : "Real view: picks from what you own, saved to your account. ") + "✦ = Color Lab box.";
     p.appendChild(note);
     const go = document.createElement("div");
@@ -531,11 +560,11 @@ function garageRndPanel(btn) {
 }
 function iconFor(r) {
   if (r.kind === "paint") {
-    if (!isPat(r.value)) {
-      return { col: "#" + r.value.replace(/^0x/, "") };
+    if (!isPat(r.shown)) {
+      return { col: "#" + r.shown.replace(/^0x/, "") };
     }
-    const id = patId(r.value);
-    return { url: GX_PAINT[id] ? gxPaintIcon(id) : iconMap && iconMap["icon" + id] };
+    const id = patId(r.shown);
+    return { url: GX_PAINT[id] ? gxPaintIcon(id) : ASSET_MAP && ASSET_MAP["icon" + id] };
   }
   if (r.custom) {
     return { url: GARAGE_PICS["i:" + r.key] };
@@ -566,7 +595,7 @@ export function renderGarageSearch() {
     p.style.cssText =
       "position:fixed;left:12px;bottom:12px;z-index:2147482000;width:300px;font:12px Arial,sans-serif;color:#eee;background:rgba(0,0,0,.92);border:3px solid #427fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden";
     p.innerHTML =
-      '<div class="h" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:linear-gradient(#427fff,#0014ab);cursor:pointer;user-select:none"><span style="flex:1;font:17px TankTrouble,Arial,sans-serif">🔍 Find in garage</span><span class="n" style="opacity:.85"></span><button type="button" class="sw" title="Real = only what you have unlocked. All = everything, including the Color Lab boxes (same as the Real / All button by Done)"></button><span class="m" title="Minimise / open" style="font:bold 15px Arial;padding:0 4px">–</span></div>' +
+      '<div class="h" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:linear-gradient(#427fff,#0014ab);cursor:pointer;user-select:none"><span style="flex:1;font:17px TankTrouble,Arial,sans-serif">🔍 Find in garage</span><span class="n" style="opacity:.85"></span><button type="button" class="sw" title="Real = only what you have unlocked. Color Lab = everything, including the Color Lab boxes (same as the Real / Color Lab button by Done)"></button><span class="m" title="Minimise / open" style="font:bold 15px Arial;padding:0 4px">–</span></div>' +
       '<div class="b" style="padding:7px"><input class="q" placeholder="Search: name, box or colour (halo, sakura, #ff0000)" style="width:100%;box-sizing:border-box;padding:5px 8px;border-radius:7px;border:2px solid #808080;background:#000;color:#fff;outline:none;font:13px Arial">' +
       '<div class="f" style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 4px"></div><select class="bx" title="Only show one box (or a group of boxes)" style="width:100%;margin-bottom:5px;background:#000;color:#fff;border:2px solid #808080;border-radius:6px;font:13px TankTrouble,Arial,sans-serif;height:26px;outline:none"></select><div class="r" style="max-height:270px;overflow:auto"></div></div>';
     document.body.appendChild(p);
@@ -628,7 +657,7 @@ export function renderGarageSearch() {
   });
   p.querySelector(".n").textContent = GARAGE_INDEX.length + " things";
   const sw = p.querySelector(".sw");
-  sw.textContent = garageAllRaw(selPid()) ? "All" : "Real";
+  sw.textContent = garageAllRaw(selPid()) ? "Color Lab" : "Real";
   sw.style.cssText = "";
   ttChip(sw, SETTINGS.on, "linear-gradient(#5a5a5a,#2a2a2a)");
   sw.style.boxShadow = "0 0 0 1px #fff";
@@ -789,7 +818,7 @@ function renderGarageLooks(p) {
       const d = document.createElement("i");
       const v = pr[k],
         pat = v && isPat(v) ? patId(v) : null,
-        url = pat ? (GX_PAINT[pat] ? gxPaintIcon(pat) : iconMap && iconMap["icon" + pat]) : null;
+        url = pat ? (GX_PAINT[pat] ? gxPaintIcon(pat) : ASSET_MAP && ASSET_MAP["icon" + pat]) : null;
       d.style.cssText =
         "width:14px;height:14px;border-radius:50%;border:1px solid #555;background:" +
         (url
@@ -950,7 +979,7 @@ function renderGarageLooks(p) {
   list.appendChild(add);
   if (!e || !hasLook(e.presets[e.active])) {
     note(
-      "No saved looks yet: change something on this tank in the garage (All view), then + New look makes a second one to switch between.",
+      "No saved looks yet: change something on this tank in the garage (Color Lab view), then + New look makes a second one to switch between.",
     );
   } else if (e.presets.length < 2) {
     note("Make a second look with + New look, then switch between them here.");
@@ -1241,7 +1270,7 @@ export function addGarageButton() {
     }
   }
   if (!form.querySelector("button.ttcl-gdice")) {
-    // 🎲 random look and ? help, just before Real / All
+    // 🎲 random look and ? help, just before Real / Color Lab
     const mk = (cls, txt, title, fn) => {
       const x = document.createElement("button");
       x.type = "button";
@@ -1310,7 +1339,7 @@ export function addGarageButton() {
 }
 export function syncGarageButton(b) {
   const all = garageAllRaw(selPid());
-  b.textContent = all ? "All" : "Real";
+  b.textContent = all ? "Color Lab" : "Real";
   b.title = all
     ? "Showing every box (Color Lab). Everything you pick here only changes your tank for you - nothing is sent to TankTrouble. Click for your real garage."
     : "Showing your real garage. Click to show every box, paint and accessory (Color Lab: seen only by you and other Color Lab users).";
@@ -1325,11 +1354,11 @@ export function syncGarageButton(b) {
   }
   const sw = document.querySelector("#ttcl-gsearch .sw");
   if (sw) {
-    sw.textContent = all ? "All" : "Real";
+    sw.textContent = all ? "Color Lab" : "Real";
   }
 }
 function toggleGarageAll(b) {
-  // Real / All for the tank open in the garage only
+  // Real / Color Lab for the tank open in the garage only
   const id = selPid();
   if (!id) {
     return toast("Open a tank in the garage first", true);
@@ -1348,7 +1377,7 @@ function toggleGarageAll(b) {
     toast("Custom colours are paused — turn them on in Color Lab", true);
   }
   // Real = this tank shows its real look: its Color Lab look is switched off (kept, not deleted)
-  // and switched back on when you go back to All.
+  // and switched back on when you go back to Color Lab.
   const off = new Set(SETTINGS.garageOff || []);
   if (!all) {
     if (PLAYER_COLOR_MAP[id] && PLAYER_COLOR_MAP[id].enabled !== false) {
@@ -1377,7 +1406,7 @@ function toggleGarageAll(b) {
       }
     } catch {}
   }, 30);
-  toast((all ? "All" : "Real") + " for this tank only");
+  toast((all ? "Color Lab" : "Real") + " for this tank only");
 }
 
 export function startGarageSearch() {

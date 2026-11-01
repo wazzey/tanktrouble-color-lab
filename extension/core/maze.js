@@ -57,7 +57,8 @@ export function patternSourceFor(v) {
     getCustomArt(id);
     return null;
   }
-  const u = ASSET_MAP && ASSET_MAP["colours/colour" + id];
+  // the game's own paints use their spray can label, as the game only draws them on the side-view tank
+  const u = ASSET_MAP && ASSET_MAP["icon" + id];
   if (!u) {
     getAssetMap();
     return null;
@@ -67,12 +68,28 @@ export function patternSourceFor(v) {
     return c.__done;
   }
   if (!c) {
-    loadImg(u).then((im) => {
-      imgCache[u].__done = im;
-    });
+    Promise.all([loadImg(u), TEXTURED_TANKS.has(Number(id)) ? loadImg("ttcl-art:tt-" + id + ".webp") : null]).then(
+      ([im, tanks]) => {
+        if (!im) {
+          return;
+        }
+        const label = document.createElement("canvas");
+        label.width = 400;
+        label.height = 240;
+        label.getContext("2d").drawImage(im, 5, 33, 42, 79, 0, 0, 400, 240); // (the label's flat middle, without the can's rounded top)
+        label.tanks = tanks;
+        imgCache[u].__done = label;
+      },
+    );
   }
   return null;
 }
+// Textured Tanks (github.com/kamarov-therussiantank/Textured-Tanks, MIT licence): the tank in each of the game's
+// own pattern paints, as one strip per paint (the base, the tread, then turrets 0 to 16)
+const TEXTURED_TANKS = new Set([
+  13, 14, 33, 42, 43, 45, 50, 60, 61, 107, 108, 109, 110, 120, 150, 151, 152, 153, 160, 161, 162, 163, 164, 165, 166,
+  167,
+]);
 function mazeSheetFor(game, sprite, parts) {
   const baseTex = sprite.__ttclOrigBase || sprite.texture.baseTexture,
     key = (baseTex.uid || 0) + "|" + parts.turret + "|" + parts.base + "|" + parts.treads;
@@ -110,6 +127,23 @@ function mazeSheetFor(game, sprite, parts) {
     const src = srcs[part],
       sw = src.width || 400,
       sh = src.height || 240;
+    if (src.tanks) {
+      const turret = part === "turret" ? Number(f.name.slice(6)) : -1,
+        left = part === "base" ? 0 : part === "treads" ? 68 : 80 + turret * 68;
+      sg.clearRect(f.x, f.y, f.width, f.height);
+      sg.drawImage(
+        src.tanks,
+        left,
+        0,
+        part === "treads" ? 12 : 68,
+        part === "base" ? 84 : part === "treads" ? 80 : 82,
+        f.x,
+        f.y,
+        f.width,
+        f.height,
+      );
+      continue;
+    } // (drawn already shaded)
     const tc = document.createElement("canvas");
     tc.width = f.width;
     tc.height = f.height;

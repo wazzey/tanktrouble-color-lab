@@ -338,7 +338,10 @@ function buildMapSheet(game, base, key) {
             }
           }
           if (!best && count) {
-            best = Object.values(tally).reduce((a, t) => [a[0] + t[0], a[1] + t[1], a[2] + t[2], a[3] + t[3]], [0, 0, 0, 0]);
+            best = Object.values(tally).reduce(
+              (a, t) => [a[0] + t[0], a[1] + t[1], a[2] + t[2], a[3] + t[3]],
+              [0, 0, 0, 0],
+            );
           }
           if (best) {
             const r = best[0] / best[3],

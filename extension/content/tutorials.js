@@ -9,7 +9,7 @@ export const WHATS_NEW = [
   [
     1,
     "🚜",
-    "<b>Garage</b>: 🎲 random look, ⏻ on / off and ? help next to Real / All · <b>All</b> never saves to your account (use <b>Real</b> for real changes)",
+    "<b>Garage</b>: 🎲 random look, ⏻ on / off and ? help next to Real / Color Lab · <b>Color Lab</b> never saves to your account (use <b>Real</b> for real changes)",
   ],
   [1, "🔍", "<b>Find in garage</b> scrolls through everything, grouped by box; ☆ stars favourites"],
   [1, "📦", "<b>New boxes</b>: Heaven, Racing, Graffiti, Sakura and Eyewear"],
@@ -316,7 +316,11 @@ export const WHATS_NEW = [
     "<b>Safer messages and proofs</b>: someone else's message can no longer show up as yours, and blocking your proof is much harder",
   ],
   [16, "🏷", "<b>Badges</b> sit neatly under names on the forum, and your own tank in the garage no longer wears one"],
-  [17, "🖤", "<b>Beta B&W box</b>: the Beta box in black and white, with black sticking plasters, in the Fun & Games folder"],
+  [
+    17,
+    "🖤",
+    "<b>Beta B&W box</b>: the Beta box in black and white, with black sticking plasters, in the Fun & Games folder",
+  ],
   [
     17,
     "⚡",
@@ -335,7 +339,31 @@ export const WHATS_NEW = [
   [17, "🧱", "<b>Clearer corners</b>: no more rivet dots where walls meet, so ricochets are easier to read"],
   [17, "🗺", "<b>Lobby maze</b> no longer flashes white before your page theme comes back"],
   [17, "🏆", "<b>Color Lab achievements</b> show in your tank's achievements again"],
-  [17, "🧢", "<b>Streetwear</b> hats, headphones, chain and hood no longer show bits of the tank"],
+  [
+    17,
+    "🧢",
+    "<b>Cleaner item pictures</b>: items in every box show on their own like the game's, with no bits of the tank",
+  ],
+  [
+    17,
+    "🎨",
+    "<b>Textured paints in the maze</b>: the game's pattern paints (Onyx, Gold, Rainbow, the camos and more) keep their texture on your tank in a round, with art from Textured Tanks by Kamarov",
+  ],
+  [
+    17,
+    "🖌",
+    "<b>Matte colours</b>: a pattern paint shown as one colour (like in Performance mode) takes its matte can from the box, e.g. hot pink for Rainbow",
+  ],
+  [
+    17,
+    "🔍",
+    "<b>Find in garage</b>: the game's pattern paints now go on your Color Lab look, not your real tank, and show their pictures and names (e.g. Onyx and Onyx matte)",
+  ],
+  [
+    17,
+    "🔁",
+    "<b>Color Lab view</b>: the garage's All is now called Color Lab, and your tank's card keeps its Real / Color Lab switch",
+  ],
   [
     17,
     "✨",
@@ -352,7 +380,7 @@ export const V1_OVERVIEW = [
   [
     0,
     "🏠",
-    "<b>Garage</b>: <b>All</b> shows every paint and item plus Color Lab's boxes in folders; <b>Real</b> is your normal garage. Your Color Lab look never changes your real one: only Color Lab users see it",
+    "<b>Garage</b>: <b>Color Lab</b> shows every paint and item plus Color Lab's boxes in folders; <b>Real</b> is your normal garage. Your Color Lab look never changes your real one: only Color Lab users see it",
   ],
   [
     0,

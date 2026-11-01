@@ -101,7 +101,7 @@ export const CUSTOM_BOX_IDS = {
 };
 export const GARAGE_PICS = {}; // picture address marker → data URL for the garage loader
 // ART_REV changes only when Color Lab's pictures change (not on every update), so saved pictures survive updates
-export const ART_REV = "art-2026-10-28-v1e"; // (m: drops pictures saved blank while an item's picture file hadn't loaded)
+export const ART_REV = "art-2026-10-31-v1f"; // (f: items shown on their own, tank bits cleaned off)
 export const BOX_ART_REV = {
   agent: "pic-items-3",
   ninja: "pic-items-3",

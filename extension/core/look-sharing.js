@@ -13,7 +13,7 @@ import { laikaSkinFor, laikaSkinOn } from "./laika-look.js";
 import { pageKeyNow, pagePal } from "./page.js";
 import { toast } from "./panel.js";
 import { renderSettings } from "./settings.js";
-import { PLAYER_COLOR_MAP, SETTINGS, saveSettings } from "./storage.js";
+import { PLAYER_COLOR_MAP, SETTINGS, saveSettings, saveToStorage } from "./storage.js";
 import { setOpen } from "./tabs.js";
 import { tutClose } from "./tutorial-run.js";
 import { updateNeeded } from "./updates.js";
@@ -227,6 +227,8 @@ function labLookOf(id) {
   const e = PLAYER_COLOR_MAP[id];
   return e ? (e.enabled !== false ? e : null) : sharedLook(id);
 }
+// your tank switched to Real in the garage: its Color Lab look is kept, only switched off
+const garageReal = (id) => PLAYER_COLOR_MAP[id] !== undefined && (SETTINGS.garageOff || []).includes(id);
 let profSeq = 0;
 async function drawProfileTank(cv, id, real) {
   // the profile's big tank picture, in its real or its Color Lab look
@@ -635,7 +637,7 @@ export function startLookSharing() {
         ? (box.querySelector(".username stroked-text") || {}).getAttribute?.("text")
         : null;
     const id = name ? NAME_TO_ID[name] : null;
-    if (!id || !SETTINGS.on || !labLookOf(id)) {
+    if (!id || !SETTINGS.on || !(labLookOf(id) || garageReal(id))) {
       if (bar) {
         bar.remove();
       }
@@ -677,9 +679,16 @@ export function startLookSharing() {
             ev.stopPropagation();
             const pid = bar.dataset.pid,
               real = el.dataset.k === "real";
-            if (real === VIEW_REAL.has(pid)) {
+            if (real === (VIEW_REAL.has(pid) || garageReal(pid))) {
               return;
             }
+            if (!real && garageReal(pid)) {
+              PLAYER_COLOR_MAP[pid].enabled = true;
+              SETTINGS.garageOff = SETTINGS.garageOff.filter((x) => x !== pid);
+              SETTINGS.garageAllFor = Object.assign({}, SETTINGS.garageAllFor, { [pid]: true });
+              saveSettings();
+              saveToStorage();
+            } // (back to Color Lab, as the garage's switch would)
             if (real) {
               VIEW_REAL.add(pid);
             } else {
@@ -774,7 +783,7 @@ export function startLookSharing() {
       }
       (box.querySelector(".content") || box).appendChild(bar);
     }
-    const real = VIEW_REAL.has(id),
+    const real = VIEW_REAL.has(id) || garageReal(id),
       P = pageKeyNow ? pagePal(pageKeyNow) : null,
       on = P ? "linear-gradient(" + P.pBtnTop + "," + P.pBtnBot + ")" : "linear-gradient(#427fff,#0014ab)";
     for (const l of bar.querySelectorAll("[data-k]")) {
