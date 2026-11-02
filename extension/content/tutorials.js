@@ -376,6 +376,21 @@ export const WHATS_NEW = [
     "<b>Hex box in the garage</b>: under 🔍 Find in garage, type any colour or click the circle to pick one, then T, B or Tr",
   ],
   [
+    18,
+    "⚙",
+    "<b>Game's settings box</b>: everyone's bullets, other players' bullets, any colour or paint for your bullets, and Patterns in maze",
+  ],
+  [
+    18,
+    "❓",
+    "<b>? help on every tab</b>: Maze, Awards and Settings have their own, and ▶ Tutorial tours just that tab",
+  ],
+  [18, "🦴", "<b>Fixed</b>: a stray blue bone no longer shows in a corner of the map"],
+  [18, "🔤", "<b>Fixed</b>: long map names in the 🗺 Maze tab wrap instead of being cut off"],
+  [18, "🪟", "<b>Fixed</b>: the game's writing no longer shows through the panel"],
+  [18, "🔢", "<b>Fixed</b>: the version shows in the ⚙ box when Color Lab is offline, and in Settings > About"],
+  [18, "⬇", "<b>Please update</b> now opens the Chrome Web Store"],
+  [
     17,
     "✨",
     "<b>Cleaner maps</b>: light smoke on dark maps, no specks round the maze and no lines between floor tiles",
