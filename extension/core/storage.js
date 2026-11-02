@@ -30,7 +30,9 @@ export let SETTINGS = {
   rndAcc: [],
   garageAll: false,
   mazePatterns: true,
-}; // rndAcc: accessory slots 🎲 also rolls // on = master switch
+  showOnline: true,
+  showServer: true,
+}; // rndAcc: accessory slots 🎲 also rolls // on = master switch // (Show me as online and Show which server I'm on stay on unless switched off in Settings)
 // Hidden Laika trophies: streak = Laika kills in a row without dying (per tank), unlocked/seen per tank
 export let STATS = {
   streak: {},

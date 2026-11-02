@@ -33,7 +33,7 @@ import { laikaSkinChanged } from "./laika-look.js";
 import { SHARED, VIEW_REAL, getOverride, shareSee } from "./look-sharing.js";
 import { forgetMazeTanks, mazeFeature, mazeGame, mazePatternTick, patternSourceFor, perfOn } from "./maze.js";
 import { mapT, pageForMaze } from "./page.js";
-import { SETTINGS } from "./storage.js";
+import { SETTINGS, saveSettings } from "./storage.js";
 
 // Aim lines and laser beams are drawn in the tank's turret colour: on a Color Lab map whose floor is close to that colour
 // (Laika's black turret on Code Rain) they'd vanish, so there they're drawn lighter / darker, like the map's bullets
@@ -512,7 +512,8 @@ export function mapApplyNow(shadeOnly) {
 }
 function applyDecorShown(game, key) {
   // decorations already laid this round: only the current map's, and none with plain maps or performance mode.
-  // The game's border and wall decoration pieces are hidden on Color Lab maps (blank, their edges still picked up specks from the sheet)
+  // The game's border and wall decoration pieces are hidden on Color Lab maps (blank, their edges still picked up specks from the sheet).
+  // Only the ones Color Lab hid are shown again, as the game keeps some hidden itself (e.g. the Halloween bones out of season)
   const show = !perfOn() && SETTINGS.plainMaps !== true,
     own = "ttclDecor-" + key + "-";
   const walk = (o, depth) => {
@@ -522,7 +523,13 @@ function applyDecorShown(game, key) {
     if (typeof o.key === "string" && o.key.startsWith("ttclDecor-")) {
       o.visible = show && o.key.startsWith(own);
     } else if (o.key === "game" && /^(border|wallDecoration)\d/.test(String(o.frameName))) {
-      o.visible = !key;
+      if (key && o.visible) {
+        o.visible = false;
+        o.__ttclHid = true;
+      } else if (!key && o.__ttclHid) {
+        o.visible = true;
+        o.__ttclHid = false;
+      }
     }
     for (const c of o.children || []) {
       walk(c, depth + 1);
@@ -582,6 +589,16 @@ function onMazeCreate(group, frame, x, y, first) {
     d.alpha = T.decorAlpha || 0.9;
   }
 }
+// your ★ maps come first in the map pickers (Random and Take turns keep their own order)
+export const mapsFavsFirst = () => {
+  const favs = SETTINGS.mapFavs || [];
+  return [...mapThemeList().filter((k) => favs.includes(k)), ...mapThemeList().filter((k) => !favs.includes(k))];
+};
+export function toggleMapFav(key) {
+  const favs = SETTINGS.mapFavs || [];
+  SETTINGS.mapFavs = favs.includes(key) ? favs.filter((k) => k !== key) : [...favs, key];
+  saveSettings();
+}
 export const bulletMode = () => SETTINGS.bulletMode || (SETTINGS.bulletSkin ? "turret" : "map"); // everyone's bullets: 'normal' (the game's), 'map' (the map theme's) or 'turret'
 function ownerTurret(id) {
   const ov = getOverride(id);
@@ -618,6 +635,7 @@ function bulletSkin(sprite, id, frame) {
   let v = null;
   const sb =
     !mine &&
+    SETTINGS.theirBullets !== false &&
     shareSee() &&
     SETTINGS.on &&
     !VIEW_REAL.has(owner) &&
@@ -1056,8 +1074,9 @@ export function hookMapGroups() {
         onMazeCreate(this, frame, x, y, first);
       } catch {}
     }
-    if (r && key === "game" && typeof frame === "string" && /^(border|wallDecoration)\d/.test(frame)) {
-      r.visible = !mapTheme;
+    if (r && mapTheme && key === "game" && typeof frame === "string" && /^(border|wallDecoration)\d/.test(frame)) {
+      r.visible = false;
+      r.__ttclHid = true;
     }
     return r;
   };

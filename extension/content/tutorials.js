@@ -2,8 +2,8 @@
 // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
 // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
 // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-export const TUT_VER = 17,
-  TUT_LABEL = "v1.4.7";
+export const TUT_VER = 18,
+  TUT_LABEL = "v1.4.8";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
   [
@@ -203,7 +203,7 @@ export const WHATS_NEW = [
   [
     11,
     "🟢",
-    "<b>Who's online</b>: a Color Lab box in the lobby shows how many Color Lab players are online. Names are opt-in: turn on <b>Show me as online</b> (and <b>Show which server I'm on</b>) in ⚙ Settings > Look sharing. Everyone else only counts as hidden",
+    "<b>Who's online</b>: a Color Lab box in the lobby shows how many Color Lab players are online. Names show unless you turn off <b>Show me as online</b> (and <b>Show which server I'm on</b>) in ⚙ Settings > Look sharing. Anyone who turns it off only counts as hidden",
   ],
   [
     11,
@@ -364,6 +364,17 @@ export const WHATS_NEW = [
     "🔁",
     "<b>Color Lab view</b>: the garage's All is now called Color Lab, and your tank's card keeps its Real / Color Lab switch",
   ],
+  [18, "⭐", "<b>Favourite maps</b>: click the ☆ on a map (🗺 Maze tab or ⚙ menu) to ★ it, and starred maps come first"],
+  [
+    18,
+    "💥",
+    "<b>Other players' custom bullets</b> can be switched off (🗺 Maze tab > Everyone's bullets). Yours still show to them",
+  ],
+  [
+    18,
+    "🎨",
+    "<b>Hex box in the garage</b>: under 🔍 Find in garage, type any colour or click the circle to pick one, then T, B or Tr",
+  ],
   [
     17,
     "✨",
@@ -401,7 +412,7 @@ export const V1_OVERVIEW = [
   [
     0,
     "🟢",
-    "<b>Who's online</b>: see how many Color Lab players are online. Names are opt-in (⚙ Settings > Look sharing)",
+    "<b>Who's online</b>: see how many Color Lab players are online. Names show unless you turn it off (⚙ Settings > Look sharing)",
   ],
   [0, "💬", "<b>Message Color Lab</b>: write to the team from a box on the right of the lobby"],
   [0, "🏆", "<b>Hidden achievements</b> (🏆 tab) that unlock extra items and paints"],

@@ -37,7 +37,7 @@ namespace_id = "7102"
 OWNER_COPY = "a0ea9d93e17ade075ff9824962564a954b8185940a8aed952119b1561fc14ac5"   # the owner's own copy (its full id, from the admin page's trusted list): only it gets the inbox, alerts and owner admin
 PROVEN_ONLY = "1"
 STORE_URL = "https://chromewebstore.google.com/detail/tanktrouble-color-lab/hiocbocmjpgclglooaplkihghibjgdbh"   # the Chrome Web Store page once approved (https://chromewebstore.google.com/detail/<name>/<id>): copies installed from a zip then offer to move there
-MIN_VERSION= "1.4.5"   # copies older than this lose look sharing, the online list and messages, and are asked to update
+MIN_VERSION= "1.4.7"   # copies older than this lose look sharing, the online list and messages, and are asked to update
 FORUM_AUTOPOST = "1"   # replies typed in Discord are posted on the forum by the TT_LOGIN account (secrets TT_LOGIN and TT_PASSWORD); "0" = off
 FORUM_RELEASE_POST = "1"   # a new GitHub release is posted as a reply on the Color Lab thread, as the TT_LOGIN account (ColorLab); "0" = off
 FORUM_THREAD_EDIT = "0"   # off, as the thread is ColorLab's own now and no other login is kept to edit it

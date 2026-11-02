@@ -100,16 +100,24 @@ export function updateNeeded(min) {
     return;
   }
   const L = tutLayer(),
-    url = "https://github.com/wazzey/tanktrouble-color-lab/releases";
+    url = "https://chromewebstore.google.com/detail/tanktrouble-color-lab/hiocbocmjpgclglooaplkihghibjgdbh";
   tutCard(
     L,
     '<h3>Please update Color Lab</h3><p style="font-size:13px;margin:2px 0 6px">This version is too old for the online features' +
       (min ? " (v" + esc(String(min)) + " or newer is needed)" : "") +
       ". Your looks, paints and themes still work, but <b>look sharing and messages are off</b> until you update.</p>" +
-      UPDATE_STEPS,
+      '<div style="font-size:12px;color:#aaa;margin:6px 0 0;line-height:1.55">' +
+      [
+        "Click <b>⬇ Get it from the Chrome Web Store</b> and press <b>Add to Chrome</b>. The store keeps it up to date from then on.",
+        "If your Color Lab came from a zip, press <b>⬇ Export backup</b> in ⚙ Settings first, then remove the old Color Lab on your extensions page and use <b>⬆ Import backup</b> in the new one.",
+        "Refresh TankTrouble.",
+      ]
+        .map((t, n) => '<div style="display:block;margin:2px 0"><b>' + (n + 1) + ".</b> " + t + "</div>")
+        .join("") +
+      "</div>",
     [
       [
-        "⬇ Get the update",
+        "⬇ Get it from the Chrome Web Store",
         "go",
         () => {
           window.open(url, "_blank", "noopener");

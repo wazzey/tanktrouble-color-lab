@@ -251,7 +251,7 @@ button.link{background:none;box-shadow:none;color:#aaa;font-size:13px;padding:0;
 button.link:hover{color:#fff;filter:none}
 button.link.danger:hover{color:#ff5050}
 button:disabled{background:linear-gradient(#ccc,#4d4d4d);color:#f0f0f0;cursor:default;filter:none;transform:none}
-.panel{display:none;width:384px;max-width:calc(100vw - 24px);max-height:calc(100vh - 20px);overflow-x:hidden;overflow-y:auto;background:rgba(0,0,0,.9);color:#fff;border:3px solid #427fff;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+.panel{display:none;width:384px;max-width:calc(100vw - 24px);max-height:calc(100vh - 20px);overflow-x:hidden;overflow-y:auto;background:rgba(0,0,0,.96);color:#fff;border:3px solid #427fff;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 .panel.open{display:block}
 .hdr{position:sticky;top:0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;padding:6px 6px 0 6px;background:linear-gradient(#427fff,#0014ab);cursor:grab;user-select:none}
 .hdr .row{gap:3px;padding-bottom:6px}
@@ -259,7 +259,7 @@ button:disabled{background:linear-gradient(#ccc,#4d4d4d);color:#f0f0f0;cursor:de
 .tabs{display:flex;gap:2px;min-width:0;flex:1 1 auto;overflow:hidden}.hdr .row{gap:4px;flex-shrink:0}.hdr .row .small{min-width:30px;padding-left:6px;padding-right:6px}
 .tab{background:rgba(0,0,0,.28);box-shadow:none;border-radius:7px 7px 0 0;font-size:14px;line-height:30px;padding:0 5px;color:#cfd8ff}
 .tab:active{transform:none}
-.tab.on{background:rgba(0,0,0,.9);color:#fff}.tab:not(.on) .tlbl{display:none}
+.tab.on{background:rgba(0,0,0,.96);color:#fff}.tab:not(.on) .tlbl{display:none}
 .count{font-family:Arial,sans-serif;font-weight:bold;font-size:10px;background:rgba(255,255,255,.18);border-radius:8px;padding:1px 6px;margin-left:5px;vertical-align:2px}
 .help{padding:10px 14px 12px;background:rgba(66,127,255,.12);border-bottom:1px solid rgba(255,255,255,.1)}
 .help h4{margin:6px 0 5px;font-family:TankTrouble,Arial,sans-serif;font-size:13px;font-weight:normal;color:#9db8ff}
@@ -327,7 +327,7 @@ select:focus{border-color:#427fff}
 .tools{flex-wrap:nowrap}
 #party.on{background:linear-gradient(#ff6ad5,#a3008a)}
 .sethead{display:flex;align-items:center;gap:10px;font-family:TankTrouble,Arial,sans-serif;font-size:20px}.setlist{display:flex;flex-direction:column;gap:2px;margin-top:4px}
-.boxrow .bname{flex:1}.boxrow.off .bname{color:#8a93a8}.bprev{display:flex;gap:2px}.bdot{width:15px;height:15px;border-radius:50%;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(255,255,255,.25)}.boxrow.off .bdot{opacity:.45}.mzsec{margin-bottom:6px}.mzsub{display:block;font-size:11px;color:#8a93a8;margin:-2px 0 5px}.mzseg{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}.mzseg>button{flex:1 1 auto}.mztiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:5px;margin-bottom:5px}.mztile{display:flex;flex-direction:column;align-items:center;gap:3px;background:rgba(0,0,0,.35);box-shadow:none;border:2px solid transparent;border-radius:8px;padding:5px 4px;min-width:0;font-size:11px;line-height:1.1;color:#cfd8ff;opacity:.55}.mztile:hover{opacity:.85}.mztile.on{opacity:1;border-color:#427fff;background:rgba(66,127,255,.18);color:#fff}.mztile canvas{display:block;border-radius:5px}.mztile>span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mzdots .mztile.dot{min-width:0;padding:3px;border-radius:50%}.mzdots{align-items:center}.mzpaint{display:flex;align-items:center;gap:6px}.mzpaint select{flex:1}.achhd{display:flex;align-items:center;gap:6px;margin-bottom:6px}.achhd b{flex:1}.achbar{height:6px;border-radius:3px;background:rgba(0,0,0,.4);overflow:hidden;margin-bottom:8px}.achbar i{display:block;height:100%;background:linear-gradient(90deg,#ffb703,#ffe066)}.achrow{display:flex;gap:8px;align-items:center;padding:3px 4px;border-radius:7px;background:rgba(0,0,0,.25);margin-bottom:4px}.achrow.locked{opacity:.6}.achrow img,.achrow .achq{width:40px;height:40px;flex:none}.achrow .achq{display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.08);font:bold 20px sans-serif;color:#8a93a8}.achrow .achtx{flex:1;min-width:0;font-size:11px;color:#cfd8ff;line-height:1.25}.achrow .achtx b{display:block;font-size:12px;color:#fff}.achrow button{flex:none;padding:2px 6px;font-size:10px}
+.boxrow .bname{flex:1}.boxrow.off .bname{color:#8a93a8}.bprev{display:flex;gap:2px}.bdot{width:15px;height:15px;border-radius:50%;background-size:cover;background-position:center;box-shadow:0 0 0 1px rgba(255,255,255,.25)}.boxrow.off .bdot{opacity:.45}.mzsec{margin-bottom:6px}.mzsub{display:block;font-size:11px;color:#8a93a8;margin:-2px 0 5px}.mzseg{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}.mzseg>button{flex:1 1 auto}.mztiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:5px;margin-bottom:5px}.mztile{display:flex;flex-direction:column;align-items:center;gap:3px;background:rgba(0,0,0,.35);box-shadow:none;border:2px solid transparent;border-radius:8px;padding:5px 1px;min-width:0;font-size:11px;line-height:1.1;color:#cfd8ff;opacity:.55}.mztile:hover{opacity:.85}.mztile.on{opacity:1;border-color:#427fff;background:rgba(66,127,255,.18);color:#fff}.mztile canvas{display:block;border-radius:5px}.mztile>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;max-width:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere}.mzdots .mztile.dot{min-width:0;padding:3px;border-radius:50%}.mzdots{align-items:center}.mzpaint{display:flex;align-items:center;gap:6px}.mzpaint select{flex:1}.achhd{display:flex;align-items:center;gap:6px;margin-bottom:6px}.achhd b{flex:1}.achbar{height:6px;border-radius:3px;background:rgba(0,0,0,.4);overflow:hidden;margin-bottom:8px}.achbar i{display:block;height:100%;background:linear-gradient(90deg,#ffb703,#ffe066)}.achrow{display:flex;gap:8px;align-items:center;padding:3px 4px;border-radius:7px;background:rgba(0,0,0,.25);margin-bottom:4px}.achrow.locked{opacity:.6}.achrow img,.achrow .achq{width:40px;height:40px;flex:none}.achrow .achq{display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.08);font:bold 20px sans-serif;color:#8a93a8}.achrow .achtx{flex:1;min-width:0;font-size:11px;color:#cfd8ff;line-height:1.25}.achrow .achtx b{display:block;font-size:12px;color:#fff}.achrow button{flex:none;padding:2px 6px;font-size:10px}
 .setpick{cursor:default;flex-wrap:wrap}.setpick select{max-width:140px}.bulcol{width:30px;height:24px;padding:0;border:2px solid #808080;border-radius:6px;background:#000}.mappool{display:flex;flex-wrap:wrap;gap:4px 12px;padding:0 6px 6px 41px;font-size:12px;color:#ccd}.mappool label{display:flex;align-items:center;gap:3px;cursor:pointer}
 .setrow{display:flex;align-items:center;gap:9px;padding:5px 6px;border-radius:7px;cursor:pointer;font-size:13px;color:#ddd}.setrow:hover{background:rgba(255,255,255,.06)}.setrow .tog{flex:0 0 26px}.setrow small{display:block;font-size:11px;color:#8a93a8}
 .setbtns{gap:6px;margin-top:6px;flex-wrap:wrap}#setBtn.on{background:linear-gradient(#427fff,#0014ab)}
@@ -430,7 +430,7 @@ select:focus{border-color:#427fff}
       <dt><kbd>Right-click</kbd></dt><dd>Remove a recent swatch</dd>
       <dt><kbd>Garage</kbd></dt><dd>In the game's garage, the small Real / Color Lab button next to Done shows every box. Everything you pick in Color Lab only changes your tank for you; use Real to change your real tank</dd>
     </dl>
-    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtn" title="Replay the tutorial (garage or panel)">▶ Tutorial</button><button class="small grey" id="newBtn" title="Update notes for this version">✨ Update notes</button></div>
+    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtn" title="A short tour of this tab">▶ Tutorial</button><button class="small grey" id="newBtn" title="Update notes for this version">✨ Update notes</button></div>
   </div>
   <div class="help" id="helpSaved" hidden>
     <h4>Saved tanks</h4>
@@ -442,7 +442,48 @@ select:focus{border-color:#427fff}
       <dt><kbd>✕</kbd></dt><dd>Remove its custom colours</dd>
       <dt><kbd>⚙</kbd></dt><dd>Settings: hide buttons you don't use, backups (Export / Import), Wipe</dd>
     </dl>
-    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtn2" title="Replay the tutorial (garage or panel)">▶ Tutorial</button><button class="small grey" id="newBtn2" title="Update notes for this version">✨ Update notes</button></div>
+    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtn2" title="A short tour of this tab">▶ Tutorial</button><button class="small grey" id="newBtn2" title="Update notes for this version">✨ Update notes</button></div>
+  </div>
+  <div class="help" id="helpMaze" hidden>
+    <h4>Maps</h4>
+    <dl>
+      <dt><kbd>Which map</kbd></dt><dd>Game's = the game's own maze · One map = the map you click · 🎲 Random = a different one each round · 🔁 Take turns = each in turn</dd>
+      <dt><kbd>☆</kbd></dt><dd>Click the star on a map to make it a favourite: ★ maps come first, here and in the ⚙ menu</dd>
+      <dt><kbd>Lit maps</kbd></dt><dd>With Random or Take turns, click a map to leave it out of the mix (or put it back)</dd>
+      <dt><kbd>⚡</kbd></dt><dd>Performance mode: fewer effects, for slower computers</dd>
+      <dt><kbd>Page theme</kbd></dt><dd>Colours the page around the game too: the map's colours, one theme, or a new one daily</dd>
+    </dl>
+    <h4>Tanks and bullets</h4>
+    <dl>
+      <dt><kbd>Patterns</kbd></dt><dd>Pattern paints show in the maze too (off = their main colour)</dd>
+      <dt><kbd>Everyone's</kbd></dt><dd>Bullets for everyone: the game's, the map's colours, or each tank's turret colour</dd>
+      <dt><kbd>Other players'</kbd></dt><dd>Off hides the bullets other Color Lab players picked for themselves</dd>
+      <dt><kbd>Your bullets</kbd></dt><dd>Your own bullet colour on every map. Other Color Lab players see it too</dd>
+    </dl>
+    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtnM" title="A short tour of this tab">▶ Tutorial</button><button class="small grey" id="newBtnM" title="Update notes for this version">✨ Update notes</button></div>
+  </div>
+  <div class="help" id="helpAch" hidden>
+    <h4>Achievements</h4>
+    <dl>
+      <dt><kbd>🔒</kbd></dt><dd>Not unlocked yet: the line under each one says what to do, just by playing</dd>
+      <dt><kbd>Reward</kbd></dt><dd>Each one unlocks an item, in the garage's Achievements boxes (Color Lab view)</dd>
+      <dt><kbd>Pop-ups</kbd></dt><dd>Turn them off in ⚙ Settings > Achievements. Achievements still unlock</dd>
+      <dt><kbd>Backup</kbd></dt><dd>Your progress is backed up with your looks (⚙ Settings > Backup)</dd>
+    </dl>
+    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtnA" title="A short tour of this tab">▶ Tutorial</button><button class="small grey" id="newBtnA" title="Update notes for this version">✨ Update notes</button></div>
+  </div>
+  <div class="help" id="helpSet" hidden>
+    <h4>Settings</h4>
+    <dl>
+      <dt><kbd>Show</kbd></dt><dd>Show in this panel / in the garage: hide buttons you don't use</dd>
+      <dt><kbd>Boxes</kbd></dt><dd>Switch off Color Lab boxes you don't want in the garage and swatches</dd>
+      <dt><kbd>Sharing</kbd></dt><dd>Look sharing: share your look, show yourself online, see other players' looks</dd>
+      <dt><kbd>Backup</kbd></dt><dd>Your looks and achievements, kept for your account on any computer</dd>
+      <dt><kbd>Feedback</kbd></dt><dd>Send Color Lab a message: a bug, an idea or a report</dd>
+      <dt><kbd>Your data</kbd></dt><dd>⬇ Export / ⬆ Import a backup file, or wipe everything</dd>
+    </dl>
+    <p class="hint">Every switch has a short line under it saying what it does</p>
+    <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtnS" title="A short tour of this tab">▶ Tutorial</button><button class="small grey" id="newBtnS" title="Update notes for this version">✨ Update notes</button></div>
   </div>
 
   <div class="pane" id="panePaint">
@@ -539,7 +580,7 @@ select:focus{border-color:#427fff}
     <div class="row setbtns"><button class="small" id="exportBtn" title="Save all your saved tanks, looks, colours and settings to a backup file">⬇ Export backup</button><button class="small" id="importBtn" title="Load a backup file (adds its tanks and looks to what you have)">⬆ Import backup</button></div>
     <div class="row setbtns"><button class="small warning" id="wipe" title="Delete every saved tank and recent colour">Wipe all data</button></div>
     <div class="sublbl">About</div>
-    <small class="mzsub" style="display:block;line-height:1.5">TankTrouble Color Lab v1.4, made and run by <b>wazzey</b>. A free, fan-made, cosmetic-only extension: not affiliated with TankTrouble. Updates, the official download and feedback: <a href="https://github.com/wazzey/tanktrouble-color-lab" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">GitHub</a> · <a href="https://github.com/wazzey/tanktrouble-color-lab/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">Privacy policy</a></small>
+    <small class="mzsub" style="display:block;line-height:1.5">TankTrouble Color Lab v${document.documentElement.dataset.ttclVer || ""}, made and run by <b>wazzey</b>. A free, fan-made, cosmetic-only extension: not affiliated with TankTrouble. Updates, the official download and feedback: <a href="https://github.com/wazzey/tanktrouble-color-lab" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">GitHub</a> · <a href="https://github.com/wazzey/tanktrouble-color-lab/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer" style="color:#8fc1ff">Privacy policy</a></small>
   </div>
 
   <div class="pane" id="paneSaved" hidden>

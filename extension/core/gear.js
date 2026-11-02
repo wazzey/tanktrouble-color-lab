@@ -1,12 +1,12 @@
-import { isPat } from "../content/colours.js";
+import { GX_PAINT, isPat } from "../content/colours.js";
 import { LAIKA_SKINS } from "../content/laika.js";
 import { MAP_THEMES, mapThemeList } from "../content/maps.js";
 import { PAGE_SPECIAL, pageThemeName, pageThemeOk } from "../content/page-themes.js";
 import { fbRefresh } from "./feedback.js";
-import { colourName } from "./garage-search.js";
+import { colourName, renderGarageMaze } from "./garage-search.js";
 import { laikaDog, laikaSkinChanged, redoLaikaSkin } from "./laika-look.js";
 import { shareCall, shareMine, shareMyLooks, shareWatch } from "./look-sharing.js";
-import { mapApplyNow } from "./map-themes.js";
+import { bulletMode, mapApplyNow, mapsFavsFirst, toggleMapFav } from "./map-themes.js";
 import { mazeTimer, perfOn } from "./maze.js";
 import { BULLET_COLS, bulletIcon, bulletWarn, mapThumb, renderMazeTab } from "./maze-tab.js";
 import { onlineFetch } from "./online.js";
@@ -73,13 +73,17 @@ function gearQuick() {
       SETTINGS.laikaLook,
       !!SETTINGS.laikaDog,
       SETTINGS.myBullet,
+      bulletMode(),
+      SETTINGS.theirBullets !== false,
       shareMine(),
       SETTINGS.goOffline === true,
       SETTINGS.invisible === true,
       SETTINGS.perfMode || "off",
       SETTINGS.plainMaps === true,
+      SETTINGS.mazePatterns !== false,
       gearVer,
       SETTINGS.updPending || "",
+      (SETTINGS.mapFavs || []).join(","),
       Object.keys(gearG)
         .filter((k) => gearG[k])
         .join(","),
@@ -234,6 +238,21 @@ function gearQuick() {
       } catch {}
     },
   );
+  mk(
+    SETTINGS.mazePatterns !== false ? "🌀 Patterns in maze: on" : "🌀 Patterns in maze: off",
+    SETTINGS.mazePatterns !== false,
+    "Pattern paints in the maze: off = every pattern shows as its main colour (from the next round)",
+    () => {
+      SETTINGS.mazePatterns = SETTINGS.mazePatterns === false;
+      saveSettings();
+      try {
+        renderMazeTab();
+      } catch {}
+      try {
+        renderGarageMaze();
+      } catch {}
+    },
+  );
   mk("🎨 Open", true, "Open the Color Lab panel", () => setOpen(true));
   if (gearVer === null) {
     gearVer = "";
@@ -252,7 +271,7 @@ function gearQuick() {
     g.appendChild(r3);
     const vl = document.createElement("span");
     vl.style.cssText = "font:12px Arial;opacity:.85";
-    vl.textContent = "v" + (gearVer || "…");
+    vl.textContent = "v" + (gearVer || document.documentElement.dataset.ttclVer || "…");
     vl.title = "The version of Color Lab you are running";
     r3.appendChild(vl);
     const nb = document.createElement("button");
@@ -366,8 +385,17 @@ function gearQuick() {
     gd.style.cssText =
       "display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:4px;max-height:132px;overflow-y:auto;margin:3px 0 5px;padding:2px";
     let selEl = null;
-    for (const [k, el, name] of readItems()) {
-      const on = k === cur,
+    for (const item of readItems()) {
+      // (a null item draws the gold line under your ★ maps)
+      if (!item) {
+        const ln = document.createElement("div");
+        ln.title = "Your ★ maps are above this line";
+        ln.style.cssText = "grid-column:1/-1;height:2px;margin:1px 0;border-radius:1px;background:#ffd54a";
+        gd.appendChild(ln);
+        continue;
+      }
+      const [k, el, name] = item,
+        on = k === cur,
         t = document.createElement("div");
       t.title = name;
       t.style.cssText =
@@ -387,8 +415,12 @@ function gearQuick() {
     }
     g.appendChild(gd);
     if (selEl) {
+      // scrolled to only when it would be out of sight, so the ★ maps at the top stay in view
       setTimeout(() => {
         try {
+          if (selEl.offsetTop - gd.offsetTop + selEl.offsetHeight <= gd.clientHeight) {
+            return;
+          }
           gd.scrollTop = Math.max(0, selEl.offsetTop - gd.offsetTop - 40);
         } catch {}
       }, 0);
@@ -495,7 +527,34 @@ function gearQuick() {
     grid(
       "map",
       "🗺 Maze",
-      () => mapThemeList().map((k) => [k, thumb(k), MAP_THEMES[k].name]),
+      () => {
+        const favs = SETTINGS.mapFavs || [];
+        const items = mapsFavsFirst().map((k) => {
+          // the star in the corner adds the map to your favourites; the rest of the picture picks it
+          const fav = favs.includes(k),
+            el = document.createElement("span"),
+            st = document.createElement("span");
+          el.style.cssText = "position:relative;display:block";
+          st.textContent = fav ? "★" : "☆";
+          st.title = fav ? "Remove from favourites" : "Add to favourites (★ maps come first)";
+          st.style.cssText =
+            "position:absolute;top:-4px;left:-2px;padding:0 2px;cursor:pointer;font:bold 14px Arial;text-shadow:0 0 2px #000,0 0 2px #000;color:" +
+            (fav ? "#ffd54a" : "rgba(255,255,255,.75)");
+          st.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMapFav(k);
+            gearQuick();
+          };
+          el.append(thumb(k), st);
+          return [k, el, (fav ? "★ " : "") + MAP_THEMES[k].name];
+        });
+        const n = items.filter(([k]) => favs.includes(k)).length;
+        if (n && n < items.length) {
+          items.splice(n, 0, null);
+        }
+        return items;
+      },
       mk2,
       (v) => {
         SETTINGS.mapFixed = v;
@@ -573,12 +632,60 @@ function gearQuick() {
     };
     r2.appendChild(b);
   }
+  // everyone's bullets and other players' own bullets, as in the 🗺 Maze tab
+  sel(
+    "💥 Bullets",
+    [
+      ["normal", "Normal"],
+      ["map", "Map's"],
+      ["turret", "Turrets"],
+    ],
+    bulletMode(),
+    (v) => {
+      SETTINGS.bulletMode = v;
+      saveSettings();
+      try {
+        renderMazeTab();
+      } catch {}
+    },
+  );
+  {
+    const rb = document.createElement("div");
+    rb.style.cssText = "display:flex;gap:5px;margin:2px 0 4px";
+    g.appendChild(rb);
+    const theirs = SETTINGS.theirBullets !== false,
+      b = document.createElement("button");
+    b.className = "small" + (theirs ? "" : " grey");
+    b.textContent = theirs ? "💥 Other players' bullets: on" : "💥 Other players' bullets: off";
+    b.title =
+      "Off = bullets other Color Lab players chose for themselves are hidden, and theirs look like everyone else's. Your own still show to them";
+    b.onclick = (e) => {
+      e.stopPropagation();
+      SETTINGS.theirBullets = !theirs;
+      saveSettings();
+      try {
+        renderMazeTab();
+      } catch {}
+      gearQuick();
+    };
+    rb.appendChild(b);
+  }
   // your own bullets
   const my = SETTINGS.myBullet || "",
     bo = [["", "Same as everyone's"], ["turret", "My turret paint"], ...BULLET_COLS.map((v) => [v, colourName(v)])];
   if (my && !bo.some((o) => o[0] === my)) {
     bo.push([my, isPat(my) ? "A Color Lab paint" : colourName(my)]);
   }
+  const pickMy = (v) => {
+    SETTINGS.myBullet = v || null;
+    saveSettings();
+    try {
+      renderMazeTab();
+    } catch {}
+    try {
+      shareMyLooks();
+    } catch {}
+  };
   {
     grid(
       "bullets",
@@ -596,18 +703,46 @@ function gearQuick() {
           tx,
         ]),
       my,
-      (v) => {
-        SETTINGS.myBullet = v || null;
-        saveSettings();
-        try {
-          renderMazeTab();
-        } catch {}
-        try {
-          shareMyLooks();
-        } catch {}
-      },
+      pickMy,
       (bo.find((o) => o[0] === my) || bo[0])[1],
     );
+    if (gearG.bullets) {
+      // any colour, or a Color Lab paint, as in the 🗺 Maze tab (shown with the pictures)
+      {
+        const w = document.createElement("label"),
+          t = document.createElement("span"),
+          cc = document.createElement("input");
+        w.className = "ttg";
+        t.textContent = "🎨 Any colour";
+        cc.type = "color";
+        cc.title = "Your bullets in any colour";
+        cc.value = my && !isPat(my) && my !== "turret" ? "#" + my.slice(2) : "#ffd400";
+        cc.style.cssText = "width:34px;height:24px;padding:0;border:0;background:none;cursor:pointer";
+        cc.onclick = (e) => e.stopPropagation();
+        cc.onchange = () => {
+          pickMy("0x" + cc.value.slice(1));
+          gearQuick();
+        };
+        w.append(t, cc);
+        g.appendChild(w);
+      }
+      sel(
+        "🎨 Paint",
+        [
+          ["", "A Color Lab paint…"],
+          ...Object.keys(GX_PAINT)
+            .filter((k) => k.startsWith("pt-"))
+            .sort((a, b) => GX_PAINT[a].name.localeCompare(GX_PAINT[b].name))
+            .map((k) => ["p:" + k, GX_PAINT[k].name]),
+        ],
+        isPat(my) ? my : "",
+        (v) => {
+          if (v) {
+            pickMy(v);
+          }
+        },
+      );
+    }
     {
       const wt = bulletWarn(my || null);
       if (wt) {

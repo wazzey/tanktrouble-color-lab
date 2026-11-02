@@ -1,4 +1,4 @@
-import { ACC_SLOTS, GX_PAINT, PATTERN_AVG, boxLabel, isPat, patId } from "../content/colours.js";
+import { ACC_SLOTS, GX_PAINT, PATTERN_AVG, boxLabel, isPat, normHex, patId } from "../content/colours.js";
 import { CUSTOM_BOX_IDS, GARAGE_PICS, placeGarageSearch, renderBoxNav } from "../content/garage-folders.js";
 import { GAME_NAMES, RESTYLE_ITEMS, normVal, showVal, toCss } from "../content/registries.js";
 import { tutCard, tutLayer } from "../content/tutorials.js";
@@ -596,7 +596,8 @@ export function renderGarageSearch() {
       "position:fixed;left:12px;bottom:12px;z-index:2147482000;width:300px;font:12px Arial,sans-serif;color:#eee;background:rgba(0,0,0,.92);border:3px solid #427fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden";
     p.innerHTML =
       '<div class="h" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:linear-gradient(#427fff,#0014ab);cursor:pointer;user-select:none"><span style="flex:1;font:17px TankTrouble,Arial,sans-serif">🔍 Find in garage</span><span class="n" style="opacity:.85"></span><button type="button" class="sw" title="Real = only what you have unlocked. Color Lab = everything, including the Color Lab boxes (same as the Real / Color Lab button by Done)"></button><span class="m" title="Minimise / open" style="font:bold 15px Arial;padding:0 4px">–</span></div>' +
-      '<div class="b" style="padding:7px"><input class="q" placeholder="Search: name, box or colour (halo, sakura, #ff0000)" style="width:100%;box-sizing:border-box;padding:5px 8px;border-radius:7px;border:2px solid #808080;background:#000;color:#fff;outline:none;font:13px Arial">' +
+      '<div class="b" style="padding:7px"><input class="q" placeholder="Search: name, box or colour (halo, red)" style="width:100%;box-sizing:border-box;padding:5px 8px;border-radius:7px;border:2px solid #808080;background:#000;color:#fff;outline:none;font:13px Arial">' +
+      '<div class="hx" style="display:flex;align-items:center;gap:4px;margin-top:6px"><span class="hs" title="Pick a colour" style="flex:none;position:relative;overflow:hidden;cursor:pointer;width:22px;height:22px;box-sizing:border-box;border-radius:50%;border:1px solid #888;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)"><input type="color" class="hp" value="#808080" style="position:absolute;inset:-8px;width:40px;height:40px;border:0;padding:0;opacity:0;cursor:pointer"></span><input class="hi" placeholder="Hex, e.g. #ff8800" title="Any colour as a hex code: T, B or Tr puts it on the turret, base or treads" style="flex:1;min-width:0;box-sizing:border-box;padding:4px 8px;border-radius:7px;border:2px solid #808080;background:#000;color:#fff;outline:none;font:13px Consolas,monospace"></div>' +
       '<div class="f" style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 4px"></div><select class="bx" title="Only show one box (or a group of boxes)" style="width:100%;margin-bottom:5px;background:#000;color:#fff;border:2px solid #808080;border-radius:6px;font:13px TankTrouble,Arial,sans-serif;height:26px;outline:none"></select><div class="r" style="max-height:270px;overflow:auto"></div></div>';
     document.body.appendChild(p);
     const f = p.querySelector(".f");
@@ -643,6 +644,53 @@ export function renderGarageSearch() {
       p.dataset.box = e.target.value;
       renderGarageSearch();
     };
+    // the hex box: any colour, like the panel's, on the part picked with T / B / Tr. The circle opens a colour picker
+    const hi = p.querySelector(".hi"),
+      hs = p.querySelector(".hs"),
+      hp = p.querySelector(".hp");
+    hi.addEventListener("input", () => {
+      const v = normHex(hi.value);
+      hs.style.background = v ? "#" + v.slice(2) : "conic-gradient(red,yellow,lime,cyan,blue,magenta,red)";
+      hi.style.borderColor = hi.value.trim() && !v ? "#e05050" : "#427fff";
+      if (v) {
+        hp.value = "#" + v.slice(2);
+      }
+    });
+    hp.addEventListener("input", () => {
+      hi.value = hp.value;
+      hs.style.background = hp.value;
+      hi.style.borderColor = "#808080";
+    });
+    hi.addEventListener("keydown", (e) => e.stopPropagation());
+    hi.onfocus = () => {
+      hi.style.borderColor = hi.value.trim() && !normHex(hi.value) ? "#e05050" : "#427fff";
+    };
+    hi.onblur = () => {
+      hi.style.borderColor = hi.value.trim() && !normHex(hi.value) ? "#e05050" : "#808080";
+    };
+    for (const [pt, lb] of [
+      ["turret", "T"],
+      ["base", "B"],
+      ["treads", "Tr"],
+    ]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "small";
+      b.textContent = lb;
+      b.title = "Paint the " + pt + " this colour";
+      ttChip(b, true);
+      b.style.padding = "1px 6px";
+      b.onclick = (e) => {
+        e.preventDefault();
+        const v = normHex(hi.value);
+        if (!v) {
+          toast("Type a hex colour first, e.g. #ff8800", true);
+          return;
+        }
+        garageApply({ kind: "paint", value: v, name: "#" + v.slice(2) }, pt);
+      };
+      p.querySelector(".hx").appendChild(b);
+    }
     p.dataset.f = "all";
     p.dataset.box = "";
   }
@@ -666,6 +714,7 @@ export function renderGarageSearch() {
   }
   const looks = p.dataset.f === "looks";
   p.querySelector(".q").style.display = p.querySelector(".bx").style.display = looks ? "none" : "";
+  p.querySelector(".hx").style.display = looks ? "none" : "flex";
   if (looks) {
     return renderGarageLooks(p);
   }

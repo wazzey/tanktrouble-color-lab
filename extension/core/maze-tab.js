@@ -9,7 +9,15 @@ import { loggedInIds } from "./game-socket.js";
 import { colourName, renderGarageMaze } from "./garage-search.js";
 import { laikaDog, laikaSkinChanged, redoLaikaSkin } from "./laika-look.js";
 import { getOverride, shareMyLooks } from "./look-sharing.js";
-import { applyMapTheme, bulletMode, mapApplyNow, mapGameRef, mapTheme } from "./map-themes.js";
+import {
+  applyMapTheme,
+  bulletMode,
+  mapApplyNow,
+  mapGameRef,
+  mapTheme,
+  mapsFavsFirst,
+  toggleMapFav,
+} from "./map-themes.js";
 import { patternSourceFor } from "./maze.js";
 import { mapT, pageKeyNow, pagePal } from "./page.js";
 import { $, toast } from "./panel.js";
@@ -626,11 +634,28 @@ export function renderMazeTab() {
     const mt = tiles(sm),
       pick = mode === "fixed",
       inPool = (k) => !Array.isArray(SETTINGS.mapPool) || !SETTINGS.mapPool.length || SETTINGS.mapPool.includes(k);
-    for (const k of mapThemeList()) {
-      const on = pick ? SETTINGS.mapFixed === k : inPool(k);
+    for (const k of mapsFavsFirst()) {
+      const on = pick ? SETTINGS.mapFixed === k : inPool(k),
+        fav = (SETTINGS.mapFavs || []).includes(k);
+      // the star in the corner adds the map to your favourites (★ maps come first); the rest of the tile picks it
+      const icon = document.createElement("span"),
+        star = document.createElement("span");
+      icon.style.cssText = "position:relative;display:block";
+      star.textContent = fav ? "★" : "☆";
+      star.title = fav ? "Remove from favourites" : "Add to favourites (★ maps come first)";
+      star.style.cssText =
+        "position:absolute;top:-5px;left:-3px;padding:0 2px;cursor:pointer;font:bold 16px Arial;text-shadow:0 0 2px #000,0 0 2px #000;color:" +
+        (fav ? "#ffd54a" : "rgba(255,255,255,.75)");
+      star.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMapFav(k);
+        renderMazeTab();
+      };
+      icon.append(mapThumb(k), star);
       tile(
         mt,
-        mapThumb(k),
+        icon,
         MAP_THEMES[k].name,
         on,
         pick ? "Use " + MAP_THEMES[k].name : on ? "In the mix - click to leave out" : "Left out - click to add",
@@ -705,6 +730,20 @@ export function renderMazeTab() {
       renderMazeTab();
     };
     sb.appendChild(bp);
+  }
+  {
+    const tb = document.createElement("div");
+    tb.className = "setrow";
+    tb.innerHTML =
+      '<span class="tog' +
+      (SETTINGS.theirBullets !== false ? " on" : "") +
+      "\"></span><span><span>Other players' custom bullets</span><small>Off = bullets other Color Lab players chose for themselves are hidden, and theirs look like everyone else's. Your own still show to them</small></span>";
+    tb.onclick = () => {
+      SETTINGS.theirBullets = SETTINGS.theirBullets === false;
+      saveSettings();
+      renderMazeTab();
+    };
+    sb.appendChild(tb);
   }
   const sy = sec("Your bullets", "Shows on every map, over everyone else's. Other Color Lab users see them too"),
     yt = tiles(sy),

@@ -115,7 +115,7 @@ export function whatsNew(since) {
   );
 }
 const gq = (sel) => document.querySelector(".garage form " + sel);
-function tutRun(path, i = 0) {
+export function tutRun(path, i = 0) {
   const steps = TUT_STEPS[path];
   clearInterval(tutTimer);
   if (i >= steps.length) {
@@ -211,6 +211,19 @@ function tutRun(path, i = 0) {
   tutTimer = setInterval(place, 300);
 }
 function tutEnd(path) {
+  if (path !== "panel" && path !== "garage") {
+    // one tab's own part (from its ? help)
+    tutCard(
+      tutLayer(),
+      "<h3>Done! 🎉</h3><p>That's this tab. The whole tour of the panel and the garage is under <b>▶ Tutorial</b> in ⚙ Settings > Help.</p>",
+      [
+        ["Finish", "alt", tutClose],
+        ["Whole tour ›", "go", () => tutChoose(false)],
+      ],
+      true,
+    );
+    return;
+  }
   const seen = Object.assign({}, (TUTS || {}).seen, { [path]: true });
   tutSave({ seen });
   const other = path === "panel" ? "garage" : "panel",
@@ -247,13 +260,14 @@ export function openHelp(where) {
             "Real = your normal garage (saved to your account). Color Lab = every box and item plus the Color Lab boxes; everything you pick there only changes your tank for you",
           ],
           ["🎲", "Random look: choose parts, item slots and boxes, then Roll"],
+          ["💾 Looks", "Your saved looks for this tank: switch with one click, or + New look to start another"],
           [
             "Pattern in-maze",
             "Shows up when a part has a pattern paint: choose if that pattern also shows in the maze",
           ],
           [
             "🔍 Find in garage",
-            "Bottom-left: search or scroll everything. Click an item to put it on; T / B / Tr paint the turret, base or treads",
+            "Bottom-left: search or scroll everything. Click an item to put it on; T / B / Tr paint the turret, base or treads. The hex box paints any colour",
           ],
           ["<kbd>" + KEY_C + "</kbd>", "Opens the colour panel for painting any tank and saving looks"],
         ]
@@ -265,7 +279,7 @@ export function openHelp(where) {
       "</ul>",
     [
       ["✨ Update notes", "alt", () => whatsNew(0)],
-      ["▶ Tutorial", "go", () => tutChoose(false)],
+      ["▶ Tutorial", "go", () => tutRun("garage")],
       ["Close", "alt", tutClose],
     ],
     true,
@@ -281,6 +295,7 @@ export function startTutorialRun() {
           showTab("paint");
         },
         el: () => panel,
+        area: "paint",
         t: "The colour panel",
         x:
           "Open or close it with <kbd>" +
@@ -289,21 +304,25 @@ export function startTutorialRun() {
       },
       {
         el: () => $("name").parentNode,
+        area: "paint",
         t: "Pick a tank",
         x: "Type any player's name and press <b>Find</b>, or press <b>Me</b> for your own tank (press again for your next one).",
       },
       {
         el: () => $("parts"),
+        area: "paint",
         t: "Paint the parts",
         x: "Click <b>Turret</b>, <b>Base</b> or <b>Treads</b>, then pick a colour or paint. 🎲 on a part gives it a random one. Pattern paints get a <b>Pattern in-maze</b> tick: on = the pattern shows in the maze too.",
       },
       {
         el: () => $("hexrow"),
+        area: "paint",
         t: "Exact colours",
         x: "Type a hex code like <b>#ff0000</b>. <b>Real</b> fills in the tank's real look, <b>Clear</b> empties everything.",
       },
       {
         el: () => $("rndAll").parentNode,
+        area: "paint",
         t: "Random and party",
         x: "<b>🎲 Random</b> makes a whole new look. <b>🎉</b> gives your tanks new colours every round. <b>▾</b> opens the random settings.",
       },
@@ -314,6 +333,7 @@ export function startTutorialRun() {
           }
         },
         el: () => $("rndBox"),
+        area: "paint",
         t: "Random options",
         x: "<b>Colours from</b>: any colour, your saved ones, patterns, or one box. <b>🎩 Items</b>: light up slots and 🎲 Random, party mode and the garage 🎲 also roll items for them.",
       },
@@ -324,6 +344,7 @@ export function startTutorialRun() {
           }
         },
         el: () => $("swatches"),
+        area: "paint",
         t: "Swatches",
         x: "Every box's paints and accessories, including the Color Lab boxes. Click one to use it. <b>Right-click</b> any paint or item to ★ favourite it: they all go in the <b>★ Favourites</b> tile.",
       },
@@ -334,20 +355,23 @@ export function startTutorialRun() {
           }
         },
         el: () => $("save").parentNode,
+        area: "paint",
         t: "Save it",
         x: "<b>Save</b> keeps this look for that tank. <b>+ Preset</b> saves another look you can switch between.",
       },
       {
         before: () => showTab("saved"),
         el: () => $("paneSaved"),
+        area: "saved",
         t: "Saved tanks",
         x: "All your saved tanks: switch them on or off, pick a preset (up to 10 per tank), double-click to rename.",
       },
       {
         before: () => showTab("maze"),
         el: () => $("paneMaze"),
+        area: "maze",
         t: "Maps 🗺",
-        x: "Pick a <b>map theme</b> for the maze (75 of them, each light or dark), or <b>Random</b> for a new one every round. Themed bullets, crates and Laika's outfit match the map. Only you see your map.",
+        x: "Pick a <b>map theme</b> for the maze (75 of them, each light or dark), or <b>Random</b> for a new one every round. Themed bullets, crates and Laika's outfit match the map. Only you see your map. Click the <b>☆</b> on a map to favourite it: ★ maps come first.",
       },
       {
         before: () => {
@@ -358,18 +382,34 @@ export function startTutorialRun() {
           }
         },
         el: () => $("mzPage") || $("paneMaze"),
+        area: "maze",
         t: "Page theme 🎨",
         x: "Theme the <b>TankTrouble page itself</b> in a map's colours: background, header, side boxes, the game's buttons and the lobby pictures. <b>Match map</b> follows the map you play on, <b>One theme</b> keeps one, and <b>📅 Daily</b> gives a new one every day. With <b>Use it for the maze too</b>, the maze and Laika get it as well.",
       },
       {
+        before: () => {
+          showTab("maze");
+          const el = mazeBullets();
+          if (el) {
+            el.scrollIntoView({ block: "start" });
+          }
+        },
+        el: () => mazeBullets() || $("paneMaze"),
+        area: "maze",
+        t: "Bullets 💥",
+        x: "<b>Everyone's bullets</b>: the game's, the map's colours, or each tank's turret paint. <b>Other players' custom bullets</b> off hides the ones other Color Lab players picked. <b>Your bullets</b> show on every map, and other Color Lab players see them too.",
+      },
+      {
         before: () => showTab("ach"),
         el: () => $("paneAch"),
+        area: "ach",
         t: "Achievements 🏆",
         x: "Color Lab's own achievements. Earn them in online rounds to unlock extra items (and, for the hardest, a paint) in the <b>Achievements</b> box. Each one says how to get it.",
       },
       {
         before: () => showTab("settings"),
         el: () => $("paneSet"),
+        area: "settings",
         t: "Settings ⚙",
         x: "Hide anything you don't use (in the panel and the garage), turn maze patterns on or off, replay this tutorial, and make or load a <b>backup</b>.",
       },
@@ -382,6 +422,7 @@ export function startTutorialRun() {
           }
         },
         el: () => $("setShare") || $("paneSet"),
+        area: "settings",
         t: "Look sharing 🔗",
         x: "Other Color Lab users see your look (and <b>your bullets</b> from the 🗺 Maze tab), and you see theirs. A new look pops in for them straight away. <b>Click any tank</b> with a Color Lab look and its profile has a <b>Real / Color Lab</b> switch. Turn either part off here.",
       },
@@ -394,14 +435,15 @@ export function startTutorialRun() {
           }
         },
         el: () => $("setShare") || $("paneSet"),
+        area: "settings",
         t: "Who can see you 🟢",
-        x: "Turn on <b>Show me as online</b> to appear by name in the Color Lab box (and <b>Show which server I'm on</b> for your server). Off, you only count as hidden. Nothing about you is sent while Color Lab is <b>offline</b> (the switch in the game's top-right settings box).",
+        x: "With <b>Show me as online</b> on (it is unless you turn it off) you appear by name in the Color Lab box, with your server if <b>Show which server I'm on</b> is on. Off, you only count as hidden. Nothing about you is sent while Color Lab is <b>offline</b> (the switch in the game's top-right settings box).",
       },
       {
         before: () => setOpen(false),
         el: () => document.getElementById("ttclOnline"),
         t: "Who's online",
-        x: "On the lobby's left: how many Color Lab players are online, and the ones who chose to be shown (green = online, yellow = idle). Click a name to see their tank.",
+        x: "On the lobby's left: how many Color Lab players are online, and their names unless they've hidden them (green = online, yellow = idle). Click a name to see their tank.",
       },
       {
         el: () => document.getElementById("ttclLabSnippet"),
@@ -478,4 +520,10 @@ export function startTutorialRun() {
       },
     ],
   };
+  for (const area of ["paint", "saved", "maze", "ach", "settings"]) {
+    TUT_STEPS[area] = TUT_STEPS.panel.filter((st) => st.area === area);
+  } // (each tab's ? help runs just its own part)
 }
+// the Maze tab's Everyone's bullets section
+const mazeBullets = () =>
+  [...$("paneMaze").querySelectorAll(".mzsec")].find((d) => /Everyone's bullets/.test(d.textContent));

@@ -269,7 +269,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
       '<div class="b"><div class="c"><h3>Before you start 🔒</h3>' +
       "<p>Color Lab works on your own screen without any server. If you choose <b>Share</b>, it also uses Color Lab's server (run by its author on Cloudflare), which gets:</p><ul>" +
       "<li>your logged-in tanks' player IDs, their public names and the looks you give them, so other Color Lab players see your looks</li>" +
-      "<li>whether you're online or idle and in the lobby, a queue or a game (your name only shows if you turn on <b>Show me as online</b>)</li>" +
+      "<li>whether you're online or idle and in the lobby, a queue or a game (your name and server show to other Color Lab players unless you turn off <b>Show me as online</b> in Settings)</li>" +
       "<li>the player IDs of tanks on your screen, to fetch their Color Lab looks</li>" +
       "<li>a backup of your looks and achievement progress (on unless you turn it off in ⚙ Settings > Backup)</li>" +
       "<li>messages and reports, only when you send one. They go to the author's private Discord, and Cloudflare's AI tags their topic</li>" +

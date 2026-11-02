@@ -286,7 +286,7 @@ function onlineDraw() {
   const hid = onlineData && typeof onlineData.hidden === "number" ? onlineData.hidden : null;
   if (!shut && hid) {
     h +=
-      '<div style="font:10px Arial;opacity:.75;margin-top:3px" title="Color Lab players who haven\'t chosen to be shown">+ ' +
+      '<div style="font:10px Arial;opacity:.75;margin-top:3px" title="Color Lab players not shown by name">+ ' +
       hid +
       " hidden</div>";
   }

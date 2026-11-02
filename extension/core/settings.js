@@ -30,7 +30,7 @@ import { renderList } from "./saved-looks.js";
 import { GUI_POS, SETTINGS, savePos, saveSettings } from "./storage.js";
 import { curTab, lastTab, setOpen, showTab } from "./tabs.js";
 import { registerRaceNumber } from "./trophy-art.js";
-import { tutChoose, whatsNew } from "./tutorial-run.js";
+import { tutChoose, tutRun, whatsNew } from "./tutorial-run.js";
 import { checkUpdate, verNewer } from "./updates.js";
 
 // ? shows the tips for whichever tab is open
@@ -38,6 +38,9 @@ let helpOpen = false;
 export function syncHelp() {
   $("helpPaint").hidden = !(helpOpen && curTab === "paint");
   $("helpSaved").hidden = !(helpOpen && curTab === "saved");
+  $("helpMaze").hidden = !(helpOpen && curTab === "maze");
+  $("helpAch").hidden = !(helpOpen && curTab === "ach");
+  $("helpSet").hidden = !(helpOpen && curTab === "settings");
   $("helpBtn").classList.toggle("grey", !helpOpen);
 }
 const boxDots = {},
@@ -546,11 +549,17 @@ export function startSettings() {
     syncRndBox();
   };
   syncRndBox();
-  for (const n of ["", "2"]) {
+  for (const [n, area] of [
+    ["", "paint"],
+    ["2", "saved"],
+    ["M", "maze"],
+    ["A", "ach"],
+    ["S", "settings"],
+  ]) {
     $("tutBtn" + n).onclick = () => {
       helpOpen = false;
       syncHelp();
-      tutChoose(false);
+      tutRun(area);
     };
     $("newBtn" + n).onclick = () => {
       helpOpen = false;
