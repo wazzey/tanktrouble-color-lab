@@ -469,7 +469,7 @@ async function touchPresence(env, kh, req, pids, srv, idle, show, shsrv, away, w
 }
 // What every Color Lab user can see of who's online: only players who turned "show me" on, only tanks proven to be theirs, never
 // guests, never versions or last-seen times; the server name only if they chose to show it. Worked out once a minute for everyone.
-const SEEN_MS = 7 * DAY, // (a player who chose to be shown stays in the list as "seen ... ago" for a week)
+const SEEN_MS = DAY, // (a player who chose to be shown stays in the list as "seen ... ago" for a day, so copies that were removed or switched off soon drop off)
   ONLINE_MS = 7 * 60000,
   IDLE_HIDE_MS = 15 * 60000; // (idle for 15 minutes: other players see them as offline; the owner still sees them)
 let pubOnline = { at: 0, data: null };

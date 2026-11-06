@@ -301,7 +301,7 @@ export const WHATS_NEW = [
   [
     15,
     "🟢",
-    "<b>Color Lab box</b>: see how long someone has been idle, and when players who show themselves were last on in the past week",
+    "<b>Color Lab box</b>: see how long someone has been idle, and when players who show themselves were last on in the past day",
   ],
   [15, "📋", "<b>Copy my support ID</b> in ⚙ Settings > Look sharing helps the Color Lab team find your copy"],
   [

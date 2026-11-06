@@ -1,6 +1,6 @@
 # TankTrouble Color Lab: privacy policy
 
-_Last updated: 1 November 2026_
+_Last updated: 6 November 2026_
 
 TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser extension made and run by **wazzey** ("the author"), an individual in the United Kingdom. It is not affiliated with TankTrouble. The author is responsible for the data described here (the "controller" under UK data protection law). This page lists everything Color Lab collects, why, who can see it, how long it's kept and how to have it removed. The code that does all of this is public: the extension in [`extension/`](extension) and its server in [`server/`](server).
 
@@ -76,7 +76,7 @@ The server reads new replies on Color Lab's own TankTrouble forum thread every m
 
 ## Who sees what
 
-**Other Color Lab players** see your look on your proven tanks. They see you in the online list unless you turn off **Settings > Look sharing > Show me as online** (your name, whether you're online or idle and for how many minutes, whether you're in the lobby, a queue or a game, and when you were last seen in the past 7 days), and your TankTrouble server unless you turn off **Show which server I'm on**. Both are on unless you switch them off. With **Show me as online** off you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
+**Other Color Lab players** see your look on your proven tanks. They see you in the online list unless you turn off **Settings > Look sharing > Show me as online** (your name, whether you're online or idle and for how many minutes, whether you're in the lobby, a queue or a game, and when you were last seen in the past day), and your TankTrouble server unless you turn off **Show which server I'm on**. Both are on unless you switch them off. With **Show me as online** off you're counted as "hidden". Players who are away, or idle for 15 minutes or more, show as offline. **👻 Invisible** leaves you out of the list and the count.
 
 **The author's** online list is the same as everyone else's. The server's admin page, and the author's own copy of Color Lab, show the author what the server keeps: every copy's status (online, idle, away, invisible or offline on purpose, and the server unless you turned it off, whatever your **Show me as online** setting), the tanks on each copy, the copies and accounts seen and when, each copy's version, the look history, reports, bans and holds, server events and messages. The author only reads it to keep the server running and to deal with abuse and security problems (for example checking a report, or a copy trying to take over other players' tanks), and reads a message because you sent it to Color Lab. Backups aren't shown on the admin page. None of it is shared with anyone, apart from the alerts below.
 
