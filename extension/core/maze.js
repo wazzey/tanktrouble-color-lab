@@ -21,6 +21,7 @@ import { lookupById } from "./game-socket.js";
 import { getOverride } from "./look-sharing.js";
 import { MAP_FLOOR_NOW, mapNext } from "./map-themes.js";
 import { SETTINGS } from "./storage.js";
+import { applyTeamsGone, fetchTeams } from "./teams.js";
 
 // ---------- Pattern in-maze ----------
 // In a match every tank part is a picture from the game's picture sheet ("game" atlas), tinted one colour. For a
@@ -314,6 +315,7 @@ export function mazePatternTick() {
     clearInterval(mazeTimer);
     mazeTimer = null;
     mazeTanks = null;
+    applyTeamsGone();
     return;
   }
   try {
@@ -341,6 +343,7 @@ export function mazePatternTick() {
       }
     };
     walk(game.world, 0);
+    fetchTeams(mazeTanks.map((tank) => String(tank.playerId)));
   }
   for (const t of mazeTanks) {
     try {
@@ -537,7 +540,7 @@ export function startMaze() {
       SG.fillStyle = fl > 0.5 ? "#000" : "#fff";
       SG.fillText((key + (sh ? " " + sh : "")).slice(0, 14), 2, li * cell + 10);
       paints.forEach((p, pi) => {
-        const mineCol = altOnFloor(p, floor),
+        const mineCol = altOnFloor(p, floor, true),
           mr = rimFor("0x" + mineCol.slice(1), floor),
           mine = withRim(tint(fm, mineCol), fm, mr && mr[1] >= 0.9 ? mr : null);
         const laserCol = altOnFloor(p, floor),

@@ -5,8 +5,11 @@
 //   PUT    /v1/looks/<playerId>       body { key, look }   (the first copy to save a player ID owns it: same key needed after)
 //   DELETE /v1/looks/<playerId>       body { key }
 //   GET    /v1/live  (WebSocket)       send {"watch":[ids]}; a look saved for a watched tank arrives at once as {"pid","look","updated"}
+//                                       send {"hello":key} so the copy shows as offline soon after the connection drops
 //   POST   /v1/verify/start, /v1/verify/check  body { pid, key }  prove a tank is yours (see "Proving a tank is yours" below)
 //   POST   /v1/report                 body { pid, key }   report a shared look (enough different people: it's hidden)
+//   POST   /v1/team                   body { key, pid, act, ... }   make, join, change or leave a team (proven tanks only)
+//   GET    /v1/teams?ids=1,2,3        -> { teams: { "1": { t, c, b, p, m, s } } }   which team each tank is in, and its colours
 //   GET    /admin                     the owner's admin page (needs the ADMIN_TOKEN secret: npx wrangler secret put ADMIN_TOKEN)
 // Alerts: set ALERT_WEBHOOK (a Discord webhook address) with  npx wrangler secret put ALERT_WEBHOOK
 //         and ALERT_MENTION (your Discord user ID) with  npx wrangler secret put ALERT_MENTION  so each alert pings you
@@ -245,6 +248,15 @@ async function ensureTables(env) {
     env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS save_hist (pid TEXT NOT NULL, ver INTEGER NOT NULL, blob TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (pid, ver))",
     ), // (the last few versions, so a ruined save can be put back)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS teams (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, owner TEXT NOT NULL, colour INTEGER NOT NULL, backup INTEGER NOT NULL, paint TEXT, mode TEXT NOT NULL, created INTEGER NOT NULL, used INTEGER NOT NULL, paused INTEGER NOT NULL DEFAULT 0)",
+    ), // (a team: the tank that made it, its colours and how they show on its tanks)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS team_members (pid TEXT PRIMARY KEY, team INTEGER NOT NULL, shades TEXT NOT NULL, joined INTEGER NOT NULL)",
+    ),
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS team_invites (pid TEXT NOT NULL, team INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (pid, team))",
+    ), // (a tank is in one team at most, with the shades of its team's colour it picked)
     env.DB.prepare("CREATE INDEX IF NOT EXISTS verified_kh ON verified (keyhash)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS looks_kh ON looks (keyhash)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS feedback_kh ON feedback (keyhash)"),
@@ -277,6 +289,9 @@ async function ensureTables(env) {
   try {
     await env.DB.prepare("ALTER TABLE reports ADD COLUMN kh TEXT").run();
   } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE teams ADD COLUMN paused INTEGER NOT NULL DEFAULT 0").run();
+  } catch {} // (teams made before Pause existed)
   try {
     await env.DB.prepare("ALTER TABLE presence ADD COLUMN inv INTEGER").run();
   } catch {} // (invisible: not shown or counted for other players; the owner still sees it) // (which copy of Color Lab sent a report: only the owner sees who)
@@ -471,6 +486,7 @@ async function touchPresence(env, kh, req, pids, srv, idle, show, shsrv, away, w
 // guests, never versions or last-seen times; the server name only if they chose to show it. Worked out once a minute for everyone.
 const SEEN_MS = DAY, // (a player who chose to be shown stays in the list as "seen ... ago" for a day, so copies that were removed or switched off soon drop off)
   ONLINE_MS = 7 * 60000,
+  GONE_MS = 15000, // (a copy whose live connection drops shows as offline after this, unless it reconnects)
   IDLE_HIDE_MS = 15 * 60000; // (idle for 15 minutes: other players see them as offline; the owner still sees them)
 let pubOnline = { at: 0, data: null };
 async function publicOnline(env, now) {
@@ -816,6 +832,25 @@ async function ttDetails(pid) {
     return null;
   }
 }
+async function ttGarage(pid) {
+  try {
+    const r = await fetch("https://tanktrouble.com/ajax/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "ttcl-share (Color Lab look server)" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "tanktrouble.garage.getGarageContent",
+        id: 1,
+        params: [String(pid)],
+      }),
+    });
+    const j = await r.json();
+    const g = j && j.result && j.result.data;
+    return g && Array.isArray(g.boxes) ? g : null;
+  } catch {
+    return null;
+  }
+}
 // The tank's TankTrouble name, kept with its look for the admin page (so a guest's name isn't lost when the guest is gone)
 async function rememberName(env, pid, d) {
   try {
@@ -847,14 +882,27 @@ const PARTS = [
     ["tread", "treadColour"],
   ],
   SLOTS = ["turret", "barrel", "front", "back"];
-function pickChallenge(d) {
+// Only changes the garage can undo: the paint or item taken off for a moment must be one the tank's garage holds,
+// so a retired or one-off paint or item it wears is never put at risk
+function pickChallenge(d, garage) {
   const raw = (k) => (d[k] && typeof d[k].rawValue === "string" ? d[k].rawValue : null),
+    owned = new Set(),
     opts = [];
+  for (const box of garage.boxes) {
+    for (const can of box.sprayCans || []) {
+      if (can.colour) {
+        owned.add("p:" + String(can.colour.rawValue));
+      }
+    }
+    for (const item of box.accessories || []) {
+      owned.add(item.type + ":" + item.value);
+    }
+  }
   for (const [part, k] of PARTS) {
     for (const [, k2] of PARTS) {
       const a = raw(k),
         b = raw(k2);
-      if (a && b && a !== b) {
+      if (a && b && a !== b && owned.has("p:" + a) && owned.has("p:" + b)) {
         opts.push({ part, kind: "colour", want: b, restore: a });
       }
     }
@@ -862,7 +910,7 @@ function pickChallenge(d) {
   if (!opts.length) {
     for (const slot of SLOTS) {
       const v = String(d[slot + "Accessory"] ?? "0");
-      if (v !== "0") {
+      if (v !== "0" && owned.has(slot + ":" + v)) {
         opts.push({ part: slot, kind: "acc", want: "0", restore: v });
       }
     }
@@ -1353,6 +1401,328 @@ async function account(env, req, ctx) {
   }
   return json({ error: "bad op" }, 400);
 }
+// ---------- teams: up to 4 proven tanks that show in their team's colour to Color Lab players when they play together ----------
+// The tank that makes a team owns it until it deletes the team or leaves it (which deletes it); others join with its code and
+// can leave any time. A team nobody has looked at for 30 days is deleted by the daily tidy.
+const TEAM_COLOURS = 12,
+  TEAM_SIZE = 4,
+  TEAM_INVITES = 100, // (invites an owner can send a day)
+  TEAM_INVITE_MS = 10 * 60000,
+  TEAM_SHADES = 5,
+  TEAM_CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+async function applyTeamAsk(env, req) {
+  let body;
+  try {
+    body = JSON.parse((await req.text()).slice(0, 2000));
+  } catch {
+    return json({ error: "bad json" }, 400);
+  }
+  const pid = PID.test(String((body && body.pid) || "")) ? String(body.pid) : null;
+  if (!body || typeof body.key !== "string" || !KEY.test(body.key) || !pid) {
+    return json({ error: "bad request" }, 400);
+  }
+  await ensureTables(env);
+  const kh = await sha256(body.key),
+    ih = await ipHash(env, req),
+    now = Date.now(),
+    act = String(body.act || "");
+  if (await env.DB.prepare("SELECT 1 FROM banned WHERE hash IN (?, ?)").bind(kh, ih).first()) {
+    return json({ error: "not allowed" }, 403);
+  }
+  if (await onHold(env, kh, ih)) {
+    return json({ error: "on hold: the owner of Color Lab will check this copy" }, 403);
+  }
+  const owner = await env.DB.prepare("SELECT keyhash FROM verified WHERE pid = ?").bind(pid).first();
+  if (!owner || owner.keyhash !== kh) {
+    return json({ error: "prove this tank is yours first" }, 403);
+  }
+  const mine = await env.DB.prepare(
+    "SELECT m.team, t.owner FROM team_members m JOIN teams t ON t.id = m.team WHERE m.pid = ?",
+  )
+    .bind(pid)
+    .first();
+  const readColour = (v) => (Number.isInteger(v) && v >= 0 && v < TEAM_COLOURS ? v : null);
+  const readLook = () => {
+    const name =
+        typeof body.name === "string" ? body.name.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 24) : "",
+      colour = readColour(body.colour),
+      backup = readColour(body.backup);
+    if (!name || colour === null || backup === null || colour === backup) {
+      return null;
+    }
+    return {
+      name,
+      colour,
+      backup,
+      paint: typeof body.paint === "string" && /^p:[a-z0-9-]{1,40}$/.test(body.paint) ? body.paint : null,
+      mode: body.mode === "turret" ? "turret" : "full",
+    };
+  };
+  if (act === "mine") {
+    if (mine) {
+      await env.DB.prepare("UPDATE teams SET used = ? WHERE id = ?").bind(now, mine.team).run();
+    }
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "create") {
+    if (mine) {
+      return json({ error: "leave your team first" }, 409);
+    }
+    const look = readLook();
+    if (!look) {
+      return json({ error: "give the team a name and two different colours" }, 400);
+    }
+    const made = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who = ? AND at > ?")
+      .bind("tc:" + kh, now - DAY)
+      .first();
+    if (made && made.n >= 5) {
+      return json({ error: "that's enough new teams for today" }, 429);
+    }
+    let id = null;
+    for (let tries = 0; tries < 5 && id === null; tries++) {
+      const random = crypto.getRandomValues(new Uint8Array(6));
+      const code = [...random].map((byte) => TEAM_CODE[byte % TEAM_CODE.length]).join("");
+      try {
+        const row = await env.DB.prepare(
+          "INSERT INTO teams (code, name, owner, colour, backup, paint, mode, created, used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+        )
+          .bind(code, look.name, pid, look.colour, look.backup, look.paint, look.mode, now, now)
+          .first();
+        id = row ? row.id : null;
+      } catch {} // (that code is taken: another one)
+    }
+    if (id === null) {
+      return json({ error: "try again" }, 503);
+    }
+    await env.DB.batch([
+      env.DB.prepare("INSERT OR REPLACE INTO team_members (pid, team, shades, joined) VALUES (?, ?, ?, ?)").bind(
+        pid,
+        id,
+        "2,2,2",
+        now,
+      ),
+      env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, ?, ?)").bind("tc:" + kh, "t" + id, now),
+    ]);
+    await applyTeamNews(env, [pid]);
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "decline") {
+    await env.DB.prepare("DELETE FROM team_invites WHERE pid = ? AND team = ?").bind(pid, Number(body.team)).run();
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "join" || act === "accept") {
+    if (mine) {
+      return json({ error: "leave your team first" }, 409);
+    }
+    let teamId = null;
+    if (act === "accept") {
+      // an invite from a team's owner works without the code for 10 minutes
+      const invite = await env.DB.prepare("SELECT team FROM team_invites WHERE pid = ? AND team = ? AND at > ?")
+        .bind(pid, Number(body.team), now - TEAM_INVITE_MS)
+        .first();
+      await env.DB.prepare("DELETE FROM team_invites WHERE pid = ?").bind(pid).run();
+      if (!invite || !(await env.DB.prepare("SELECT id FROM teams WHERE id = ?").bind(invite.team).first())) {
+        return json({ error: "that invite has run out" }, 404);
+      }
+      teamId = invite.team;
+    }
+    const code = String(body.code || "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 6);
+    const missed = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who = ? AND at > ?")
+      .bind("tj:" + ih, now - DAY)
+      .first();
+    if (missed && missed.n >= 20) {
+      return json({ error: "too many wrong codes today" }, 429);
+    } // (codes can't be guessed)
+    const found =
+      teamId !== null
+        ? { id: teamId }
+        : code.length === 6
+          ? await env.DB.prepare("SELECT id FROM teams WHERE code = ?").bind(code).first()
+          : null;
+    if (!found) {
+      await env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, ?, ?)")
+        .bind("tj:" + ih, "j" + pid, now)
+        .run();
+      return json({ error: "no team has that code" }, 404);
+    }
+    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM team_members WHERE team = ?").bind(found.id).first();
+    if (count && count.n >= TEAM_SIZE) {
+      return json({ error: "that team is full" }, 409);
+    }
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO team_members (pid, team, shades, joined) VALUES (?, ?, ?, ?)").bind(
+        pid,
+        found.id,
+        "2,2,2",
+        now,
+      ),
+      env.DB.prepare("UPDATE teams SET used = ? WHERE id = ?").bind(now, found.id),
+    ]);
+    await applyTeamNews(env, await readTeamPids(env, found.id));
+    return json(await readTeam(env, pid, now));
+  }
+  if (!mine) {
+    return json(await readTeam(env, pid, now));
+  } // (everything else needs a team)
+  const own = mine.owner === pid;
+  if (!own && (act === "edit" || act === "remove" || act === "delete" || act === "pause" || act === "invite")) {
+    return json({ error: "only the team's owner can do that" }, 403);
+  }
+  if (act === "leave" || (act === "delete" && own)) {
+    // the owner leaving deletes the team
+    const pids = await readTeamPids(env, mine.team);
+    await env.DB.batch(
+      own
+        ? [
+            env.DB.prepare("DELETE FROM team_members WHERE team = ?").bind(mine.team),
+            env.DB.prepare("DELETE FROM teams WHERE id = ?").bind(mine.team),
+          ]
+        : [env.DB.prepare("DELETE FROM team_members WHERE pid = ?").bind(pid)],
+    );
+    await applyTeamNews(env, pids);
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "remove" && own && PID.test(String(body.target || "")) && String(body.target) !== pid) {
+    const pids = await readTeamPids(env, mine.team);
+    await env.DB.prepare("DELETE FROM team_members WHERE pid = ? AND team = ?")
+      .bind(String(body.target), mine.team)
+      .run();
+    await applyTeamNews(env, pids);
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "edit" && own) {
+    const look = readLook();
+    if (!look) {
+      return json({ error: "give the team a name and two different colours" }, 400);
+    }
+    await env.DB.prepare(
+      "UPDATE teams SET name = ?, colour = ?, backup = ?, paint = ?, mode = ?, used = ? WHERE id = ?",
+    )
+      .bind(look.name, look.colour, look.backup, look.paint, look.mode, now, mine.team)
+      .run();
+    await applyTeamNews(env, await readTeamPids(env, mine.team));
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "invite" && own) {
+    // only players connected to Color Lab right now get it, but the owner hears "sent" either way, so invites can't
+    // show who is online
+    const sent = await env.DB.prepare("SELECT COUNT(*) AS n FROM claims WHERE who = ? AND at > ?")
+      .bind("ti:" + kh, now - DAY)
+      .first();
+    if (sent && sent.n >= TEAM_INVITES) {
+      return json({ error: "that's " + TEAM_INVITES + " invites today. Share the team's code instead" }, 429);
+    }
+    const who = String(body.who || "")
+      .trim()
+      .slice(0, 24);
+    if (!who) {
+      return json({ error: "type a player's name" }, 400);
+    }
+    const found = await env.DB.prepare(
+      "SELECT n.pid, l.kh FROM names n JOIN logged l ON (',' || l.pids || ',') LIKE ('%,' || n.pid || ',%') JOIN presence p ON p.kh = l.kh WHERE n.name = ? COLLATE NOCASE AND n.guest = 0 AND p.last > ? AND n.pid NOT IN (SELECT pid FROM team_members) ORDER BY p.last DESC LIMIT 1",
+    )
+      .bind(who, now - ONLINE_MS)
+      .first();
+    await env.DB.prepare("INSERT INTO claims (who, pid, at) VALUES (?, ?, ?)")
+      .bind("ti:" + kh, "i" + mine.team, now)
+      .run();
+    if (found) {
+      await env.DB.prepare("INSERT OR REPLACE INTO team_invites (pid, team, at) VALUES (?, ?, ?)")
+        .bind(found.pid, mine.team, now)
+        .run();
+      const team = await env.DB.prepare(
+        "SELECT t.name, n.name AS owner_name FROM teams t LEFT JOIN names n ON n.pid = t.owner WHERE t.id = ?",
+      )
+        .bind(mine.team)
+        .first();
+      if (env.HUB && team) {
+        try {
+          await hub(env).invite(found.kh, {
+            pid: found.pid,
+            team: mine.team,
+            name: team.name,
+            from: team.owner_name || "A Color Lab player",
+            at: now,
+          });
+        } catch {}
+      }
+    }
+    return json(Object.assign(await readTeam(env, pid, now), { invited: who }));
+  }
+  if (act === "pause" && own) {
+    // a paused team keeps its code and members, but nobody wears its look in games
+    await env.DB.prepare("UPDATE teams SET paused = ?, used = ? WHERE id = ?")
+      .bind(body.paused === true ? 1 : 0, now, mine.team)
+      .run();
+    await applyTeamNews(env, await readTeamPids(env, mine.team));
+    return json(await readTeam(env, pid, now));
+  }
+  if (act === "shades") {
+    const sh = Array.isArray(body.shades) ? body.shades.slice(0, 3) : [];
+    if (sh.length !== 3 || !sh.every((shade) => Number.isInteger(shade) && shade >= 0 && shade < TEAM_SHADES)) {
+      return json({ error: "bad shades" }, 400);
+    }
+    await env.DB.prepare("UPDATE team_members SET shades = ? WHERE pid = ?").bind(sh.join(","), pid).run();
+    await applyTeamNews(env, [pid]);
+    return json(await readTeam(env, pid, now));
+  }
+  return json({ error: "bad act" }, 400);
+}
+async function readTeamPids(env, teamId) {
+  return ((await env.DB.prepare("SELECT pid FROM team_members WHERE team = ?").bind(teamId).all()).results || []).map(
+    (row) => row.pid,
+  );
+}
+async function applyTeamNews(env, pids) {
+  // every open copy showing or playing these tanks asks for their teams again at once
+  if (!env.HUB || !pids.length) {
+    return;
+  }
+  try {
+    await hub(env).teamNews(pids);
+  } catch {}
+}
+async function readTeam(env, pid, now) {
+  // this tank's team for its own copy (with the code and the members), and how many active teams use each colour
+  const used = {};
+  for (const row of (
+    await env.DB.prepare("SELECT colour, COUNT(*) AS n FROM teams WHERE used > ? GROUP BY colour")
+      .bind(now - 30 * DAY)
+      .all()
+  ).results || []) {
+    used[row.colour] = row.n;
+  }
+  const team = await env.DB.prepare(
+    "SELECT t.id, t.code, t.name, t.owner, t.colour, t.backup, t.paint, t.mode, t.paused FROM team_members m JOIN teams t ON t.id = m.team WHERE m.pid = ?",
+  )
+    .bind(pid)
+    .first();
+  const invites = (
+    (
+      await env.DB.prepare(
+        "SELECT i.team, i.at, t.name, n.name AS owner_name FROM team_invites i JOIN teams t ON t.id = i.team LEFT JOIN names n ON n.pid = t.owner WHERE i.pid = ? AND i.at > ?",
+      )
+        .bind(pid, now - TEAM_INVITE_MS)
+        .all()
+    ).results || []
+  ).map((row) => ({ team: row.team, at: row.at, name: row.name, from: row.owner_name || "A Color Lab player" }));
+  if (!team) {
+    return { ok: true, team: null, used, invites };
+  }
+  const members = (
+    (
+      await env.DB.prepare(
+        "SELECT m.pid, m.shades, n.name FROM team_members m LEFT JOIN names n ON n.pid = m.pid WHERE m.team = ? ORDER BY m.joined",
+      )
+        .bind(team.id)
+        .all()
+    ).results || []
+  ).map((row) => ({ pid: row.pid, name: row.name || null, shades: row.shades.split(",").map(Number) }));
+  return { ok: true, team: Object.assign({}, team, { members }), used, invites };
+}
 async function feedbackOf(env, kh) {
   // messages sent with this key, and older ones sent by an account it has proven (so they follow the player to another computer)
   const items =
@@ -1709,25 +2079,32 @@ function releaseForumText(env, r) {
   return t.slice(0, FORUM_MAX);
 }
 function releaseForumBody(env, r, tag, title, lines, sha, storeOk, store, cut) {
-  let t = "Color Lab " + tag + " is out!" + (title ? "\n" + title : "") + "\n\n";
+  let t =
+    "Color Lab " +
+    tag +
+    " is out" +
+    (storeOk ? " on the Chrome Web Store" : "") +
+    "!" +
+    (title ? "\n" + title : "") +
+    "\n\n";
   if (lines.length) {
-    t += "What's new:\n" + lines.join("\n") + (cut ? "\n- ...and more in the full notes (link below)" : "") + "\n\n";
+    t +=
+      "What's new:\n" +
+      lines.join("\n") +
+      (cut
+        ? storeOk
+          ? "\n- ...and more: see What's new in Color Lab"
+          : "\n- ...and more in the full notes (link below)"
+        : "") +
+      "\n\n";
   }
   if (storeOk) {
-    t +=
-      "🛒 Get it from the Chrome Web Store (installs in one click and updates by itself): " +
-      store +
-      "\nAlready on the store copy? It updates by itself, nothing to do.\n\n" +
-      "Using the zip from GitHub instead: " +
-      (r.html_url || "https://github.com/wazzey/tanktrouble-color-lab/releases");
+    t += store + "\n(Already installed? It updates by itself.)";
   } else {
     t +=
       "Download: " +
       (r.html_url || "https://github.com/wazzey/tanktrouble-color-lab/releases") +
       (sha ? "\nSHA-256: " + sha + "\n(Check it matches before installing. Your looks are kept when you update.)" : "");
-  }
-  if (storeOk && sha) {
-    t += "\nSHA-256 (zip): " + sha;
   }
   return t;
 }
@@ -1820,6 +2197,92 @@ async function releaseThreadEdit(env, r, force) {
   } catch (e) {
     await alert(env, "forum post", "❌ The thread was not updated: " + String((e && e.message) || e).slice(0, 200));
   }
+}
+// With a Chrome Web Store page, the forum reply follows the store rather than GitHub: every 10 minutes the server asks the
+// store which version it gives the public (the same update check Chrome itself uses). An upload still in review changes
+// nothing; once a newer version is live, ColorLab replies on the thread with that version's notes from the
+// extension's own "What's new" list (extension/content/tutorials.js on GitHub, from the vX.Y.Z branch or else main)
+function readStoreId(env) {
+  const m = /^https:\/\/chromewebstore\.google\.com\/detail\/[\w-]+\/([a-p]{32})$/.exec(String(env.STORE_URL || ""));
+  return m ? m[1] : null;
+}
+async function releaseStoreCheck(env) {
+  const id = readStoreId(env);
+  if (!id || !forumAuto(env) || env.FORUM_RELEASE_POST === "0" || new Date().getUTCMinutes() % 10 !== 0) {
+    return;
+  }
+  let live = null;
+  try {
+    const res = await fetch(
+      "https://clients2.google.com/service/update2/crx?response=updatecheck&acceptformat=crx3&prodversion=140.0&x=" +
+        encodeURIComponent("id=" + id + "&uc"),
+      { headers: { "User-Agent": "ttcl-share (Color Lab look server)" } },
+    );
+    live = (/<updatecheck[^>]*\bversion="([\d.]+)"/.exec(await res.text()) || [])[1] || null;
+  } catch {}
+  if (!live) {
+    return;
+  } // (the store didn't answer: asked again in 10 minutes)
+  const tag = "v" + live,
+    seen = await env.DB.prepare("SELECT k FROM alerted WHERE k = 'storebase'").first();
+  if (!seen) {
+    await env.DB.batch([
+      env.DB.prepare("INSERT OR REPLACE INTO alerted (k, at) VALUES ('storebase', ?)").bind(Date.now()),
+      env.DB.prepare("INSERT OR REPLACE INTO alerted (k, at) VALUES (?, ?)").bind("forumrel:" + tag, Date.now()),
+    ]);
+    return;
+  } // (the first check: the version live now counts as already announced, so nothing old is posted)
+  if (
+    await env.DB.prepare("SELECT at FROM alerted WHERE k = ?")
+      .bind("forumrel:" + tag)
+      .first()
+  ) {
+    return;
+  } // (already on the forum)
+  const lines = [];
+  for (const branch of [tag, "main"]) {
+    try {
+      const res = await fetch(
+        "https://raw.githubusercontent.com/wazzey/tanktrouble-color-lab/" + branch + "/extension/content/tutorials.js",
+        { headers: { "User-Agent": "ttcl-share" } },
+      );
+      const src = res.ok ? await res.text() : "";
+      const ver = /TUT_VER = (\d+)/.exec(src),
+        label = /TUT_LABEL = "([^"]+)"/.exec(src);
+      if (!ver || !label || label[1] !== tag) {
+        continue;
+      } // (that branch hasn't got this version's notes)
+      for (const m of src.matchAll(/\[\s*(\d+),\s*"(?:[^"\\]|\\.)*",\s*"((?:[^"\\]|\\.)*)",?\s*\]/g)) {
+        if (m[1] === ver[1]) {
+          const text = m[2]
+            .replace(/\\"/g, '"')
+            .replace(/\s*\([^)]*\)/g, "")
+            .replace(/\s+/g, " ");
+          const title = /<b>([^<]+)<\/b>:?\s*/.exec(text);
+          let about = (title ? text.slice(title.index + title[0].length) : text).replace(/<[^>]+>/g, "").trim();
+          about = about.split(/[.;]|, (?:and|or|each|from|only|so|but|up|the|whether|which|while)\b/)[0].trim();
+          if (about.length > 100) {
+            about = about.slice(0, 100).replace(/[\s,]+\S*$/, "") + "...";
+          } // (a point's name and the first part of what it does, e.g. "Teams: make a team and share its code")
+          lines.push("- " + (title ? title[1].replace(/:$/, "") + (about ? ": " + about : "") : about));
+        }
+      }
+      break;
+    } catch {}
+  }
+  if (!lines.length) {
+    await alertOnce(
+      env,
+      "storenotes:" + tag,
+      "release",
+      "Color Lab " +
+        tag +
+        " is live on the Chrome Web Store, but its notes weren't found on GitHub, so it's posted without them",
+    );
+  }
+  const r = { tag_name: tag, name: "", body: lines.join("\n"), html_url: String(env.STORE_URL) };
+  await releaseForumPost(env, r);
+  await releaseThreadEdit(env, r);
 }
 async function releaseForumPost(env, r, force) {
   try {
@@ -2608,7 +3071,7 @@ h+='<div id="bcBox" style="max-width:780px;border:1px solid #3f78ff66;border-rad
  +'<p style="margin:12px 0 4px"><b>Preview</b> <span class="dim">(what players see)</span></p><div id="bcPrev"></div>'
  +'<p style="margin:10px 0 2px"><label style="cursor:pointer"><input type="checkbox" id="bcZip"> <b>Only copies installed from GitHub</b> <span class="dim">(not the Chrome Web Store, which updates by itself: use this for update reminders)</span></label></p>'
  +'<p style="margin:12px 0 2px"><button id="bcGo" style="font-size:15px;padding:6px 14px">📢 Send to everyone now</button> <button id="bcClear" class="r">Stop showing it</button> <span class="dim">'+(d.bcast?'Showing now: <b>'+esc(d.bcast.title||'(no title)')+'</b>, sent '+esc(when(d.bcast.at))+(d.bcast.until?', until '+esc(when(d.bcast.until)):', until you stop it'):'Nothing is showing right now.')+'</span></p></div>';
-h+='<h2>Forum</h2><p><button id="relPost">Post the newest release on the forum now</button> <b id="relMsg"></b> <span class="dim">ColorLab replies on the Color Lab thread with its notes, and the first post gets the new version, SHA-256 and what is new. New releases do this by themselves: this is only for one published before.</span></p>';
+h+='<h2>Forum</h2><p><button id="relPost">Post the newest release on the forum now</button> <b id="relMsg"></b> <span class="dim">ColorLab replies on the Color Lab thread with its notes, and the first post gets the new version, SHA-256 and what is new. New releases do this by themselves, once the Chrome Web Store has the new version live (checked every 10 minutes): this is only for posting one by hand.</span></p>';
 h+='<h2>Message for players still on v1.3</h2><p class="dim">Shown to older copies: inside the Please update pop-up of v1.3 (every visit, while MIN_VERSION is above their version) and at the top of the new-version pop-up. Leave it empty for none.'+(d.announce?' Last saved '+esc(when(d.announce.at))+'.':'')+'</p><textarea id="ann" rows="3" style="width:100%;max-width:760px;background:#222;color:#eee;border:1px solid #555;border-radius:5px;padding:6px">'+esc(d.announce?d.announce.text:'')+'</textarea><p><button id="annSave">Save message</button> <button id="annClear" class="r">Clear</button></p>';
 h+='<h2>Most changed looks (last 30 days)</h2><p class="dim">How often each tank&#39;s shared look was changed, and from how many copies of Color Lab.</p><div class="wrap"><table><tr><th>Player ID</th><th>Name</th><th>Today</th><th>7 days</th><th>30 days</th><th>Copies</th><th>Last change</th></tr>'+(d.lookTop||[]).map(r=>'<tr><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+r.d1+'</td><td>'+r.d7+'</td><td>'+r.d30+'</td><td'+(r.copies>1?' class="bad"':'')+'>'+r.copies+'</td><td class="dim">'+when(r.last)+'</td></tr>').join('')+'</table></div>';
 h+='<h2>Latest look changes</h2><p class="dim">Newest first: when, which tank, what changed, and from which copy of Color Lab.</p><div class="wrap" style="max-height:420px;overflow:auto"><table><tr><th>When</th><th>Player ID</th><th>Name</th><th>What changed</th><th>Copy</th></tr>'+(d.lookLog||[]).map(r=>'<tr><td class="dim">'+when(r.at)+'</td><td><code>'+esc(r.pid)+'</code></td><td>'+nameCell(r)+'</td><td>'+esc(r.changed)+'</td><td><code>'+esc((r.kh||'').slice(0,10))+'</code></td></tr>').join('')+'</table></div>';
@@ -2737,14 +3200,85 @@ export class LookHub extends DurableObject {
     } catch {
       return;
     }
+    const attachment = readAttachment(ws);
     if (m && Array.isArray(m.watch)) {
-      ws.serializeAttachment({ ids: [...new Set(m.watch.map(String).filter((x) => PID.test(x)))].slice(0, MAX_WATCH) });
+      attachment.ids = [...new Set(m.watch.map(String).filter((x) => PID.test(x)))].slice(0, MAX_WATCH);
     }
+    if (m && typeof m.hello === "string" && KEY.test(m.hello)) {
+      attachment.kh = await sha256(m.hello);
+      await this.ctx.storage.delete("gone:" + attachment.kh);
+    }
+    if (m && m.closing === true) {
+      delete attachment.kh;
+    } // (the copy closed it on purpose, for example with nothing left to watch, and is still running)
+    ws.serializeAttachment(attachment);
   }
   async webSocketClose(ws) {
+    await this.applyGone(ws);
     try {
       ws.close();
     } catch {}
+  }
+  async webSocketError(ws) {
+    await this.applyGone(ws);
+  }
+  async applyGone(ws) {
+    // the connection dropped (Color Lab switched off or removed, or the browser closed): unless the copy is back within
+    // GONE_MS, it shows as offline
+    const kh = readAttachment(ws).kh;
+    if (!kh) {
+      return;
+    }
+    await this.ctx.storage.put("gone:" + kh, Date.now() + GONE_MS);
+    if (!(await this.ctx.storage.getAlarm())) {
+      await this.ctx.storage.setAlarm(Date.now() + GONE_MS);
+    }
+  }
+  async alarm() {
+    const now = Date.now(),
+      open = new Set(this.ctx.getWebSockets().map((ws) => readAttachment(ws).kh)),
+      gone = await this.ctx.storage.list({ prefix: "gone:" });
+    let next = 0;
+    for (const [name, due] of gone) {
+      if (due > now) {
+        next = next ? Math.min(next, due) : due;
+        continue;
+      }
+      const kh = name.slice(5);
+      await this.ctx.storage.delete(name);
+      if (open.has(kh)) {
+        continue;
+      }
+      try {
+        await this.env.DB.prepare("UPDATE presence SET last = ? WHERE kh = ? AND last > ?")
+          .bind(now - ONLINE_MS - 1000, kh, now - ONLINE_MS)
+          .run();
+      } catch {}
+    }
+    if (next) {
+      await this.ctx.storage.setAlarm(next);
+    }
+  }
+  async teamNews(pids) {
+    // a team changed: sent down every open connection, so anyone showing these tanks (teammates, rivals in the same
+    // game or the lobby) redraws them at once; a copy not showing them ignores it
+    const out = JSON.stringify({ teamNews: pids });
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.send(out);
+      } catch {}
+    }
+  }
+  async invite(kh, invite) {
+    // a team invite: sent down the invited player's connection, if it's open
+    const out = JSON.stringify({ invite });
+    for (const ws of this.ctx.getWebSockets()) {
+      if (readAttachment(ws).kh === kh) {
+        try {
+          ws.send(out);
+        } catch {}
+      }
+    }
   }
   async announce(ann) {
     // an announcement from the owner: sent down every open connection at once
@@ -2772,6 +3306,13 @@ export class LookHub extends DurableObject {
   }
 }
 const hub = (env) => env.HUB.get(env.HUB.idFromName("hub"));
+const readAttachment = (ws) => {
+  try {
+    return ws.deserializeAttachment() || {};
+  } catch {
+    return {};
+  }
+};
 
 // The newest release on GitHub, asked for at most once an hour (kept in Cloudflare's cache), so every Color Lab
 // can check for updates without each one hitting GitHub (or needing permission to talk to it).
@@ -2881,9 +3422,10 @@ async function githubRelease(env, req, ctx) {
           .catch(() => {}),
       );
     } // (copies with TankTrouble open hear about it at once, in the corner)
-    if (b.action !== "edited") {
+    if (b.action !== "edited" && !readStoreId(env)) {
       ctx.waitUntil(releaseForumPost(env, r).then(() => releaseThreadEdit(env, r)));
-    } // (a new release only: one reply on the forum thread, once per version. Editing a release never posts)
+    } // (a new release only: one reply on the forum thread, once per version. Editing a release never posts. With a
+    // store page the reply waits for the store instead, see releaseStoreCheck)
     if (b.action !== "edited") {
       ctx.waitUntil(
         alert(
@@ -3098,6 +3640,7 @@ export default {
     const now = Date.now();
     if (ev.cron !== "17 4 * * *") {
       await forumCommand(env); // (sets up /forum in Discord the first time, then every couple of days)
+      await releaseStoreCheck(env);
       await forumWatch(env);
       await new Promise((r) => setTimeout(r, 30000));
       return forumWatch(env);
@@ -3237,7 +3780,12 @@ export default {
       env.DB.prepare("DELETE FROM proofs WHERE at < ?").bind(now - DAY),
       env.DB.prepare("DELETE FROM blocked WHERE until < ?").bind(now),
       env.DB.prepare("DELETE FROM reports WHERE at < ?").bind(now - 30 * DAY),
-    ]);
+      env.DB.prepare("DELETE FROM team_members WHERE team IN (SELECT id FROM teams WHERE used < ?)").bind(
+        now - 30 * DAY,
+      ),
+      env.DB.prepare("DELETE FROM teams WHERE used < ?").bind(now - 30 * DAY),
+      env.DB.prepare("DELETE FROM team_invites WHERE at < ?").bind(now - DAY),
+    ]); // (teams nobody has opened for 30 days)
   },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -3253,6 +3801,8 @@ export default {
         url.pathname.startsWith("/v1/verify") ||
         url.pathname === "/v1/report" ||
         url.pathname === "/v1/account" ||
+        url.pathname === "/v1/team" ||
+        url.pathname === "/v1/teams" ||
         url.pathname.startsWith("/v1/feedback"))
     ) {
       const v = req.headers.get("x-ttcl-version") || url.searchParams.get("v") || "0",
@@ -3612,6 +4162,62 @@ export default {
       }
       return account(env, req, ctx);
     }
+    if (
+      (url.pathname === "/v1/team" && req.method === "POST") ||
+      (url.pathname === "/v1/teams" && req.method === "GET")
+    ) {
+      if (await isBlocked(env, req)) {
+        return json({ error: "shut out for an hour for flooding" }, 429);
+      }
+      if (await cutOff(env, req)) {
+        return json({ error: "on hold: the owner of Color Lab will check this copy" }, 403);
+      }
+      if (await slowDown(env, req, req.method === "GET" ? "read" : "write", ctx)) {
+        return json({ error: "slow down" }, 429);
+      }
+      if (req.method === "POST") {
+        return applyTeamAsk(env, req);
+      }
+      // which team each of these tanks is in, with the team's colours and the shades each tank picked (proven tanks only)
+      const ids = [...new Set((url.searchParams.get("ids") || "").split(",").filter((x) => PID.test(x)))].slice(
+        0,
+        MAX_IDS,
+      );
+      if (!ids.length) {
+        return json({ teams: {} });
+      }
+      await ensureTables(env);
+      const rows =
+        (
+          await env.DB.prepare(
+            `SELECT m.pid, m.team, m.shades, t.colour, t.backup, t.paint, t.mode FROM team_members m JOIN teams t ON t.id = m.team JOIN verified v ON v.pid = m.pid WHERE t.paused = 0 AND m.pid IN (${ids.map(() => "?").join(",")}) AND v.keyhash NOT IN (SELECT hash FROM quarantine) AND m.pid NOT IN (SELECT pid FROM names WHERE guest = 1)`,
+          )
+            .bind(...ids)
+            .all()
+        ).results || [];
+      const teams = {};
+      for (const row of rows) {
+        teams[row.pid] = {
+          t: row.team,
+          c: row.colour,
+          b: row.backup,
+          p: row.paint,
+          m: row.mode,
+          s: row.shades.split(",").map(Number),
+        };
+      }
+      const seen = [...new Set(rows.map((row) => row.team))],
+        now = Date.now();
+      if (seen.length) {
+        ctx.waitUntil(
+          env.DB.prepare(`UPDATE teams SET used = ? WHERE used < ? AND id IN (${seen.map(() => "?").join(",")})`)
+            .bind(now, now - DAY, ...seen)
+            .run()
+            .catch(() => {}),
+        );
+      } // (a team that plays stays, even if nobody opens its panel)
+      return json({ teams }, 200, { "Cache-Control": "no-store" }); // (team changes arrive over the live connection)
+    }
     if (url.pathname === "/v1/bye" && req.method === "POST") {
       // the last TankTrouble tab of a copy was closed: it shows as offline at once
       let b = null;
@@ -3961,10 +4567,14 @@ export default {
           return json({ error: "TankTrouble didn't answer" }, 502);
         }
         ctx.waitUntil(rememberName(env, pid, d));
-        const c = pickChallenge(d);
+        const garage = await ttGarage(pid);
+        if (!garage) {
+          return json({ error: "TankTrouble didn't answer" }, 502);
+        }
+        const c = pickChallenge(d, garage);
         if (!c) {
           return json({ error: "cannot" }, 409);
-        } // (every paint the same and no items: nothing to change)
+        } // (nothing it can safely change and put back)
         await env.DB.prepare(
           "INSERT OR REPLACE INTO proofs (pid, keyhash, part, kind, want, back, stage, at) VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
         )

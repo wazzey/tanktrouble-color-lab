@@ -678,6 +678,12 @@ const NJ_PICS = {
   "nj-shuriken": "ttcl-art:390f66e6580c.webp",
   "nj-fan": "ttcl-art:2a1223acc641.webp",
   "nj-aura": "ttcl-art:bd26d429eaaf.webp",
+  "nj-banner-black": "ttcl-art:91151b807f4f.webp",
+  "nj-banner-green": "ttcl-art:4ce58945ca78.webp",
+  "nj-banner-red": "ttcl-art:38bb50092742.webp",
+  "nj-katana-blue": "ttcl-art:b36a9b9ff4a6.webp",
+  "nj-katana-gold": "ttcl-art:8d0509ff64c9.webp",
+  "nj-katana-red": "ttcl-art:4dba45d51756.webp",
 };
 // hand-made pictures of items on the tank (graffiti bandanas, safari hat and binoculars, all the eyewear), fitted to the game tank like the Shinobi items
 export const GF_BANDANA_PICS = {
@@ -690,12 +696,23 @@ export const GF_BANDANA_PICS = {
   "gf-bandana-pink": "ttcl-art:53e26e680ea3.webp",
   "sf-binos": "ttcl-art:240e9292c811.webp",
   "sf-hat": "ttcl-art:1faff5d7ce59.webp",
+  "sf-hat-black": "ttcl-art:01297efc48bb.webp",
+  "sf-hat-brown": "ttcl-art:f5da9316672f.webp",
+  "sf-hat-olive": "ttcl-art:a1de1b978911.webp",
+  "sf-hat-white": "ttcl-art:7137f056bc4d.webp",
   "ew-aviator": "ttcl-art:ca79cbb5ffba.webp",
   "ew-ski": "ttcl-art:afb9bbeb57cf.webp",
+  "ew-ski-black": "ttcl-art:4fa7eab12cb1.webp",
+  "ew-ski-blue": "ttcl-art:d48b4cb02fe5.webp",
+  "ew-ski-red": "ttcl-art:d49a1bddf8c0.webp",
   "ew-steampunk": "ttcl-art:560b8a773672.webp",
   "ew-nightvision": "ttcl-art:88d858c96961.webp",
   "ew-hearts": "ttcl-art:a2a35a5dc37c.webp",
   "ew-visor": "ttcl-art:abaabb3164ae.webp",
+  "ew-visor-black": "ttcl-art:2b6bb1391670.webp",
+  "ew-visor-red": "ttcl-art:c75cb78e49f4.webp",
+  "ew-visor-gold": "ttcl-art:24b6c2556873.webp",
+  "ew-visor-rainbow": "ttcl-art:0c8d711e2fd3.webp",
   "ew-stars": "ttcl-art:28f63c27f467.webp",
   "ew-3d": "ttcl-art:0eb04ca7554e.webp",
   "ew-monocle": "ttcl-art:8825bcd71f85.webp",
@@ -712,6 +729,56 @@ for (const k in GF_BANDANA_PICS) {
       if (im) {
         g.drawImage(im, 0, 0, 640, 384);
       }
+    },
+  };
+}
+// Game items in more colours: the game's picture recoloured on your screen, its shading kept. Each gives the game
+// picture and, for a pixel's hue, saturation and lightness and how far along the item it is, its new hue, saturation
+// and lightness (or nothing to keep it)
+const tacheColour = (hue, sat, from, by) => (h, s, l) => (l >= 0.12 ? [hue, sat, from + l * by] : null); // (the outline kept)
+const aviatorColour = (hue, sat) => (h, s, l) => [hue, sat, 0.08 + l * 0.74];
+const maskEyes = (hue) => (h, s, l) => (s > 0.35 && h > 30 && h < 70 ? [hue, s, l] : null); // (the gold eyes only)
+const GAME_RECOLOURS = {
+  "ew-tache-black": ["front45", tacheColour(220, 0.1, 0.02, 0.1)],
+  "ew-tache-ginger": ["front45", tacheColour(22, 0.78, 0.12, 0.56)],
+  "ew-tache-blonde": ["front45", tacheColour(44, 0.72, 0.24, 0.6)],
+  "ew-tache-grey": ["front45", tacheColour(220, 0.06, 0.22, 0.66)],
+  "ew-tache-rainbow": ["front45", (h, s, l, along) => (l >= 0.12 ? [along * 300, 0.85, 0.18 + l * 0.6] : null)],
+  "ew-aviator-rose": ["turret9", aviatorColour(12, 0.55)],
+  "ew-aviator-black": ["turret9", (h, s, l) => [215, 0.12, 0.04 + l * 0.5]],
+  "ew-aviator-blue": ["turret9", aviatorColour(212, 0.85)],
+  "ew-aviator-red": ["turret9", aviatorColour(355, 0.8)],
+  "ew-aviator-green": ["turret9", aviatorColour(140, 0.7)],
+  "ew-aviator-rainbow": ["turret9", (h, s, l, along) => [along * 300, 0.85, 0.08 + l * 0.74]],
+  "ew-mask-red": ["turret42", maskEyes(0)],
+  "ew-mask-blue": ["turret42", maskEyes(205)],
+  "ew-mask-green": ["turret42", maskEyes(130)],
+  "ew-mask-purple": ["turret42", maskEyes(280)],
+  "ew-mask-white": ["turret42", (h, s, l) => (s > 0.35 && h > 30 && h < 70 ? null : [0, 0, 0.62 + l * 0.38])],
+};
+for (const k in GAME_RECOLOURS) {
+  const [from, colour] = GAME_RECOLOURS[k];
+  EXT_ITEM[k] = {
+    uses: [from],
+    draw(g, K, P, A) {
+      if (!A[from]) {
+        return;
+      }
+      let left = K.W,
+        right = 0;
+      K.reskin(A[from], (d, i) => {
+        const x = (i / 4) % K.W;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+      });
+      const c = K.reskin(A[from], (d, i, h, s, l) => {
+        const along = right > left ? (((i / 4) % K.W) - left) / (right - left) : 0,
+          hsl = colour(h, s, l, along);
+        if (hsl) {
+          K.setRGB(d, i, K.hsl2rgb(...hsl));
+        }
+      });
+      g.drawImage(c, 0, 0, 640, 384);
     },
   };
 }
@@ -784,6 +851,32 @@ Object.assign(GX_ACC, {
   "aw-blanket-green": { slot: "turret", name: "Cosy Blanket (Green)", box: "hall" },
   "ds-ring-orange": { slot: "back", name: "Life Ring (Orange)", box: "deepsea" },
   "ds-ring-blue": { slot: "back", name: "Life Ring (Blue)", box: "deepsea" },
+  "aw-boomerang-blue": { slot: "back", name: "Boomerang (Blue)", box: "hall" },
+  "aw-boomerang-green": { slot: "back", name: "Boomerang (Green)", box: "hall" },
+  "aw-boomerang-purple": { slot: "back", name: "Boomerang (Purple)", box: "hall" },
+  "cn-cane-blue": { slot: "back", name: "Candy Cane (Blue)", box: "sweets" },
+  "cn-cane-green": { slot: "back", name: "Candy Cane (Green)", box: "sweets" },
+  "cn-cane-purple": { slot: "back", name: "Candy Cane (Purple)", box: "sweets" },
+  "cs-dice-blue": { slot: "back", name: "Lucky Dice (Blue)", box: "casino" },
+  "cs-dice-gold": { slot: "back", name: "Lucky Dice (Gold)", box: "casino" },
+  "cs-dice-green": { slot: "back", name: "Lucky Dice (Green)", box: "casino" },
+  "kg-shield-black": { slot: "back", name: "Heater Shield (Black)", box: "kingdom" },
+  "kg-shield-green": { slot: "back", name: "Heater Shield (Green)", box: "kingdom" },
+  "kg-shield-red": { slot: "back", name: "Heater Shield (Red)", box: "kingdom" },
+  "st-hood-grey": { slot: "back", name: "Hoodie Hood (Grey)", box: "streetwear" },
+  "st-hood-navy": { slot: "back", name: "Hoodie Hood (Navy)", box: "streetwear" },
+  "st-hood-olive": { slot: "back", name: "Hoodie Hood (Olive)", box: "streetwear" },
+  "st-hood-red": { slot: "back", name: "Hoodie Hood (Red)", box: "streetwear" },
+  "nj-banner-black": { slot: "back", name: "Clan Banner (Black)", box: "ninja" },
+  "nj-banner-green": { slot: "back", name: "Clan Banner (Green)", box: "ninja" },
+  "nj-banner-red": { slot: "back", name: "Clan Banner (Red)", box: "ninja" },
+  "nj-katana-blue": { slot: "back", name: "Crossed Katanas (Blue)", box: "ninja" },
+  "nj-katana-gold": { slot: "back", name: "Crossed Katanas (Gold)", box: "ninja" },
+  "nj-katana-red": { slot: "back", name: "Crossed Katanas (Red)", box: "ninja" },
+  "sf-hat-black": { slot: "turret", name: "Safari Hat (Black)", box: "safari" },
+  "sf-hat-brown": { slot: "turret", name: "Safari Hat (Brown)", box: "safari" },
+  "sf-hat-olive": { slot: "turret", name: "Safari Hat (Olive)", box: "safari" },
+  "sf-hat-white": { slot: "turret", name: "Safari Hat (White)", box: "safari" },
 });
 export const V1_PICS = {
   "aw-sparklecrown": "ttcl-art:9c2e14fe6735.webp",
@@ -914,6 +1007,22 @@ export const V1_PICS = {
   "aw-blanket-green": "ttcl-art:11bb71f2710b.webp",
   "ds-ring-orange": "ttcl-art:82634db7c356.webp",
   "ds-ring-blue": "ttcl-art:e57376e103ba.webp",
+  "aw-boomerang-blue": "ttcl-art:cde6d7096590.webp",
+  "aw-boomerang-green": "ttcl-art:a19913cf6dcf.webp",
+  "aw-boomerang-purple": "ttcl-art:f581dc6944b7.webp",
+  "cn-cane-blue": "ttcl-art:063705626b25.webp",
+  "cn-cane-green": "ttcl-art:92d1d587fec4.webp",
+  "cn-cane-purple": "ttcl-art:c672602a8cda.webp",
+  "cs-dice-blue": "ttcl-art:e96bfd7fb313.webp",
+  "cs-dice-gold": "ttcl-art:f4ef2f65f9be.webp",
+  "cs-dice-green": "ttcl-art:b9d639ceea95.webp",
+  "kg-shield-black": "ttcl-art:8f8556f13514.webp",
+  "kg-shield-green": "ttcl-art:1d9b0894015e.webp",
+  "kg-shield-red": "ttcl-art:37c436757ade.webp",
+  "st-hood-grey": "ttcl-art:dc7f9f04bfbf.webp",
+  "st-hood-navy": "ttcl-art:e6040378301a.webp",
+  "st-hood-olive": "ttcl-art:654238b1e0bc.webp",
+  "st-hood-red": "ttcl-art:b0643106e723.webp",
 };
 const V1_AURA = new Set(["cu-aura"]);
 for (const k in V1_PICS) {
@@ -937,7 +1046,7 @@ for (const k in NJ_PICS) {
       if (!im) {
         return;
       }
-      if (k === "nj-katana") {
+      if (k.startsWith("nj-katana")) {
         g.drawImage(im, -30, -50, 672, 403);
       } else {
         g.drawImage(im, 0, 0, 640, 384);

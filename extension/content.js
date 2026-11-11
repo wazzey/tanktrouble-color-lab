@@ -19,6 +19,7 @@ import "./content/box-agent.js";
 import "./content/awards-a.js";
 import "./content/awards-b.js";
 import "./content/box-ninja.js";
+import "./content/box-ttoc.js";
 import "./content/maps-extra.js";
 import "./content/laika-trophies.js";
 import "./content/hall-of-fame.js";
@@ -60,6 +61,7 @@ import { startSettings } from "./core/settings.js";
 import { startStorage } from "./core/storage.js";
 import { setOpen, startTabs } from "./core/tabs.js";
 import { startTeamBadges } from "./core/team-badges.js";
+import { startTeams } from "./core/teams.js";
 import { startTutorialRun } from "./core/tutorial-run.js";
 import { startUpdates } from "./core/updates.js";
 
@@ -88,6 +90,7 @@ if (!window.__ttColorLab) {
   startAnnouncements();
   startFeedback();
   startTeamBadges();
+  startTeams();
   startLab();
   startGear();
   startPresence();

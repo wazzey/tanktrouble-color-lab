@@ -1,5 +1,6 @@
 import { loadImg } from "./images.js";
 import { GF_BANDANA_PICS, V1_PICS } from "./box-ninja.js";
+import { TTOC_THEMES, readTtocSign } from "./box-ttoc.js";
 import { sampleRamp } from "./laika.js";
 import { sakuraFlower, sakuraPetal } from "./sakura-shapes.js";
 
@@ -1724,6 +1725,10 @@ const BOX_GLOW = {
   ninja: "200,210,255",
   arsenal: "220,240,150",
 };
+for (const t of TTOC_THEMES) {
+  BOX_EMBLEM[t.id] = "tt-" + t.theme + "-26";
+  BOX_GLOW[t.id] = t.accent.join(",");
+}
 function boxGlow(g, W, kind) {
   const col = BOX_GLOW[kind];
   if (!col) {
@@ -1764,10 +1769,10 @@ export async function boxEmblem(g, W, kind) {
   boxGlow(g, W, kind);
   const k = BOX_EMBLEM[kind],
     url = k && (V1_PICS[k] || GF_BANDANA_PICS[k]);
-  if (!url) {
+  if (!url && !(k && k.startsWith("tt-"))) {
     return;
   }
-  const im = await loadImg(url);
+  const im = url ? await loadImg(url) : await readTtocSign(k);
   if (!im) {
     return;
   }

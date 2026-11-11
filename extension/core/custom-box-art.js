@@ -1,5 +1,6 @@
 import { trophyOfPaint } from "../content/achievement-paints.js";
 import { HV_HALO_COLOURS, drawHalo } from "../content/box-heaven.js";
+import { TTOC_THEMES } from "../content/box-ttoc.js";
 import {
   HAT_FIT,
   HELMET_HUES,
@@ -52,7 +53,7 @@ import { achPaintsOf, boxOpen, trophyUsable, usableTrophies } from "./achievemen
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import { drawnArt, origDrawImage, queuedPic, swapAsked } from "./draw-swap.js";
 import { refreshSoon } from "./game-socket.js";
-import { garageGame } from "./garage.js";
+import { garageGame, readGarageIcons } from "./garage.js";
 import {
   PIC_CACHE,
   TANK_PARTS,
@@ -865,18 +866,8 @@ export function garageArtReady(key) {
       return;
     }
     const mark = "ttcl=" + key + "&";
-    const M = st.Main,
-      icons = new Set(
-        [].concat(
-          Object.values((M && M.tankIconSprites) || {}),
-          Object.values((M && M.currentTankIconSprites) || {}),
-          M && M.selectedTankIcon ? [M.selectedTankIcon] : [],
-        ),
-      );
-    for (const ti of icons) {
-      if (!ti || typeof ti._updateIcon !== "function") {
-        continue;
-      }
+    const M = st.Main;
+    for (const ti of readGarageIcons()) {
       let wears = false;
       try {
         wears =
@@ -1621,5 +1612,13 @@ export function startCustomBoxArt() {
         "0xff6b6b",
       ],
     },
+    // the TTOC year signs in a theme each
+    ...TTOC_THEMES.map((t) => ({
+      id: t.id,
+      name: "TTOC " + t.name,
+      picFn: () => themedBoxPic(t.id),
+      items: t.id,
+      paints: [],
+    })),
   ];
 }

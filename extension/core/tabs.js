@@ -12,6 +12,7 @@ import { syncDev, syncParty } from "./random.js";
 import { renderList, updateSaveLabel } from "./saved-looks.js";
 import { applyShown, keepOnScreen, renderSettings, syncHelp } from "./settings.js";
 import { STATS, saveStats, whenStorage } from "./storage.js";
+import { renderTeams } from "./teams.js";
 import { TROPHY_ART, getTrophyArt } from "./trophy-art.js";
 import { unlockTrophy } from "./trophy-counting.js";
 
@@ -98,6 +99,7 @@ export function showTab(t) {
   $("setBtn").classList.toggle("grey", t !== "settings");
   if (t === "saved") {
     renderList();
+    renderTeams();
   }
   if (t === "settings") {
     renderSettings();

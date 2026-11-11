@@ -73,13 +73,14 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       .map(String)
       .filter((x) => /^\d{1,12}$/.test(x))
       .slice(0, 64);
-    if (ids.length) {
+    if (ids.length || m.on === true) {
       liveWatch.set(sender.tab.id, new Set(ids));
     } else {
       liveWatch.delete(sender.tab.id);
     }
     if (!liveWatch.size && live) {
       try {
+        live.send(JSON.stringify({ closing: true }));
         live.close();
       } catch {}
     } // nothing left to watch (e.g. logged out): the connection closes
@@ -110,16 +111,16 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
       .catch(() => reply({ ok: false }));
     return true;
   }
-  if (m.op === "get") {
+  if (m.op === "get" || m.op === "teams") {
     const ids = (Array.isArray(m.ids) ? m.ids : [])
       .map(String)
       .filter((x) => /^\d{1,12}$/.test(x))
       .slice(0, 16);
     if (!ids.length) {
-      reply({ ok: true, data: { looks: {} } });
+      reply({ ok: true, data: { looks: {}, teams: {} } });
       return;
     }
-    url = SHARE_BASE + "/v1/looks?ids=" + ids.join(",");
+    url = SHARE_BASE + (m.op === "teams" ? "/v1/teams?ids=" : "/v1/looks?ids=") + ids.join(",");
   } else if ((m.op === "put" || m.op === "delete") && pid && /^[0-9a-f]{64}$/.test(String(m.key || ""))) {
     url = SHARE_BASE + "/v1/looks/" + pid;
     opt = {
@@ -242,6 +243,36 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
         fresh: a.fresh === true ? true : undefined,
       }),
     };
+  } else if (
+    m.op === "team" &&
+    pid &&
+    /^[0-9a-f]{64}$/.test(String(m.key || "")) &&
+    m.team &&
+    typeof m.team === "object"
+  ) {
+    // a team: make, join, change or leave it (with the tank's own key, as it's proven)
+    const ask = m.team;
+    url = SHARE_BASE + "/v1/team";
+    opt = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key: m.key,
+        pid,
+        act: String(ask.act || "").slice(0, 12),
+        code: typeof ask.code === "string" ? ask.code.slice(0, 12) : undefined,
+        name: typeof ask.name === "string" ? ask.name.slice(0, 40) : undefined,
+        colour: Number.isInteger(ask.colour) ? ask.colour : undefined,
+        backup: Number.isInteger(ask.backup) ? ask.backup : undefined,
+        paint: typeof ask.paint === "string" ? ask.paint.slice(0, 48) : undefined,
+        mode: ask.mode === "turret" ? "turret" : "full",
+        shades: Array.isArray(ask.shades) ? ask.shades.slice(0, 3) : undefined,
+        target: /^\d{1,12}$/.test(String(ask.target || "")) ? String(ask.target) : undefined,
+        paused: ask.paused === true,
+        who: typeof ask.who === "string" ? ask.who.slice(0, 24) : undefined,
+        team: Number.isInteger(ask.team) ? ask.team : undefined,
+      }),
+    };
   } else if (m.op === "announce") {
     // the Color Lab team's live announcement (nothing about you is sent)
     url = SHARE_BASE + "/v1/announce";
@@ -322,6 +353,15 @@ function liveOpen() {
     liveRetry = 1000;
     liveSent = "";
     liveSend();
+    chrome.storage.local
+      .get("ttcl_share_key")
+      .then((it) => {
+        const key = it && it.ttcl_share_key;
+        if (key && /^[0-9a-f]{64}$/.test(key) && live && live.readyState === 1) {
+          live.send(JSON.stringify({ hello: key }));
+        }
+      })
+      .catch(() => {}); // (so the server shows this copy as offline soon after Color Lab is switched off or removed)
     clearInterval(livePing);
     livePing = setInterval(() => {
       try {
@@ -347,6 +387,20 @@ function liveOpen() {
       }
       return;
     } // (an announcement from the Color Lab team: every open tab shows it now)
+    if (m && m.invite && typeof m.invite === "object") {
+      for (const tabId of ttTabs) {
+        chrome.tabs.sendMessage(tabId, { type: "teamInvite", invite: m.invite }).catch(() => ttTabs.delete(tabId));
+      }
+      return;
+    } // (a team's owner invited one of this copy's tanks)
+    if (m && Array.isArray(m.teamNews)) {
+      for (const tabId of ttTabs) {
+        chrome.tabs
+          .sendMessage(tabId, { type: "teamNews", ids: m.teamNews.map(String) })
+          .catch(() => ttTabs.delete(tabId));
+      }
+      return;
+    } // (a team these tanks are in just changed)
     if (!m || !/^\d{1,12}$/.test(String(m.pid))) {
       return;
     }
@@ -372,7 +426,8 @@ function liveOpen() {
   };
 }
 // Closing TankTrouble: when the last TankTrouble tab closes (or goes to another site), the server is told at once, so this copy shows as
-// offline straight away instead of after a few minutes. (If the browser itself is closed or the connection drops, it's after 5-7 minutes.)
+// offline straight away instead of after a few minutes. (If Color Lab is switched off or removed, or the browser closes, the live
+// connection drops and the server shows it as offline about 15 seconds later.)
 function ttMark() {
   try {
     chrome.storage.session.set({ ttOpen: true });

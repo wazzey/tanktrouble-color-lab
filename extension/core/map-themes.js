@@ -1013,29 +1013,42 @@ function patchMines(obj) {
 function missileShow(m) {
   // a plain homing missile in its owner's turret colour, shifted like a mine's so a black or white turret's missile can be seen
   const fl = MAP_FLOOR_NOW,
-    c = tintNum(m.tint);
-  if (!fl || c == null || c === m.__ttclTintOut) {
+    c = readOwnerTint(m);
+  if (c == null || c === m.__ttclTintOut || (c === m.__ttclTintIn && m.tint === m.__ttclTintOut)) {
     return;
   }
-  const nh = altOnFloor("#" + c.toString(16).padStart(6, "0"), fl),
-    nv = parseInt(nh.slice(1), 16);
+  const nv = fl ? parseInt(altOnFloor("#" + c.toString(16).padStart(6, "0"), fl, true).slice(1), 16) : c;
   m.tint = nv;
+  m.__ttclTintIn = c;
   m.__ttclTintOut = nv;
 }
 function mineShow(m) {
   // a plain mine in its owner's turret colour, made lighter on a dark map (or darker on a light one) so a black or white turret's mine can still be seen
   const fl = MAP_FLOOR_NOW,
-    c = tintNum(m.tint);
-  if (!fl || c == null || c === m.__ttclTintOut) {
+    c = readOwnerTint(m);
+  if (c == null || c === m.__ttclTintOut || (c === m.__ttclTintIn && m.tint === m.__ttclTintOut)) {
     return;
-  } // (the game sometimes gives the colour as text, '0x0d0208')
-  const nh = altOnFloor("#" + c.toString(16).padStart(6, "0"), fl),
+  }
+  m.__ttclTintIn = c;
+  if (!fl) {
+    m.tint = c;
+    m.__ttclTintOut = c;
+    return;
+  }
+  const nh = altOnFloor("#" + c.toString(16).padStart(6, "0"), fl, true),
     nv = parseInt(nh.slice(1), 16);
   m.tint = nv;
   m.__ttclTintOut = nv;
   try {
     mineRim(m, rimFor("0x" + nh.slice(1), fl));
   } catch {}
+}
+function readOwnerTint(m) {
+  // the owner's turret colour as its tank shows it now (a team colour, say), or else the one the game gave it, which the
+  // game sometimes gives as text, '0x0d0208'
+  const ov = m.playerId != null ? getOverride(String(m.playerId)) : null,
+    own = ov && ov.turret && !isPat(ov.turret) ? tintNum(ov.turret) : null;
+  return own != null ? own : tintNum(m.tint);
 }
 function patchTanks(obj) {
   // a tank put in the maze gets its pattern paints straight away (not on the next check)

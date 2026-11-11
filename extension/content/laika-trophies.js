@@ -1,3 +1,5 @@
+import { TTOC_THEMES } from "./box-ttoc.js";
+
 // ---------- hidden Laika trophies ----------
 // Boxes everyone gets (the DEV build's preview mode opens every box). Galaxy and Arsenal also appear once a reward is earned.
 export const PUBLIC_BOXES = new Set([
@@ -29,6 +31,9 @@ export const PUBLIC_BOXES = new Set([
   "streetwear",
   "betabw",
 ]);
+for (const t of TTOC_THEMES) {
+  PUBLIC_BOXES.add(t.id);
+}
 // kind: what counts. 'laika'/'dimitri' = kills of that AI in a row without being destroyed; 'weapon' = kills with
 // those weapon types (the game's numbers: 0 laser, 1 double barrel, 2 shotgun, 3 homing missile, 4 mine, 5 gatling).
 // box: which Color Lab box the reward lives in; slot: where the reward is worn.

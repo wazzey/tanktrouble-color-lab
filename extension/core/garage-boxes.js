@@ -41,7 +41,7 @@ import {
   readGalaxyBox,
 } from "./custom-box-art.js";
 import { trophyAccValue } from "./draw-swap.js";
-import { garageSig, garageSnap, lookupById, refreshSoon, refreshTanks, warmLooks } from "./game-socket.js";
+import { garageSig, garageSnap, lookupById, refreshSoon, refreshTanks, rpc, warmLooks } from "./game-socket.js";
 import { garageGame, hookPhaser, noteGaragePid, selPid, wantGarageBox } from "./garage.js";
 import { buildGarageIndex, gsPicSoon } from "./garage-search.js";
 import { PLAYER_COLOR_MAP, SETTINGS, allBoxes, mkColour, saveSettings } from "./storage.js";
@@ -90,6 +90,50 @@ export const hatTutorial = (id) => TUT[id] === 0 || TUT[id] === 1;
 export const ownedRaw = {},
   ownedAcc = {}; // per player: what their real garage holds
 export const garageMode = {}; // per player: whether the garage contents the game holds were made in All mode
+// A real change that would take off a paint or item the tank wears but its garage doesn't hold (retired, one-off or
+// given) is refused, since once it's off it can never be put back. Returns why, or null when the change is safe.
+export async function readWornLoss(pid, kind, part, value) {
+  const details = await lookupById(pid).catch(() => null);
+  if (!details) {
+    return "Couldn't check your tank with TankTrouble, so nothing was changed. Try again";
+  }
+  const paint = kind === "paint";
+  const worn = paint
+    ? String((details[part + "Colour"] || {}).rawValue ?? "")
+    : String(details[part + "Accessory"] ?? "0");
+  if (!worn || worn === "0" || worn === String(value)) {
+    return null;
+  }
+  const readOwned = (raw, acc) => (paint ? raw.has(worn) : acc.has(part + ":" + worn));
+  if (ownedRaw[pid] && readOwned(ownedRaw[pid], ownedAcc[pid])) {
+    return null;
+  }
+  const garage = await rpc("garage.getGarageContent", [String(pid)]).catch(() => null);
+  if (!garage || !Array.isArray(garage.boxes)) {
+    return "Couldn't check your garage with TankTrouble, so nothing was changed. Try again";
+  }
+  const raw = new Set(),
+    acc = new Set();
+  for (const box of garage.boxes) {
+    for (const can of box.sprayCans || []) {
+      if (can.colour) {
+        raw.add(String(can.colour.rawValue));
+      }
+    }
+    for (const item of box.accessories || []) {
+      acc.add(item.type + ":" + item.value);
+    }
+  }
+  if (readOwned(raw, acc)) {
+    return null;
+  }
+  return (
+    "Not changed: your " +
+    (part === "tread" ? "treads" : part) +
+    (paint ? " paint" : " item") +
+    " isn't in your garage, so taking it off would lose it for good"
+  );
+}
 // Real / All is per garage tank (SETTINGS.garageAllFor[id]); tanks never switched follow the last global choice
 export const garageAllRaw = (pid) => {
   const f = SETTINGS.garageAllFor;

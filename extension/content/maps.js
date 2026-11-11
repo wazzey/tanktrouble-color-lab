@@ -307,9 +307,10 @@ export function bulletOnFloor(hex, floor, thin) {
       : c.map((v) => Math.round(v + (255 - v) * Math.max(0, Math.min(1, (target - bl) / Math.max(0.01, 1 - bl)))));
   return "#" + out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("");
 }
-// A colour too close to the floor for a thin line or a mine becomes a clearly different one: its hue turned about 50 degrees and
-// made light on a dark floor / deep on a light one (a black or white turret, with no hue to turn, gets gold on a dark floor or deep blue on a light one)
-export function altOnFloor(hex, floor) {
+// A colour too close to the floor for a thin line becomes a clearly different one: its hue turned about 50 degrees and
+// made light on a dark floor / deep on a light one (a black or white turret, with no hue to turn, gets gold on a dark floor or deep blue on a light one).
+// With sameHue (missiles and mines) it keeps its own colour instead, only lighter or darker until it stands out
+export function altOnFloor(hex, floor, sameHue) {
   if (typeof hex !== "string" || !/^#[0-9a-f]{6}$/i.test(hex) || !floor) {
     return hex;
   }
@@ -330,6 +331,9 @@ export function altOnFloor(hex, floor) {
   let h = 0;
   if (d > 0.001) {
     h = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : mx === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
+  }
+  if (sameHue) {
+    return readShadeOnFloor(h, mx, mn, floor, lum);
   }
   const mid = fl > 0.3 && fl < 0.7; // (a mid-tone floor: the new colour goes further from it)
   if (sat < 0.15 || d < 0.12) {
@@ -354,6 +358,40 @@ export function altOnFloor(hex, floor) {
     }
   } // (the turn that ends furthest from the floor; a slight lead keeps the nearest hue)
   return "#" + best.map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+function readShadeOnFloor(hue, mx, mn, floor, lum) {
+  // the same hue and saturation, 10% lighter on a dark floor (darker on a light one) and then 5% more at a time, only
+  // until it shows. A colour that already shows stays as it is
+  const fl = lum(floor),
+    startL = (mx + mn) / 2,
+    sat = mx - mn > 0.001 ? Math.min(1, (mx - mn) / (1 - Math.abs(2 * startL - 1))) : 0,
+    paint = (L) => {
+      const k = (n) => (n + hue / 30) % 12,
+        a = sat * Math.min(L, 1 - L),
+        f = (n) => L - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+      return [f(0), f(8), f(4)].map((v) => Math.round(v * 255));
+    },
+    shows = (c) =>
+      Math.abs(lum(c) - fl) >= 0.25 || Math.hypot(c[0] - floor[0], c[1] - floor[1], c[2] - floor[2]) >= 150,
+    hex = (c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
+  const own = paint(startL);
+  if (shows(own)) {
+    return hex(own);
+  }
+  let first = fl < 0.5 ? 1 : -1;
+  if (fl > 0.35 && fl < 0.65) {
+    first = lum(own) >= fl ? 1 : -1;
+  } // (a mid-tone floor: away from it, the way the colour already leans)
+  let last = own;
+  for (const dir of [first, -first]) {
+    for (let step = 0.1; step <= 0.61; step += 0.05) {
+      last = paint(Math.min(0.97, Math.max(0.03, startL + dir * step)));
+      if (shows(last)) {
+        return hex(last);
+      }
+    }
+  }
+  return hex(last);
 }
 // An edge in the opposite brightness to the floor, drawn just inside a bullet's or mine's own shape (so its size never changes), stronger
 // when its colour is close to the floor's: any colour a player picks stays visible on every map

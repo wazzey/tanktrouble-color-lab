@@ -4,9 +4,10 @@ import { trophyUsable } from "./achievements.js";
 import { customUsable, isCustomKey } from "./custom-box-art.js";
 import { trophyAccValue } from "./draw-swap.js";
 import { noteRealWrite, refreshSoon, warmLooks } from "./game-socket.js";
-import { garageWrite } from "./garage.js";
-import { garageAllOn, hatTutorial, noteTutorials, rewriteGarage } from "./garage-boxes.js";
+import { applyGarageReal, garageWrite } from "./garage.js";
+import { garageAllOn, hatTutorial, noteTutorials, readWornLoss, rewriteGarage } from "./garage-boxes.js";
 import { LOOKS_SEEN } from "./laika-look.js";
+import { toast } from "./panel.js";
 import {
   NAME_TO_ID,
   SHARED,
@@ -163,6 +164,24 @@ export function startNetwork() {
         } else {
           noteRealGarageChange(body);
         } // Real mode: always a real change, so other players must hear about it
+        let call = null;
+        try {
+          call = JSON.parse(body);
+        } catch {}
+        const [, part, value] = (call && call.params) || [];
+        return readWornLoss(bp, /garage\.setColour/.test(body) ? "paint" : "acc", String(part), String(value)).then(
+          (loss) => {
+            if (loss) {
+              toast(loss, true);
+              applyGarageReal(bp);
+              return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { result: false, message: loss } }), {
+                headers: { "Content-Type": "application/json" },
+              });
+            }
+            noteRealWrite();
+            return origFetch(input, init);
+          },
+        );
       }
     }
     if (body.includes('"tanktrouble.achievement.')) {
@@ -296,7 +315,7 @@ export function startNetwork() {
           try {
             const m = /getPlayerDetails"[^[]*\[\s*"?(\d+)/.exec(body),
               id = m && m[1];
-            if (id && !PLAYER_COLOR_MAP[id] && !SHARED[id]) {
+            if (id && !SHARED[id]) {
               let late = false; // first time this tank is seen: wait a moment for its shared look
               const f = fetchShared([id], true).then((ch) => {
                 if (late && ch.includes(id)) {

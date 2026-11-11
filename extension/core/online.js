@@ -118,6 +118,22 @@ function staffCheck() {
     }
   } catch {}
 }
+// the names of players on Color Lab right now who chose to be shown (players who hide themselves are never listed)
+export function readOnlineNames() {
+  const mine = new Set(loggedInIds().map(String)),
+    names = new Set();
+  for (const c of onlineData && Array.isArray(onlineData.list) ? onlineData.list : []) {
+    if (!c.on) {
+      continue;
+    }
+    for (const a of Array.isArray(c.logged) ? c.logged : []) {
+      if (a.name && !mine.has(String(a.pid))) {
+        names.add(String(a.name));
+      }
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
 export async function onlineFetch() {
   const r = await shareCall({ op: "online" }).catch(() => null);
   onlineErr = !(r && r.ok && r.data);

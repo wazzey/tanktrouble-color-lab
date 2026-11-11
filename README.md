@@ -54,6 +54,7 @@ Don't keep two copies switched on in the same browser: only one runs, and the ot
 | 🗺 **Map themes**         | Themes for the maze floor, walls and crates, light or dark, with matching bullets. Laika dresses up to match.                                                                     |
 | 🌙 **Page themes**       | The whole TankTrouble page in any map's colours, plus Dark, Halloween, Christmas and Easter. Forum, news and shop too.                                                            |
 | 🔗 **Look sharing**      | Color Lab players see each other's looks live in the lobby, garage and maze. Only for tanks proven to be yours.                                                                   |
+| 🏳 **Teams**              | Make a team and share its code with up to 3 friends. Teammates playing together wear the team's colour, each in their own shade, and no two teams in a game look alike.           |
 | 🟢 **Who's online**      | How many Color Lab players are online and who (unless they turn it off), and whether they're in the lobby, a queue or an online game.                                             |
 | 🏆 **Achievements**      | Earned in online rounds, each unlocking an extra item or paint.                                                                                                                   |
 | 💬 **Message Color Lab** | Send ideas or bugs with screenshots from the lobby, and read the replies there.                                                                                                   |

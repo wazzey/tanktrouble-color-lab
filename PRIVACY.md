@@ -1,6 +1,6 @@
 # TankTrouble Color Lab: privacy policy
 
-_Last updated: 6 November 2026_
+_Last updated: 9 November 2026_
 
 TankTrouble Color Lab ("Color Lab") is a free, fan-made, cosmetic-only browser extension made and run by **wazzey** ("the author"), an individual in the United Kingdom. It is not affiliated with TankTrouble. The author is responsible for the data described here (the "controller" under UK data protection law). This page lists everything Color Lab collects, why, who can see it, how long it's kept and how to have it removed. The code that does all of this is public: the extension in [`extension/`](extension) and its server in [`server/`](server).
 
@@ -52,9 +52,13 @@ A connection that sends wrong keys for an account is noted with that account's p
 - Some checks are automatic: a copy that tries to prove or take over many tanks it can't change, or floods the server, is put on hold or shut out by itself. The author reviews these and can lift them. Ask using the contact above if you think one is wrong.
 - Server events (errors, limits reached, bans, and messages from banned or held copies) are kept for 30 days.
 
+### Teams
+
+If you make or join a team, the server keeps the team's name, code, colours, look, whether it's paused and when it was made and last used, and each member's player ID, chosen shades and when they joined. Other Color Lab players in a game with you see which team your tank is in and its colours. Leaving a team removes you from it, and its owner deleting it removes it at once. While a team is paused, other players don't see that your tank is in it. An owner can invite a player by name: the invite (the player's ID, the team and when) is only kept if that player is on Color Lab right now, and is deleted when they answer it or after a day. Invites sent are counted against the owner's key hash for a day, up to 100. A team not used for 30 days is deleted with its members. Making teams and trying codes are counted against your copy's key hash and your connection's daily code for a day, to stop codes being guessed.
+
 ### Online status
 
-Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your accounts are logged in (not guests), which TankTrouble server you're on (unless you turned off **Show which server I'm on**), whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, whether you're in the lobby, a queue or an online game, and whether you chose to be invisible. When you close your last TankTrouble tab it says so, so you show as offline at once.
+Every few minutes, and when you log in or out or go idle, your copy tells the server it's running: its key hash and version, which of your accounts are logged in (not guests), which TankTrouble server you're on (unless you turned off **Show which server I'm on**), whether you're idle (the tab is hidden, or no input for 5 minutes) or away (the tab has been in the background for a few minutes in the lobby) and for how long, whether you're in the lobby, a queue or an online game, and whether you chose to be invisible. When you close your last TankTrouble tab it says so, so you show as offline at once. Your copy also sends its key over its live connection to the server, so if Color Lab is switched off or removed, or the browser closes, you show as offline about 15 seconds later.
 
 The copy's key hash, version and first and last seen are kept for up to 60 days after it was last seen, and its logged-in tanks for 30 days. For each account seen logged in, the server also keeps the copy it was last seen on, that copy's version and when it was first and last seen, for up to 60 days after it was last seen. Tank names are kept for 180 days, or for as long as the tank has a shared look, a proof, a report or a removal note.
 

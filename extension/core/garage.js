@@ -109,6 +109,50 @@ function garageWriteInner(body) {
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
 }
+// the garage's tank pictures (the one being dressed and the ones along the bottom)
+export function readGarageIcons() {
+  const gm = garageGame && garageGame.deref(),
+    main = gm && gm.state && gm.state.states && gm.state.states.Main;
+  if (!main) {
+    return [];
+  }
+  return [
+    ...new Set(
+      [].concat(
+        Object.values(main.tankIconSprites || {}),
+        Object.values(main.currentTankIconSprites || {}),
+        main.selectedTankIcon ? [main.selectedTankIcon] : [],
+      ),
+    ),
+  ].filter((icon) => icon && typeof icon._updateIcon === "function");
+}
+// A change that was refused still shows on the garage's tank (the game paints it before asking the server):
+// the tank there is put back to how it really is
+export async function applyGarageReal(pid) {
+  const details = await lookupById(pid).catch(() => null);
+  if (!details) {
+    return;
+  }
+  for (const icon of readGarageIcons()) {
+    if (String(icon.playerId) !== String(pid)) {
+      continue;
+    }
+    icon.turretColour = details.turretColour;
+    icon.treadColour = details.treadColour;
+    icon.baseColour = details.baseColour;
+    for (const [slot] of ACC_SLOTS) {
+      const worn = details[slot + "Accessory"];
+      if (worn && String(worn) !== "0") {
+        icon.accessories[slot] = worn;
+      } else {
+        delete icon.accessories[slot];
+      }
+    }
+    try {
+      icon._updateIcon();
+    } catch {}
+  }
+}
 // Edit the tank's active look from the garage. create = make a saved tank if there isn't one yet.
 export function garageLocal(id, fn, create) {
   let e = PLAYER_COLOR_MAP[id];

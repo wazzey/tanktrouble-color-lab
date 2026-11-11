@@ -321,6 +321,11 @@ for (const a of ACH2) {
       ["aw-nightcap-pink", "turret", "Nightcap (Pink)"],
       ["aw-nightcap-green", "turret", "Nightcap (Green)"],
     ],
+    "aw-boomerang": [
+      ["aw-boomerang-blue", "back", "Boomerang (Blue)"],
+      ["aw-boomerang-green", "back", "Boomerang (Green)"],
+      ["aw-boomerang-purple", "back", "Boomerang (Purple)"],
+    ],
     "aw-blanket": [
       ["aw-blanket-blue", "turret", "Cosy Blanket (Blue)"],
       ["aw-blanket-green", "turret", "Cosy Blanket (Green)"],

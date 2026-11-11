@@ -43,7 +43,7 @@ export const annLink = (u) => {
   }
 }; // (buttons only lead to Color Lab's GitHub or TankTrouble)
 const STORE_COPY = () => document.documentElement.dataset.ttclStore === "1"; // installed from the Chrome Web Store (set by bridge.js)
-async function annShow(a) {
+export async function annShow(a) {
   // a new announcement: a box in the top right corner (up to 3 stacked, newest on top). It never covers the middle, dims the page or takes the keyboard,
   // and it closes by itself after 30 seconds (not while the mouse is on it). Closed without OK, it stays unread in Message Color Lab > Announcements
   if (!a || !a.id || annShown.has(String(a.id))) {
@@ -88,10 +88,11 @@ async function annShow(a) {
   }
   const box = document.createElement("div");
   box.className = "ttclAnn";
-  const upd = a.kind === "update";
+  const upd = a.kind === "update",
+    invite = a.kind === "invite"; // (a team invite: Join and No thanks, instead of the announcement's buttons)
   box.innerHTML =
     '<div class="ah"><span>' +
-    (upd ? "✨ New Color Lab version" : "📢 Color Lab announcement") +
+    (upd ? "✨ New Color Lab version" : invite ? "🏳 Team invite" : "📢 Color Lab announcement") +
     ' <small>· just now</small></span><button class="ax" title="Later: close it for now (it stays in Message Color Lab &gt; Announcements)">✕</button></div>' +
     '<div class="ab"><div class="at">' +
     esc(String(a.title || "Color Lab").slice(0, 120)) +
@@ -104,7 +105,7 @@ async function annShow(a) {
       return;
     }
     gone = true;
-    if (read) {
+    if (read && !invite) {
       annMark([a.id]);
     }
     box.classList.add("out");
@@ -126,7 +127,7 @@ async function annShow(a) {
     };
     f.appendChild(b);
   }; // (buttons never take the keyboard: space and the arrows keep driving the tank)
-  if (!upd) {
+  if (!upd && !invite) {
     const lk = document.createElement("span");
     lk.className = "lk";
     lk.textContent = "All announcements";
@@ -150,7 +151,18 @@ async function annShow(a) {
       close(true);
     });
   }
-  btn(upd ? "Later" : "Got it", !!link, () => close(!upd));
+  if (invite) {
+    btn("Join", false, () => {
+      close(false);
+      a.onJoin();
+    });
+    btn("No thanks", true, () => {
+      close(false);
+      a.onNo();
+    });
+  } else {
+    btn(upd ? "Later" : "Got it", !!link, () => close(!upd));
+  }
   const x = box.querySelector(".ax");
   x.tabIndex = -1;
   x.onmousedown = (e) => e.preventDefault();

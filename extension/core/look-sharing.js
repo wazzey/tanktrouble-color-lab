@@ -8,6 +8,7 @@ import { tutCard, tutLayer } from "../content/tutorials.js";
 import { getAssetMap, loadAccessories, resolvePaint } from "./assets.js";
 import { isCustomKey } from "./custom-box-art.js";
 import { fbOpen } from "./feedback.js";
+import { readWornLoss } from "./garage-boxes.js";
 import { loggedInIds, lookupById, refreshSoon, refreshTanks, rpc, warmLooks } from "./game-socket.js";
 import { laikaSkinFor, laikaSkinOn } from "./laika-look.js";
 import { pageKeyNow, pagePal } from "./page.js";
@@ -15,6 +16,7 @@ import { toast } from "./panel.js";
 import { renderSettings } from "./settings.js";
 import { PLAYER_COLOR_MAP, SETTINGS, saveSettings, saveToStorage } from "./storage.js";
 import { setOpen } from "./tabs.js";
+import { teamLookFor } from "./teams.js";
 import { tutClose } from "./tutorial-run.js";
 import { updateNeeded } from "./updates.js";
 
@@ -38,6 +40,10 @@ export function sharedLook(id) {
   const s = SHARED[id];
   return s && s.look ? s.look : null;
 }
+// a tank logged in on this copy wears the look saved here, and any other tank the look its owner shares now, even if
+// this copy has an older one saved for it
+const ownedHere = (id) => PLAYER_COLOR_MAP[id] !== undefined && loggedInIds().includes(String(id));
+const savedLookWins = (id) => PLAYER_COLOR_MAP[id] !== undefined && (ownedHere(id) || !sharedLook(String(id)));
 let shareRid = 0;
 const shareWait = {};
 export let srvManual = false; // logged out fully: Color Lab stays off the look server until someone logs in, or Connect is pressed in ⚙ Settings (this visit only)
@@ -84,14 +90,14 @@ export function shareWatch(soon) {
       if (!shareSee()) {
         return;
       }
-      const ids = srvOn() ? [...SHARE_SEEN.keys()].filter((id) => !loggedInIds().includes(id)).slice(-64) : []; // (logged out: the live connection closes)
+      const ids = srvOn() ? [...SHARE_SEEN.keys()].filter((id) => !loggedInIds().includes(id)).slice(-64) : []; // (logged out: the live connection closes, otherwise it stays open for invites even with no other tanks around)
       const sig = ids.join(",");
       if (sig === watchSig && !soon) {
-        post({ type: "share", op: "watch", ids });
+        post({ type: "share", op: "watch", ids, on: srvOn() });
         return;
       }
       watchSig = sig;
-      post({ type: "share", op: "watch", ids });
+      post({ type: "share", op: "watch", ids, on: srvOn() });
     },
     soon ? 300 : 0,
   );
@@ -157,7 +163,7 @@ export function fetchShared(ids, quiet) {
   }
   const now = Date.now(),
     fresh = (id) => SHARED[id] && now - SHARED[id].at < (SHARED[id].look ? SHARE_TTL : SHARE_TTL_NONE); // (a tank with no shared look is asked about again sooner: its owner may have just shared one)
-  const want = ids.map(String).filter((id) => /^\d{1,12}$/.test(id) && !PLAYER_COLOR_MAP[id] && !fresh(id));
+  const want = ids.map(String).filter((id) => /^\d{1,12}$/.test(id) && !ownedHere(id) && !fresh(id));
   if (!want.length) {
     return Promise.resolve([]);
   }
@@ -225,7 +231,7 @@ export async function redrawShared(ids) {
 // shows the tank's real look everywhere until you flick it back (or refresh the page).
 function labLookOf(id) {
   const e = PLAYER_COLOR_MAP[id];
-  return e ? (e.enabled !== false ? e : null) : sharedLook(id);
+  return savedLookWins(id) ? (e.enabled !== false ? e : null) : sharedLook(id);
 }
 // your tank switched to Real in the garage: its Color Lab look is kept, only switched off
 const garageReal = (id) => PLAYER_COLOR_MAP[id] !== undefined && (SETTINGS.garageOff || []).includes(id);
@@ -287,7 +293,12 @@ export async function proveTank(id) {
     }
     if (!c || !c.part) {
       if (st && st.data && st.data.error === "cannot") {
-        toast("Tank " + id + ": every paint the same and no items, so it can't be proven yet", true);
+        toast(
+          "Tank " +
+            id +
+            " can't be proven yet: Color Lab only changes paints and items your garage can give back, and it found none to use",
+          true,
+        );
       }
       return false;
     }
@@ -295,6 +306,11 @@ export async function proveTank(id) {
       c.kind === "acc"
         ? rpc("garage.setAccessory", [String(id), c.part, String(v)])
         : rpc("garage.setColour", [String(id), c.part, String(v)]);
+    const loss = await readWornLoss(id, c.kind === "acc" ? "acc" : "paint", c.part, c.value);
+    if (loss) {
+      toast("Tank " + id + " wasn't proven. " + loss, true);
+      return false;
+    } // (the server picked a change that would take off something the garage can't give back)
     let proven = false,
       back = false;
     try {
@@ -543,11 +559,18 @@ export function getOverride(id, now) {
   if (VIEW_REAL.has(String(id))) {
     return null;
   } // you switched this tank to its real look (its profile's Real button)
+  const team = teamLookFor(String(id));
+  if (team) {
+    return Object.assign({}, readLookFor(id, now), team);
+  } // (playing with a teammate: the team's look over its own)
+  return readLookFor(id, now);
+}
+function readLookFor(id, now) {
   if (SETTINGS.party && partyColours[id]) {
     return partyColours[id];
   }
   const e = PLAYER_COLOR_MAP[id];
-  if (e) {
+  if (savedLookWins(id)) {
     return e.enabled !== false ? e : laikaSkinFor(id, now);
   } // (Laika in a Color Lab map wears its skin unless you gave her a look)
   return sharedLook(String(id)) || laikaSkinFor(id, now); // the look its owner shared (when they use Color Lab too)
@@ -605,7 +628,7 @@ export function startLookSharing() {
         look = sharedClean(d.look),
         before = JSON.stringify((SHARED[id] && SHARED[id].look) || null);
       SHARED[id] = { look, at: Date.now() };
-      if (!PLAYER_COLOR_MAP[id] && JSON.stringify(look) !== before) {
+      if (!ownedHere(id) && JSON.stringify(look) !== before) {
         redrawShared([id]);
       }
     }
@@ -671,7 +694,7 @@ export function startLookSharing() {
         OUT +
         '"></div>';
       bar.title =
-        (PLAYER_COLOR_MAP[id] ? "The look you saved for this tank" : "The Color Lab look its owner shared") +
+        (savedLookWins(id) ? "The look you saved for this tank" : "The Color Lab look its owner shared") +
         ", or its real look";
       bar.querySelectorAll("[data-k]").forEach(
         (el) =>
@@ -704,7 +727,7 @@ export function startLookSharing() {
             refreshSoon([pid]);
           }),
       );
-      if (!PLAYER_COLOR_MAP[id] && !loggedInIds().includes(id)) {
+      if (!savedLookWins(id) && !loggedInIds().includes(id)) {
         // a look another player shared: report it (2 clicks) or tell Color Lab about it
         const row = document.createElement("div");
         row.style.cssText = "display:flex;justify-content:center;gap:10px;margin-top:6px";

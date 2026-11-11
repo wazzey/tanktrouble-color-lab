@@ -2,8 +2,8 @@
 // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
 // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
 // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-export const TUT_VER = 18,
-  TUT_LABEL = "v1.4.8";
+export const TUT_VER = 19,
+  TUT_LABEL = "v1.4.9";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
   [
@@ -390,6 +390,58 @@ export const WHATS_NEW = [
   [18, "🪟", "<b>Fixed</b>: the game's writing no longer shows through the panel"],
   [18, "🔢", "<b>Fixed</b>: the version shows in the ⚙ box when Color Lab is offline, and in Settings > About"],
   [18, "⬇", "<b>Please update</b> now opens the Chrome Web Store"],
+  [
+    19,
+    "🏳",
+    "<b>Teams</b> (🏳 Teams in the game's ⚙ box, or the 💾 Saved tab): make a team and share its code, or 📨 invite players by name (players on Color Lab right now are suggested as you type), up to 4 tanks. When teammates play together they wear the team's colour, on the whole tank or just the turret, each in a shade they pick. The owner can ⏸ pause the team without losing it, and every change shows for everyone at once",
+  ],
+  [19, "🎨", "<b>No two teams alike</b>: a team whose colour is already taken in that game wears its backup colour"],
+  [
+    19,
+    "🕶",
+    "<b>Eyewear box</b>: Ski Goggles in black, blue and red with softer reflections, the Cyber Visor in black, red, gold and rainbow, the game's Silver Aviators in six colours, its classic Eye Mask with red, blue, green or purple eyes or in white, and Night-Vision Goggles and 3D Glasses that sit properly on the tank",
+  ],
+  [
+    19,
+    "👨",
+    "<b>Moustaches</b> (🕶 Eyewear box): the Rainbow box's moustache in black, ginger, blonde, grey and rainbow",
+  ],
+  [
+    19,
+    "🎩",
+    "<b>Hats fit better</b>: the Nightcap, Astronaut Helmet, Straw Hats and Cowboy Hats sit on the dome like they're worn",
+  ],
+  [
+    19,
+    "🚀",
+    "<b>Missiles and mines</b> keep their turret's colour on every map, only a shade lighter or darker when it would blend into the floor",
+  ],
+  [
+    19,
+    "🛡",
+    "<b>Rare things are safe</b>: Color Lab never takes a paint or item off your real tank if your garage can't give it back, whether from 🎲, Find in garage, the garage itself or proving your tank",
+  ],
+  [
+    19,
+    "🎖",
+    "<b>TTOC boxes</b> (🎖 TTOC folder): every TTOC 18 to 26 Sign in 13 themes, from Frozen and Inferno to Sakura and Desert, each with its own falling particles",
+  ],
+  [
+    19,
+    "🎨",
+    "<b>New colours</b> for the Boomerang, Candy Cane, Lucky Dice, Heater Shield, Clan Banner, Crossed Katanas, Safari Hat and Hoodie Hood",
+  ],
+  [
+    19,
+    "🟢",
+    "<b>Online list</b>: players who switch Color Lab off, remove it or close their browser show as offline within seconds, and leave the list after a day instead of a week",
+  ],
+  [
+    19,
+    "🔄",
+    "<b>Your looks everywhere</b>: a tank logged in on another copy of Color Lab shows its owner's latest shared look",
+  ],
+  [19, "🧹", "<b>Fixed</b>: team colours no longer stay on tanks in the lobby after a game"],
   [
     17,
     "✨",

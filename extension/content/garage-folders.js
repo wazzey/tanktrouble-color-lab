@@ -1,3 +1,4 @@
+import { TTOC_THEMES } from "./box-ttoc.js";
 import { GX_PAINT } from "./colours.js";
 
 // ---------- Box folders in the garage ----------
@@ -30,6 +31,7 @@ export const BOX_GROUPS = [
   },
   { id: "fun", name: "Fun & Games", icon: "🎲", color: "#ff8a1f", boxes: ["arcade", "casino", "sweets", "betabw"] },
   { id: "nature", name: "Nature", icon: "🌴", color: "#2fb070", boxes: ["safari", "deepsea", "tropical"] },
+  { id: "ttoc", name: "TTOC", icon: "🎖", color: "#d4a017", boxes: TTOC_THEMES.map((t) => t.id) },
 ];
 export const isLabBoxId = (id) => Number(id) >= 9000;
 export const groupOfBox = (id) => {
@@ -99,6 +101,9 @@ export const CUSTOM_BOX_IDS = {
   streetwear: 9028,
   betabw: 9029,
 };
+TTOC_THEMES.forEach((t, i) => {
+  CUSTOM_BOX_IDS[t.id] = 9030 + i;
+});
 export const GARAGE_PICS = {}; // picture address marker → data URL for the garage loader
 // ART_REV changes only when Color Lab's pictures change (not on every update), so saved pictures survive updates
 export const ART_REV = "art-2026-10-31-v1f"; // (f: items shown on their own, tank bits cleaned off)
@@ -111,12 +116,19 @@ export const BOX_ART_REV = {
   sakura: "pic-eyewear-1",
   elements: "boxpic-2",
   materials: "boxpic-2",
-  eyewear: "boxpic-2",
+  eyewear: "boxpic-4",
+  wildwest: "pic-hat-4",
+  tropical: "pic-hat-1",
+  hall: "pic-hat-1",
+  galaxy: "pic-hat-3",
   holo: "boxpic-2",
   arsenal: "boxpic-2",
   streetwear: "pic-clean-1",
   betabw: "pic-plaster-1",
 }; // box id -> version: bump one box's entry when only its pictures change (the rest stay saved)
+for (const t of TTOC_THEMES) {
+  BOX_ART_REV[t.id] = "pic-emblem-2";
+}
 export const picDb = () =>
   new Promise((res, rej) => {
     const r = indexedDB.open("ttcl-pics", 1);

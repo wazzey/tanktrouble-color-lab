@@ -305,6 +305,11 @@ input.good{border-color:#31e000}
 .sw{aspect-ratio:1;border-radius:5px;border:2px solid #444;cursor:pointer}
 .sw:hover{border-color:#427fff;transform:scale(1.12)}
 .empty{font-size:12px;color:#888}
+#teams{margin-top:10px;padding-top:2px;border-top:1px solid rgba(255,255,255,.1)}#teams select{width:100%;max-width:none;margin:4px 0}#teams input[type=text]{margin:4px 0}#teams .row{gap:6px;align-items:center}
+.teamdot{min-width:0;width:20px;height:20px;padding:0;margin:2px 1px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.25);position:relative}.teamdot.on{box-shadow:0 0 0 3px #fff}.teamdot:disabled{opacity:.2;cursor:default}
+.teamdot.used::after{content:"";position:absolute;right:-2px;top:-2px;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #000}
+.teamcolours{display:flex;flex-wrap:wrap;gap:1px;margin:2px 0 6px}.teamhead{display:flex;align-items:center;gap:8px;margin:8px 0 4px}.teamhead b{flex:1;min-width:0;overflow-wrap:anywhere;font-family:TankTrouble,Arial,sans-serif;font-size:15px;font-weight:normal}
+.teamlist{margin:2px 0 6px}.teammate{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;padding:2px 0}.teamshades{display:flex;align-items:center;gap:2px;margin:2px 0}.teamshades span{flex:0 0 56px;font-size:12px;color:#cfd8ff}.teamform{margin-top:6px}.teamjoin{margin-top:12px}.teaminvite{margin-top:6px;flex-wrap:nowrap}.teaminvite input{flex:1;min-width:0}.teaminvite button{flex:none}
 .pal .empty{grid-column:1/-1}
 #list{max-height:300px;overflow:auto}
 #filter{margin-bottom:6px}
@@ -440,6 +445,7 @@ select:focus{border-color:#427fff}
       <dt><kbd>+2</kbd></dt><dd>Show its other presets · click one to use it</dd>
       <dt><kbd>Double-click</kbd></dt><dd>Rename a tank or preset</dd>
       <dt><kbd>✕</kbd></dt><dd>Remove its custom colours</dd>
+      <dt><kbd>🏳 Teams</kbd></dt><dd>Make a team, join one with its code or an invite · teammates wear the team's colour when they play together, and its owner can ⏸ pause it</dd>
       <dt><kbd>⚙</kbd></dt><dd>Settings: hide buttons you don't use, backups (Export / Import), Wipe</dd>
     </dl>
     <div class="row" style="gap:6px;margin-top:10px"><button class="small" id="tutBtn2" title="A short tour of this tab">▶ Tutorial</button><button class="small grey" id="newBtn2" title="Update notes for this version">✨ Update notes</button></div>
@@ -586,6 +592,7 @@ select:focus{border-color:#427fff}
   <div class="pane" id="paneSaved" hidden>
     <input type="text" id="filter" placeholder="Search saved tanks…" autocomplete="off" hidden>
     <div id="list"></div>
+    <div id="teams"></div>
     <div class="foot"><span>Backups and Wipe are in ⚙ Settings</span></div>
   </div>
   <div class="modal" id="modal" hidden><div class="mbox" id="mbox"><div class="mtitle" id="mtitle"></div><div class="mtx" id="mtx"></div><div class="row mbtn"><button class="small grey" id="mNo">Cancel</button><button class="small" id="mYes">OK</button></div></div></div>

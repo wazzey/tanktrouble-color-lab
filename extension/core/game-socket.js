@@ -96,7 +96,7 @@ export async function warmLooks(only) {
     }
     addKeys(e);
   }
-  if (only != null && !PLAYER_COLOR_MAP[String(only)]) {
+  if (only != null && !mine.has(String(only))) {
     const sl = sharedLook(String(only));
     if (sl) {
       addKeys(sl);

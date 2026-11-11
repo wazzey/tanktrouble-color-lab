@@ -367,6 +367,13 @@ export function startTutorialRun() {
         x: "All your saved tanks: switch them on or off, pick a preset (up to 10 per tank), double-click to rename.",
       },
       {
+        before: () => showTab("saved"),
+        el: () => $("teams"),
+        area: "saved",
+        t: "Teams 🏳",
+        x: "Make a team with a colour and share its code with up to 3 friends, or join one with a code. The owner can also 📨 invite players on Color Lab by name (click the box to see who's on) and ⏸ pause the team. When teammates play together they wear the team's colour, each in a shade they pick. A team whose colour is taken in that game wears its backup.",
+      },
+      {
         before: () => showTab("maze"),
         el: () => $("paneMaze"),
         area: "maze",

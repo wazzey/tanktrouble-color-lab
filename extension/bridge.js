@@ -153,7 +153,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
   }
   const keyFor = async (d) => {
     // a tank's own look and proof use its account's key; a message is sent with the key of the account it's sent as
-    const pid = ["put", "delete", "vstart", "vcheck"].includes(d.op) ? d.pid : d.op === "fbsend" ? d.as : null;
+    const pid = ["put", "delete", "vstart", "vcheck", "team"].includes(d.op) ? d.pid : d.op === "fbsend" ? d.as : null;
     if (PID.test(String(pid || ""))) {
       const a = await readAccount(String(pid));
       if (a) {
@@ -384,6 +384,8 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
         d.op === "fblist" ||
         d.op === "online" ||
         d.op === "announce" ||
+        d.op === "team" ||
+        d.op === "teams" ||
         (DEV_BUILD && (d.op === "inbox" || d.op === "alerts" || d.op === "fdraft" || d.op === "owner")))
     ) {
       // Shared looks: the extension's background page talks to Color Lab's look server, never the page itself.
@@ -415,6 +417,8 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
               shsrv: d.shsrv,
               about: d.about,
               kind: d.kind,
+              team: d.team,
+              on: d.on,
               adm: DEV_BUILD ? d.adm : undefined,
               read: DEV_BUILD ? d.read : undefined,
             },
@@ -428,7 +432,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
         }
       };
       const go = () => {
-        if (d.op === "get" || d.op === "watch" || d.op === "latest") {
+        if (d.op === "get" || d.op === "teams" || d.op === "watch" || d.op === "latest") {
           send(null);
         } else {
           keyFor(d)
@@ -478,6 +482,10 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
       toPage({ type: "shareLive", pid: m.pid, look: m.look });
     } else if (m && m.type === "annLive" && alive()) {
       toPage({ type: "annLive", ann: m.ann });
+    } else if (m && m.type === "teamInvite" && alive()) {
+      toPage({ type: "teamInvite", invite: m.invite });
+    } else if (m && m.type === "teamNews" && alive()) {
+      toPage({ type: "teamNews", ids: m.ids });
     }
   });
 

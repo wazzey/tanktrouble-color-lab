@@ -14,7 +14,7 @@ import { pageKeyNow, pagePal } from "./page.js";
 import { $, toast } from "./panel.js";
 import { renderSettings } from "./settings.js";
 import { SETTINGS, saveSettings } from "./storage.js";
-import { setOpen } from "./tabs.js";
+import { setOpen, showTab } from "./tabs.js";
 import { consentChoose, whatsNew } from "./tutorial-run.js";
 import { checkUpdate, verNewer } from "./updates.js";
 
@@ -254,6 +254,11 @@ function gearQuick() {
     },
   );
   mk("🎨 Open", true, "Open the Color Lab panel", () => setOpen(true));
+  mk("🏳 Teams", true, "Make or join a team: opens the Color Lab panel at Teams", () => {
+    setOpen(true);
+    showTab("saved");
+    $("teams").scrollIntoView({ block: "start" });
+  });
   if (gearVer === null) {
     gearVer = "";
     shareCall({ op: "latest" })
