@@ -217,8 +217,8 @@ export function pageDailyKey() {
 export function newsCss(P) {
   // news posts: ordinary ones on the theme's boxes, important ones on its button colours (white writing)
   return `.newsPost .wrapper{background:linear-gradient(${P.panel},${P.panel2})!important;color:${P.ink}!important;border:1px solid ${P.accent}77;box-shadow:0 0 12px ${P.accent}40}
-.newsPost .wrapper .header,.newsPost .wrapper .header *{color:${P.head}!important}.newsPost .wrapper a{color:${P.head}!important}
-.newsPost.important .wrapper{background:linear-gradient(${P.pBtnTop} -60%,${P.pBtnBot})!important;color:#fff!important}.newsPost.important .wrapper .header,.newsPost.important .wrapper .header *,.newsPost.important .wrapper a{color:#fff!important}`;
+.newsPost .wrapper .content{color:${P.ink}!important}.newsPost .wrapper .header,.newsPost .wrapper .header *{color:${P.head}!important}.newsPost .wrapper a{color:${P.head}!important}
+.newsPost.important .wrapper{background:linear-gradient(${P.pBtnTop} -60%,${P.pBtnBot})!important;color:#fff!important}.newsPost.important .wrapper .content,.newsPost.important .wrapper .header,.newsPost.important .wrapper .header *,.newsPost.important .wrapper a{color:#fff!important}`;
 }
 export function pageCss(P, full) {
   const head = `#header{background:linear-gradient(${P.header},${P.dark ? "#000" : P.panel2})!important;border-bottom:2px solid ${P.accent};box-shadow:0 3px 16px ${P.accent}88}#header .shadow{opacity:.25}#chat img.status{filter:${P.chat}}#header .tab:focus:not(:focus-visible){outline:none}

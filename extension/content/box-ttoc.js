@@ -744,14 +744,218 @@ const TTOC_SHEETS = {
     ],
   },
 };
+// Each theme's star versions: the game's own stars drawn in the theme's two colours (light and dark of each) instead
+// of its particles. Shapes cycle through the stars in order.
+const TTOC_GOLD = [
+    [255, 226, 120],
+    [205, 150, 30],
+  ],
+  TTOC_PURPLE = [
+    [196, 140, 255],
+    [110, 45, 205],
+  ];
+const TTOC_STARS = {
+  frozen: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [200, 240, 255],
+          [80, 170, 235],
+        ],
+        [
+          [255, 255, 255],
+          [175, 205, 230],
+        ],
+      ],
+    },
+  ],
+  inferno: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [255, 190, 90],
+          [225, 80, 10],
+        ],
+        [
+          [255, 245, 140],
+          [235, 170, 20],
+        ],
+      ],
+    },
+  ],
+  toxic: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [190, 255, 110],
+          [60, 170, 20],
+        ],
+        [
+          [250, 255, 140],
+          [190, 200, 20],
+        ],
+      ],
+    },
+  ],
+  neon: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [255, 150, 230],
+          [225, 40, 170],
+        ],
+        [
+          [170, 255, 255],
+          [30, 190, 220],
+        ],
+      ],
+    },
+  ],
+  galaxy: [
+    { id: "stars", name: "Stars", colours: [TTOC_GOLD, TTOC_PURPLE] },
+    {
+      id: "sparkles",
+      name: "Sparkles",
+      colours: [TTOC_GOLD, TTOC_PURPLE],
+      shapes: ["sparkle", "cluster", "glow", "sparkle", "cluster", "glow", "sparkle", "cluster"],
+    },
+    { id: "twotone", name: "Two-Tone", colours: [TTOC_PURPLE, TTOC_GOLD], rims: [TTOC_GOLD[0], TTOC_PURPLE[1]] },
+  ],
+  romance: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [255, 120, 140],
+          [190, 20, 50],
+        ],
+        [
+          [255, 205, 225],
+          [240, 120, 170],
+        ],
+      ],
+    },
+  ],
+  ocean: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [150, 240, 240],
+          [20, 150, 175],
+        ],
+        [
+          [255, 185, 140],
+          [235, 105, 50],
+        ],
+      ],
+    },
+  ],
+  royal: [{ id: "stars", name: "Stars", colours: [TTOC_GOLD, TTOC_PURPLE] }],
+  candy: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [255, 175, 215],
+          [235, 80, 150],
+        ],
+        [
+          [175, 230, 255],
+          [60, 160, 230],
+        ],
+      ],
+    },
+  ],
+  ghastly: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [200, 255, 210],
+          [90, 190, 120],
+        ],
+        [
+          [205, 170, 245],
+          [115, 70, 180],
+        ],
+      ],
+    },
+  ],
+  sakura: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [255, 200, 220],
+          [230, 120, 160],
+        ],
+        [
+          [255, 250, 252],
+          [240, 200, 215],
+        ],
+      ],
+    },
+  ],
+  electric: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [255, 250, 130],
+          [240, 200, 0],
+        ],
+        [
+          [150, 210, 255],
+          [30, 110, 240],
+        ],
+      ],
+    },
+  ],
+  desert: [
+    {
+      id: "stars",
+      name: "Stars",
+      colours: [
+        [
+          [250, 220, 150],
+          [205, 150, 70],
+        ],
+        [
+          [255, 175, 90],
+          [215, 100, 30],
+        ],
+      ],
+    },
+  ],
+};
 // One sheet a theme holds its letters, digits, symbol and particles; a year's sign is put together from it.
 // Glyph rows are [x, y, w, h] on the sheet then [left, top, width, height, first solid row] on the tank; stars are
-// [x, y, radius, opacity] of the game's own stars.
-export function drawTtocSign(g, theme, year, sheet) {
+// [x, y, radius, opacity] of the game's own stars. A star version draws its stars instead of the particles.
+export function drawTtocSign(g, theme, year, sheet, version) {
   const layout = TTOC_SHEETS[theme],
     yearData = TTOC_YEARS[year],
     boxes = yearData.boxes;
   yearData.stars.forEach(([cx, cy, radius, opacity], i) => {
+    if (version) {
+      g.globalAlpha = opacity;
+      drawTtocStar(g, version, i, cx, cy, radius * (opacity > 0.42 ? 1 : 0.55));
+      return;
+    }
     const [px, py, pw, ph, fullW, fullH] = layout.parts[i % layout.parts.length],
       scale = (2 * radius * (opacity > 0.42 ? 1 : 0.55)) / Math.max(fullW, fullH),
       width = fullW * scale,
@@ -787,9 +991,70 @@ export function drawTtocSign(g, theme, year, sheet) {
     g.drawImage(sheet, gx, gy, gw, gh, Math.round(left), Math.round(top + shift), width, height);
   }
 }
+// one star of a star version, `size` across from its centre to its edge
+function drawTtocStar(g, version, index, cx, cy, size) {
+  const [light, dark] = version.colours[index % 2],
+    shape = (version.shapes || [])[index % 8] || "star",
+    tilt = ([0, 18, -14, 30, 8, -24, 14, -6][index % 8] * Math.PI) / 180,
+    rgb = (c) => "rgb(" + c.join(",") + ")";
+  if (shape === "cluster") {
+    for (const [dx, dy, part] of [
+      [0, 0, 0.62],
+      [-0.64, -0.6, 0.3],
+      [0.64, 0.56, 0.26],
+      [0.6, -0.64, 0.18],
+      [-0.6, 0.64, 0.16],
+    ]) {
+      drawTtocStar(
+        g,
+        { colours: [version.colours[index % 2]], shapes: ["sparkle"] },
+        0,
+        cx + dx * size,
+        cy + dy * size,
+        size * part,
+      );
+    }
+    return;
+  }
+  const points = shape === "star" || shape === "glow" ? 5 : 4,
+    outer = size * 0.92,
+    inner = size * (points === 5 ? 0.4 : 0.2),
+    spin = shape === "star" ? tilt : 0;
+  g.save();
+  g.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (i * Math.PI) / points - Math.PI / 2 + spin,
+      reach = i % 2 === 0 ? outer : inner;
+    g.lineTo(cx + reach * Math.cos(angle), cy + reach * Math.sin(angle));
+  }
+  g.closePath();
+  if (shape === "star") {
+    const fill = g.createLinearGradient(cx - size * 0.3, cy - size, cx + size * 0.3, cy + size);
+    fill.addColorStop(0.15, rgb(light));
+    fill.addColorStop(1, rgb(dark));
+    g.fillStyle = fill;
+    g.fill();
+    if (version.rims) {
+      g.lineWidth = Math.max(1, size * 0.08);
+      g.lineJoin = "round";
+      g.strokeStyle = rgb(version.rims[index % 2]);
+      g.stroke();
+    }
+  } else {
+    const fill = g.createRadialGradient(cx, cy, 0, cx, cy, outer * 0.8);
+    fill.addColorStop(0, "rgb(255,250,235)");
+    fill.addColorStop(0.35, rgb(light));
+    fill.addColorStop(1, rgb(dark));
+    g.fillStyle = fill;
+    g.shadowColor = rgb(light);
+    g.shadowBlur = size * 0.25; // (a soft glow round it)
+    g.fill();
+  }
+  g.restore();
+}
 // a whole sign on its own, for the box's picture
 export async function readTtocSign(key) {
-  const [, theme, year] = key.split("-"),
+  const [, theme, year, versionId] = key.split("-"),
     sheet = await loadImg(TTOC_SHEETS[theme].sheet);
   if (!sheet) {
     return null;
@@ -797,7 +1062,13 @@ export async function readTtocSign(key) {
   const c = document.createElement("canvas");
   c.width = 640;
   c.height = 384;
-  drawTtocSign(c.getContext("2d"), theme, Number(year), sheet);
+  drawTtocSign(
+    c.getContext("2d"),
+    theme,
+    Number(year),
+    sheet,
+    (TTOC_STARS[theme] || []).find((version) => version.id === versionId),
+  );
   return c;
 }
 for (const t of TTOC_THEMES) {
@@ -824,5 +1095,20 @@ for (const t of TTOC_THEMES) {
         }
       },
     };
+  }
+  for (const version of TTOC_STARS[t.theme] || []) {
+    for (let year = 18; year <= 26; year++) {
+      const key = "tt-" + t.theme + "-" + year + "-" + version.id;
+      GX_ACC[key] = { slot: "barrel", name: "TTOC " + year + " Sign (" + t.name + " " + version.name + ")", box: t.id };
+      EXT_ITEM[key] = {
+        uses: [TTOC_SHEETS[t.theme].sheet],
+        draw(g, K, P, A) {
+          const sheet = A[TTOC_SHEETS[t.theme].sheet];
+          if (sheet) {
+            drawTtocSign(g, t.theme, year, sheet, version);
+          }
+        },
+      };
+    }
   }
 }

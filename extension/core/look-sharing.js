@@ -2,13 +2,14 @@ import { post } from "../content/bridge-messages.js";
 import { ACC_SLOTS, GX_PAINT, isPat, normHex, patId } from "../content/colours.js";
 import { loadImg } from "../content/images.js";
 import { TROPHIES, isTrophyVal } from "../content/laika-trophies.js";
-import { flatHex, partyColours } from "../content/registries.js";
+import { flatHex, partyColours, showVal } from "../content/registries.js";
 import { PART_NAMES, drawTankIcon } from "../content/tank-icon.js";
 import { tutCard, tutLayer } from "../content/tutorials.js";
 import { getAssetMap, loadAccessories, resolvePaint } from "./assets.js";
-import { isCustomKey } from "./custom-box-art.js";
+import { customTitle, isCustomKey } from "./custom-box-art.js";
 import { fbOpen } from "./feedback.js";
 import { readWornLoss } from "./garage-boxes.js";
+import { colourName, gameItemName } from "./garage-search.js";
 import { loggedInIds, lookupById, refreshSoon, refreshTanks, rpc, warmLooks } from "./game-socket.js";
 import { laikaSkinFor, laikaSkinOn } from "./laika-look.js";
 import { pageKeyNow, pagePal } from "./page.js";
@@ -446,6 +447,28 @@ export function needProof(ids) {
     true,
   );
 }
+// a look in words, e.g. "Turret: Onyx, Base: Pink, Treads: Gold" then what it wears
+function readLookWords(e) {
+  const paints = [],
+    items = [];
+  for (const [part, label] of [
+    ["turret", "Turret"],
+    ["base", "Base"],
+    ["treads", "Treads"],
+  ]) {
+    if (e[part]) {
+      paints.push(label + ": " + (isPat(e[part]) ? showVal(e[part]) : colourName(e[part])));
+    }
+  }
+  for (const [slot] of ACC_SLOTS) {
+    const worn = e.acc && e.acc[slot];
+    if (worn == null || String(worn) === "0") {
+      continue;
+    }
+    items.push(isTrophyVal(String(worn)) ? customTitle(String(worn).slice(5)) : gameItemName(slot + worn));
+  }
+  return paints.join(", ") + (items.length ? "\nWearing: " + items.join(", ") : "");
+}
 // A look goes up once it has stayed the same for a few seconds (clicking 🎲 over and over sends only the one kept);
 // Done in the garage, Save in the panel or a refresh send it straight away
 export function shareMyLooks(force, soon) {
@@ -471,6 +494,9 @@ export function shareMyLooks(force, soon) {
                 bullet: bul,
               }
             : null;
+        if (on) {
+          look.desc = readLookWords(e);
+        } // (for Fit of the day on the forum)
         if (look) {
           const fb = {};
           for (const p of ["turret", "base", "treads"]) {

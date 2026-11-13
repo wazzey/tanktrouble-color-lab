@@ -257,6 +257,13 @@ async function ensureTables(env) {
     env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS team_invites (pid TEXT NOT NULL, team INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (pid, team))",
     ), // (a tank is in one team at most, with the shades of its team's colour it picked)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS fit_entries (rid INTEGER PRIMARY KEY, pid TEXT NOT NULL, link TEXT NOT NULL, at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0)",
+    ), // (fits players posted on the forum thread, with their picture link)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS fit_day (day TEXT PRIMARY KEY, picks TEXT NOT NULL, chosen INTEGER, link TEXT, msg TEXT, posted INTEGER NOT NULL DEFAULT 0)",
+    ), // (each day's three Fit of the day picks, the one chosen and whether it's posted)
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS fit_never (pid TEXT PRIMARY KEY)"), // (tanks never to feature)
     env.DB.prepare("CREATE INDEX IF NOT EXISTS verified_kh ON verified (keyhash)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS looks_kh ON looks (keyhash)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS feedback_kh ON feedback (keyhash)"),
@@ -750,6 +757,11 @@ async function forumWatch(env) {
       const since = seen ? seen.last : 0,
         fresh = Date.now() / 1000 - 30 * 60; // (first check of a thread: only replies from the last 30 minutes, so old ones aren't posted)
       const title = d.thread && d.thread.header ? String(d.thread.header).slice(0, 80) : "thread " + th;
+      for (const x of reps.filter((reply) => (seen ? reply.id > since : reply.created > fresh))) {
+        if (!owners.includes(String(x.creator))) {
+          await noteForumFit(env, x);
+        }
+      } // (a player's reply with a screenshot link joins the Fit of the day picks)
       for (const x of reps
         .filter(
           (reply) =>
@@ -2198,6 +2210,345 @@ async function releaseThreadEdit(env, r, force) {
     await alert(env, "forum post", "❌ The thread was not updated: " + String((e && e.message) || e).slice(0, 200));
   }
 }
+// ---------- Fit of the day: one player's Color Lab look posted on the forum thread every day ----------
+// An hour before FIT_HOUR (UK time, 18 unless set) three picks go to FITS_CHANNEL_ID in Discord: fits players posted
+// on the forum first, then random proven looks with paint and an item, changed in the last two weeks and not featured
+// in the last 30 days. Players who hide their name, and tanks on the never list, are left out. Pick one (or it's
+// picked at random) and it's posted as a reply at FIT_HOUR, by the forum login (TT_LOGIN)
+const FIT_LINK = /\b(?:https?:\/\/)?(?:prnt\.sc|prntscr\.com|(?:i\.)?imgur\.com|gyazo\.com)\/[\w./-]+/i;
+async function noteForumFit(env, x) {
+  const m = FIT_LINK.exec(String(x.message || ""));
+  if (!m || !env.FITS_CHANNEL_ID) {
+    return;
+  }
+  const link = /^https?:/i.test(m[0]) ? m[0] : "https://" + m[0];
+  const r = await env.DB.prepare("INSERT OR IGNORE INTO fit_entries (rid, pid, link, at) VALUES (?, ?, ?, ?)")
+    .bind(x.id, String(x.creator), link, Date.now())
+    .run();
+  if (r.meta && r.meta.changes) {
+    await discordPost(env, "/channels/" + env.FITS_CHANNEL_ID + "/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "📸 **New fit on the forum** from " + (await tankName(env, x.creator)) + "\n" + link,
+        allowed_mentions: { parse: [] },
+      }),
+    });
+  }
+}
+function readUkClock() {
+  const parts = {};
+  for (const part of new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date())) {
+    parts[part.type] = part.value;
+  }
+  return { day: parts.year + "-" + parts.month + "-" + parts.day, hour: Number(parts.hour) };
+}
+async function fitTick(env) {
+  if (!env.FITS_CHANNEL_ID || !env.DISCORD_BOT_TOKEN || !forumAuto(env)) {
+    return;
+  }
+  const { day, hour } = readUkClock(),
+    at = Number(env.FIT_HOUR || 18);
+  if (hour < at - 1) {
+    return;
+  }
+  const row = await env.DB.prepare("SELECT posted FROM fit_day WHERE day = ?").bind(day).first();
+  if (!row) {
+    const picks = await readFitPicks(env, []);
+    if (!picks.length) {
+      return;
+    }
+    await env.DB.prepare("INSERT OR IGNORE INTO fit_day (day, picks) VALUES (?, ?)")
+      .bind(day, JSON.stringify(picks))
+      .run();
+    const msg = await discordPost(env, "/channels/" + env.FITS_CHANNEL_ID + "/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(readFitMessage(env, day, picks, null, null)),
+    });
+    const sent = await msg.json().catch(() => ({}));
+    if (sent.id) {
+      await env.DB.prepare("UPDATE fit_day SET msg = ? WHERE day = ?").bind(String(sent.id), day).run();
+    }
+    return;
+  }
+  if (!row.posted && hour >= at) {
+    await fitPost(env, day);
+  }
+}
+async function readFitPicks(env, keep) {
+  const picks = keep.slice(),
+    taken = new Set(picks.map((pick) => pick.pid)),
+    never = new Set(
+      ((await env.DB.prepare("SELECT pid FROM fit_never UNION SELECT pid FROM hidden").all()).results || []).map(
+        (row) => String(row.pid),
+      ),
+    );
+  const lookOf = async (pid) => {
+    const row = await env.DB.prepare("SELECT look FROM looks WHERE pid = ?").bind(pid).first();
+    try {
+      return row ? JSON.parse(row.look) : null;
+    } catch {
+      return null;
+    }
+  };
+  const nameOf = async (pid) => {
+    const row = await env.DB.prepare("SELECT name, guest FROM names WHERE pid = ?").bind(pid).first();
+    const shy = await env.DB.prepare(
+      "SELECT 1 FROM logged l JOIN presence p ON p.kh = l.kh WHERE COALESCE(p.inv, 0) = 1 AND (',' || l.pids || ',') LIKE ?",
+    )
+      .bind("%," + pid + ",%")
+      .first();
+    return row && !row.guest && !shy ? row.name : null;
+  }; // (no guests, and nobody who hides their name in the online list)
+  for (const entry of (
+    await env.DB.prepare("SELECT rid, pid, link FROM fit_entries WHERE used = 0 ORDER BY at DESC LIMIT 6").all()
+  ).results || []) {
+    const name = await nameOf(entry.pid);
+    if (picks.length < 3 && name && !taken.has(entry.pid) && !never.has(entry.pid)) {
+      const look = await lookOf(entry.pid);
+      picks.push({ pid: entry.pid, name, text: (look && look.desc) || "", link: entry.link, rid: entry.rid });
+      taken.add(entry.pid);
+    }
+  } // (fits players posted on the forum come first)
+  const random = (
+    await env.DB.prepare(
+      "SELECT l.pid, l.look FROM looks l JOIN verified v ON v.pid = l.pid WHERE l.updated > ? AND l.keyhash NOT IN (SELECT hash FROM quarantine) AND l.keyhash NOT IN (SELECT hash FROM banned) ORDER BY RANDOM() LIMIT 40",
+    )
+      .bind(Date.now() - 14 * DAY)
+      .all()
+  ).results;
+  for (const row of random || []) {
+    if (picks.length >= 3) {
+      break;
+    }
+    const pid = String(row.pid);
+    if (taken.has(pid) || never.has(pid)) {
+      continue;
+    }
+    let look = null;
+    try {
+      look = JSON.parse(row.look);
+    } catch {}
+    if (!look || !look.acc || !Object.keys(look.acc).length) {
+      continue;
+    } // (a good fit wears at least one item; looks from older copies have no words, only the picture you add)
+    const recent = await env.DB.prepare("SELECT at FROM alerted WHERE k = ?")
+      .bind("fitted:" + pid)
+      .first();
+    const name = await nameOf(pid);
+    if (!name || (recent && Date.now() - recent.at < 30 * DAY)) {
+      continue;
+    }
+    picks.push({ pid, name, text: look.desc || "", link: null, rid: null });
+    taken.add(pid);
+  }
+  return picks;
+}
+function readFitText(env, pick, link) {
+  return forumSafe(
+    "Fit showcase: " +
+      pick.name +
+      "\n" +
+      (pick.text ? pick.text + "\n" : "") +
+      (link ? "Picture: " + link + "\n" : "") +
+      "\nA random fit is showcased here every day. If you'd like to post your own fits and have them rated, feel free to do so! A Lightshot, Imgur or Gyazo link of your tank works great." +
+      (readStoreId(env) ? "\nGet Color Lab: " + env.STORE_URL : ""),
+  );
+}
+function readFitMessage(env, day, picks, chosen, link, posted) {
+  const at = Number(env.FIT_HOUR || 18);
+  let t =
+    "👕 **Fit showcase** for " +
+    day +
+    (posted ? " (posted ✅)" : " (posts at " + at + ":00 UK, a random one unless you pick)") +
+    "\n";
+  picks.forEach((pick, i) => {
+    t +=
+      "\n**" +
+      (i + 1) +
+      ". " +
+      pick.name +
+      "**" +
+      (pick.rid ? " (posted it on the forum)" : "") +
+      (chosen === i ? " ⬅️ picked" : "") +
+      "\n" +
+      (pick.text || "(no description)") +
+      (pick.link ? "\n" + pick.link : "") +
+      "\n";
+  });
+  if (link) {
+    t += "\n🖼 Picture for the post: " + link + "\n";
+  }
+  const row = (buttons) => ({ type: 1, components: buttons });
+  return {
+    content: t.slice(0, 1990),
+    allowed_mentions: { parse: [] },
+    components: posted
+      ? []
+      : [
+          row(
+            picks
+              .map((pick, i) => ({
+                type: 2,
+                style: chosen === i ? 3 : 2,
+                label: "Pick " + (i + 1),
+                custom_id: "fitpick:" + day + ":" + i,
+              }))
+              .concat([{ type: 2, style: 1, label: "Post now", custom_id: "fitnow:" + day }]),
+          ),
+          row(
+            [
+              { type: 2, style: 2, label: "🔀 Shuffle", custom_id: "fitshuffle:" + day },
+              { type: 2, style: 2, label: "🖼 Add picture", custom_id: "fitpic:" + day },
+            ].concat(
+              picks.map((pick, i) => ({
+                type: 2,
+                style: 4,
+                label: "Never " + (i + 1),
+                custom_id: "fitnever:" + day + ":" + i,
+              })),
+            ),
+          ),
+        ],
+  };
+}
+async function fitPost(env, day) {
+  const claim = await env.DB.prepare("UPDATE fit_day SET posted = 1 WHERE day = ? AND posted = 0").bind(day).run();
+  if (!claim.meta || !claim.meta.changes) {
+    return null;
+  } // (posted already, or being posted right now)
+  const row = await env.DB.prepare("SELECT picks, chosen, link, msg FROM fit_day WHERE day = ?").bind(day).first(),
+    picks = JSON.parse(row.picks),
+    chosen = row.chosen != null && picks[row.chosen] ? row.chosen : Math.floor(Math.random() * picks.length),
+    pick = picks[chosen],
+    th = String(env.FORUM_THREADS || "475180")
+      .split(",")[0]
+      .trim();
+  const res = await forumPost(env, th, readFitText(env, pick, row.link || pick.link));
+  if (!res || !res.ok) {
+    await env.DB.prepare("UPDATE fit_day SET posted = 0 WHERE day = ?").bind(day).run();
+    await alertOnce(env, "fitfail:" + day, "fit", "Fit of the day wasn't posted: " + ((res && res.why) || "no answer"));
+    return null;
+  }
+  await env.DB.batch([
+    env.DB.prepare("UPDATE fit_day SET chosen = ? WHERE day = ?").bind(chosen, day),
+    env.DB.prepare("INSERT OR REPLACE INTO alerted (k, at) VALUES (?, ?)").bind("fitted:" + pick.pid, Date.now()),
+    env.DB.prepare("UPDATE fit_entries SET used = 1 WHERE rid = ?").bind(pick.rid || 0),
+  ]);
+  if (row.msg) {
+    await discordPost(env, "/channels/" + env.FITS_CHANNEL_ID + "/messages/" + row.msg, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(readFitMessage(env, day, picks, chosen, row.link, true)),
+    });
+  }
+  return pick;
+}
+async function fitAction(env, ctx, i, id, reply) {
+  await ensureTables(env);
+  const [kind, day, index] = id.split(":"),
+    row = await env.DB.prepare("SELECT picks, chosen, link, posted FROM fit_day WHERE day = ?").bind(day).first();
+  if (!row) {
+    return reply({ type: 4, data: { content: "That day's picks are gone.", flags: 64 } });
+  }
+  let picks = JSON.parse(row.picks),
+    chosen = row.chosen;
+  const update = () => reply({ type: 7, data: readFitMessage(env, day, picks, chosen, row.link, row.posted) });
+  if (row.posted && kind !== "fitlink") {
+    return reply({ type: 4, data: { content: "That one's already posted.", flags: 64 } });
+  }
+  if (kind === "fitpick") {
+    chosen = Number(index);
+    await env.DB.prepare("UPDATE fit_day SET chosen = ? WHERE day = ?").bind(chosen, day).run();
+    return update();
+  }
+  if (kind === "fitshuffle" || kind === "fitnever") {
+    if (kind === "fitnever" && picks[Number(index)]) {
+      await env.DB.prepare("INSERT OR IGNORE INTO fit_never (pid) VALUES (?)").bind(picks[Number(index)].pid).run();
+      picks = picks.filter((pick, j) => j !== Number(index));
+    } else {
+      picks = picks.filter((pick) => pick.rid);
+    } // (Shuffle keeps the fits players posted and redraws the random ones)
+    picks = await readFitPicks(env, picks);
+    chosen = null;
+    await env.DB.prepare("UPDATE fit_day SET picks = ?, chosen = NULL WHERE day = ?")
+      .bind(JSON.stringify(picks), day)
+      .run();
+    return update();
+  }
+  if (kind === "fitnow") {
+    if (ctx) {
+      ctx.waitUntil(fitPost(env, day));
+    }
+    return reply({ type: 4, data: { content: "Posting it on the forum now…", flags: 64 } });
+  }
+  if (kind === "fitpic") {
+    return reply({
+      type: 9,
+      data: {
+        custom_id: "fitlink:" + day,
+        title: "Picture for Fit of the day",
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 4,
+                custom_id: "text",
+                style: 1,
+                label: "Lightshot or Imgur link",
+                min_length: 8,
+                max_length: 200,
+                required: true,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  }
+  const typed = String(((((i.data.components || [])[0] || {}).components || [])[0] || {}).value || "").trim(),
+    found = FIT_LINK.exec(typed);
+  if (!found) {
+    return reply({ type: 4, data: { content: "That isn't a Lightshot, Imgur or Gyazo link.", flags: 64 } });
+  }
+  row.link = /^https?:/i.test(found[0]) ? found[0] : "https://" + found[0];
+  await env.DB.prepare("UPDATE fit_day SET link = ? WHERE day = ?").bind(row.link, day).run();
+  return update();
+}
+// Looks of copies not seen for a day (Color Lab removed, or TankTrouble not opened) come down; a copy that comes back
+// puts its looks up again as soon as TankTrouble opens. Once an hour.
+async function applyLookExpiry(env) {
+  if (new Date().getUTCMinutes() !== 7) {
+    return;
+  }
+  const now = Date.now(),
+    gone = "SELECT pid FROM looks WHERE keyhash NOT IN (SELECT kh FROM presence WHERE last > ?)",
+    { results } = await env.DB.prepare(gone)
+      .bind(now - DAY)
+      .all();
+  if (!results.length) {
+    return;
+  }
+  await env.DB.prepare("DELETE FROM looks WHERE pid IN (" + gone + ")")
+    .bind(now - DAY)
+    .run();
+  if (env.HUB) {
+    for (const r of results.slice(0, 100)) {
+      await hub(env)
+        .notify(String(r.pid), null, now)
+        .catch(() => {});
+    }
+  } // (open screens drop them at once; past 100, on their next refresh)
+}
 // With a Chrome Web Store page, the forum reply follows the store rather than GitHub: every 10 minutes the server asks the
 // store which version it gives the public (the same update check Chrome itself uses). An upload still in review changes
 // nothing; once a newer version is live, ColorLab replies on the thread with that version's notes from the
@@ -2239,6 +2590,12 @@ async function releaseStoreCheck(env) {
   ) {
     return;
   } // (already on the forum)
+  if (live.split(".").length > 3) {
+    await env.DB.prepare("INSERT OR REPLACE INTO alerted (k, at) VALUES (?, ?)")
+      .bind("forumrel:" + tag, Date.now())
+      .run();
+    return;
+  } // (a fix like 1.4.9.1 goes out quietly, with no forum reply)
   const lines = [];
   for (const branch of [tag, "main"]) {
     try {
@@ -2513,6 +2870,9 @@ async function discordInteraction(env, req, ctx) {
     } // (sent just after the reply below: a follow-up needs the first answer to be there)
     return reply({ type: 4, data: { content: text, flags: 64, allowed_mentions: { parse: [] } } });
   } // (just your text, so "Copy Text" copies only that; the link comes next)
+  if (/^fit(pick|now|shuffle|pic|never|link):/.test(id)) {
+    return fitAction(env, ctx, i, id, reply);
+  }
   return reply({ type: 4, data: { content: "Unknown action.", flags: 64 } });
 }
 
@@ -3165,6 +3525,15 @@ function cleanLook(l) {
   if (typeof l.bullet === "string" && BULLET.test(l.bullet)) {
     out.bullet = l.bullet;
   } // the bullets they chose
+  if (typeof l.desc === "string") {
+    const desc = l.desc
+      .replace(/[^\n\x20-\x7E\u00A0-\u00FF]/g, "")
+      .trim()
+      .slice(0, 300);
+    if (desc) {
+      out.desc = desc;
+    }
+  } // (the look in words, written by the extension for Fit of the day)
   if (l.fb != null && typeof l.fb === "object") {
     const f = {};
     for (const part of ["turret", "base", "treads"]) {
@@ -3641,6 +4010,8 @@ export default {
     if (ev.cron !== "17 4 * * *") {
       await forumCommand(env); // (sets up /forum in Discord the first time, then every couple of days)
       await releaseStoreCheck(env);
+      await fitTick(env);
+      await applyLookExpiry(env);
       await forumWatch(env);
       await new Promise((r) => setTimeout(r, 30000));
       return forumWatch(env);
@@ -4310,6 +4681,9 @@ export default {
         .bind(now - ONLINE_MS, now - IDLE_HIDE_MS)
         .first();
       const out = { online: c ? c.n : 0 };
+      if (adminOk(env, req)) {
+        return json(await publicOnline(env, now)); // (the owner's own tools, such as Seraph's online watcher: the same list, without counting as a copy online)
+      }
       if (req.method === "POST") {
         let b = null;
         try {

@@ -34,6 +34,7 @@ If your email changes, a computer that still has the old key moves your account 
 
 - For each of your logged-in tanks with a Color Lab look: its player ID, its public TankTrouble name, the look, and when it was saved.
 - A history of look changes (the look, when, and which copy made it), kept for 30 days to deal with abuse.
+- **Fit of the day:** a shared look, with the tank's public TankTrouble name and the look in words (its paints and items), can be featured on Color Lab's forum thread. Players who hide their name in the online list are never featured, and the author leaves anyone out who asks.
 - To show other tanks' looks, your copy sends the player IDs of the tanks around you. The server keeps no record of who asked for which looks.
 - Before a tank's look is shared, Color Lab proves the tank is yours by changing one thing on it for about a second (it asks first, once per tank), and the server checks the tank's public details on TankTrouble. Proofs in progress are kept for a day. A finished proof (the player ID, the key's hash and when) is kept until you ask for it to be removed, or until TankTrouble bans the account.
 
