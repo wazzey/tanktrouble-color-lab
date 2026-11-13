@@ -4681,9 +4681,6 @@ export default {
         .bind(now - ONLINE_MS, now - IDLE_HIDE_MS)
         .first();
       const out = { online: c ? c.n : 0 };
-      if (adminOk(env, req)) {
-        return json(await publicOnline(env, now)); // (the owner's own tools, such as Seraph's online watcher: the same list, without counting as a copy online)
-      }
       if (req.method === "POST") {
         let b = null;
         try {

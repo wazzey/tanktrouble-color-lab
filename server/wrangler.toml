@@ -43,7 +43,7 @@ FORUM_RELEASE_POST = "1"   # a new GitHub release is posted as a reply on the Co
 FORUM_THREAD_EDIT = "0"   # off, as the thread is ColorLab's own now and no other login is kept to edit it
 FORUM_OWNER = "22849244,3887207"   # your forum account first (ColorLab: "mentions you" looks for its name), then rip; replies from either are not sent to Discord
 FORUM_THREADS = "475270"   # Color Lab's forum thread (Discord replies are posted here, and replies in it are sent to Discord)
-FITS_CHANNEL_ID = "1570123435227750591"   # #fits in Discord: the daily Fit of the day picks (with Pick, Shuffle, picture and Never buttons) and fits players post on the forum
+FITS_CHANNEL_ID = ""   # on hold; put back "1570123435227750591" to turn it on. #fits in Discord: the daily Fit of the day picks (with Pick, Shuffle, picture and Never buttons) and fits players post on the forum
 FIT_HOUR = "18"   # the UK hour Fit of the day is posted on the forum thread; the picks come an hour before
 TEAM_BADGES = '{"22849244":["Color Lab","The official Color Lab account"]}'   # who wears the Color Lab badge (v1.4.2+): player ID -> [label, hover text]
 
