@@ -210,84 +210,86 @@ export function hookPhaser() {
       try {
         if (this.game) {
           PAGE_GAMES.add(this.game);
-        }
-      } catch {} // (page themes recolour its buttons and lobby pictures)
-      // The garage is opening: if the game's saved copy of a tank's garage was made in the other mode
-      // (e.g. fetched by the game before your settings loaded), make it fetch a fresh one.
-      if (key === "Game") {
-        GAME_STATE = this.states && this.states.Game;
-        if (this.game) {
-          startMazePatterns(this.game);
-        }
-        try {
+        } // (page themes recolour its buttons and lobby pictures)
+        // The garage is opening: if the game's saved copy of a tank's garage was made in the other mode
+        // (e.g. fetched by the game before your settings loaded), make it fetch a fresh one.
+        if (key === "Game") {
+          GAME_STATE = this.states && this.states.Game;
+          if (this.game) {
+            startMazePatterns(this.game);
+          }
           mapPickNext();
-        } catch {}
-      }
-      if (
-        key === "Load" &&
-        this.game &&
-        this.game.parent &&
-        this.game.parent.closest &&
-        this.game.parent.closest(".garage")
-      ) {
-        const stale = loggedInIds().filter((id) => !!garageMode[id] !== garageAllOn(id));
-        if (stale.length) {
-          refreshTanks(stale, true);
         }
-      }
-      if (
-        key === "Main" &&
-        this.game &&
-        this.game.parent &&
-        this.game.parent.closest &&
-        this.game.parent.closest(".garage")
-      ) {
-        const st = this.states && this.states.Main;
-        watchGarageMain(st);
-        keepGarageTank(st);
-      }
-      if (key !== "Game") {
-        // TankTrouble makes a screen's pictures afresh (white), so they're themed before its first frame
-        applyPageOnCreate(this.states && this.states[key]);
-        pageBurst();
-      }
+        if (
+          key === "Load" &&
+          this.game &&
+          this.game.parent &&
+          this.game.parent.closest &&
+          this.game.parent.closest(".garage")
+        ) {
+          const stale = loggedInIds().filter((id) => !!garageMode[id] !== garageAllOn(id));
+          if (stale.length) {
+            refreshTanks(stale, true);
+          }
+        }
+        if (
+          key === "Main" &&
+          this.game &&
+          this.game.parent &&
+          this.game.parent.closest &&
+          this.game.parent.closest(".garage")
+        ) {
+          const st = this.states && this.states.Main;
+          watchGarageMain(st);
+          keepGarageTank(st);
+        }
+        if (key !== "Game") {
+          // TankTrouble makes a screen's pictures afresh (white), so they're themed before its first frame
+          applyPageOnCreate(this.states && this.states[key]);
+          pageBurst();
+        }
+      } catch {} // (a slip here must never stop the game changing screen)
       return r;
     };
   }
   const orig = Phaser.Loader.prototype.spritesheet;
   Phaser.Loader.prototype.spritesheet = function (key, url, ...rest) {
-    if (typeof key === "string" && /^box\d+$/.test(key)) {
-      garageGame = this.game ? new WeakRef(this.game) : null; // weak: a closed garage can still be freed
-      setTimeout(addGarageButton, 0);
-      if (key === "box15" && BOX15_IMG) {
-        url = BOX15_IMG;
+    try {
+      if (typeof key === "string" && /^box\d+$/.test(key)) {
+        garageGame = this.game ? new WeakRef(this.game) : null; // weak: a closed garage can still be freed
+        setTimeout(addGarageButton, 0);
+        if (key === "box15" && BOX15_IMG) {
+          url = BOX15_IMG;
+        }
+        if (GARAGE_PICS[key]) {
+          url = GARAGE_PICS[key];
+        } else if (+key.slice(3) >= 9001 && ASSET_MAP && ASSET_MAP.box1) {
+          url = ASSET_MAP.box1;
+        } // a Color Lab box still being drawn: the plain box for now
       }
-      if (GARAGE_PICS[key]) {
-        url = GARAGE_PICS[key];
-      } else if (+key.slice(3) >= 9001 && ASSET_MAP && ASSET_MAP.box1) {
-        url = ASSET_MAP.box1;
-      } // a Color Lab box still being drawn: the plain box for now
-    }
+    } catch {}
     return orig.call(this, key, url, ...rest);
   };
   const origImage = Phaser.Loader.prototype.image;
   Phaser.Loader.prototype.image = function (key, url, ...rest) {
-    if (typeof url === "string" && url.includes("ttcl=")) {
-      const m = /[?&]ttcl=([\w-]+)/.exec(url);
-      if (m) {
-        garagePicFor(m[1]);
-        const big = /^\/?assets\/images\/tankIcon\//.test(url),
-          w = +((/\.png@(\d+)/.exec(url) || [])[1] || 640);
-        const pic = big ? garageFrameFor(m[1], w) : GARAGE_PICS["i:" + m[1]];
-        if (pic) {
-          url = pic;
-        } else if (isCustomKey(m[1])) {
-          url = standInPic(m[1], big, w);
-          (bgPending[m[1]] = bgPending[m[1]] || []).push({ lk: key, big, w });
-          bgAdd(m[1], big);
-        } // not drawn yet: a plain stand-in (never the game's own, e.g. the Halloween paint), swapped once drawn
+    try {
+      if (typeof url === "string" && url.includes("ttcl=")) {
+        const m = /[?&]ttcl=([\w-]+)/.exec(url);
+        if (m) {
+          garagePicFor(m[1]);
+          const big = /^\/?assets\/images\/tankIcon\//.test(url),
+            w = +((/\.png@(\d+)/.exec(url) || [])[1] || 640);
+          const pic = big ? garageFrameFor(m[1], w) : GARAGE_PICS["i:" + m[1]];
+          if (pic) {
+            url = pic;
+          } else if (isCustomKey(m[1])) {
+            url = standInPic(m[1], big, w);
+            (bgPending[m[1]] = bgPending[m[1]] || []).push({ lk: key, big, w });
+            bgAdd(m[1], big);
+          } // not drawn yet: a plain stand-in (never the game's own, e.g. the Halloween paint), swapped once drawn
+        }
       }
-    }
+    } catch {} // (a slip here leaves the game's own picture)
     return origImage.call(this, key, url, ...rest);
   };
 }

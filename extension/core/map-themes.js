@@ -738,13 +738,15 @@ function patchProjectiles(obj) {
   P.__ttclShots = true;
   const orig = P.spawn;
   P.spawn = function (x, y, id, frame) {
-    if (this.__ttclBullet && this.__ttclBulletOrig) {
-      PIXI.Sprite.prototype.setTexture.call(this, this.__ttclBulletOrig);
-      if (this.__ttclScale) {
-        this.scale.set(this.__ttclScale[0], this.__ttclScale[1]);
+    try {
+      if (this.__ttclBullet && this.__ttclBulletOrig) {
+        PIXI.Sprite.prototype.setTexture.call(this, this.__ttclBulletOrig);
+        if (this.__ttclScale) {
+          this.scale.set(this.__ttclScale[0], this.__ttclScale[1]);
+        }
+        this.__ttclBullet = false;
       }
-      this.__ttclBullet = false;
-    }
+    } catch {}
     const r = orig.apply(this, arguments);
     try {
       bulletSkin(this, id, frame);
@@ -925,10 +927,12 @@ function patchMissiles(obj) {
   P.__ttclMissiles = true;
   const orig = P.spawn;
   P.spawn = function (...a) {
-    if (this.__ttclMsl && this.__ttclMslOrig) {
-      PIXI.Sprite.prototype.setTexture.call(this, this.__ttclMslOrig);
-      this.__ttclMsl = false;
-    } // (a reused missile starts as the game's own)
+    try {
+      if (this.__ttclMsl && this.__ttclMslOrig) {
+        PIXI.Sprite.prototype.setTexture.call(this, this.__ttclMslOrig);
+        this.__ttclMsl = false;
+      }
+    } catch {} // (a reused missile starts as the game's own)
     const r = orig.apply(this, a);
     try {
       missileSkin(this);
@@ -970,13 +974,15 @@ function patchMines(obj) {
   P.__ttclMines = true;
   const orig = P.spawn;
   P.spawn = function (...a) {
-    if (this.__ttclMine && this.__ttclMineOrig) {
-      PIXI.Sprite.prototype.setTexture.call(this, this.__ttclMineOrig);
-      if (this.__ttclScale) {
-        this.scale.set(this.__ttclScale[0], this.__ttclScale[1]);
+    try {
+      if (this.__ttclMine && this.__ttclMineOrig) {
+        PIXI.Sprite.prototype.setTexture.call(this, this.__ttclMineOrig);
+        if (this.__ttclScale) {
+          this.scale.set(this.__ttclScale[0], this.__ttclScale[1]);
+        }
+        this.__ttclMine = false;
       }
-      this.__ttclMine = false;
-    }
+    } catch {}
     const r = orig.apply(this, a);
     try {
       mineSkin(this);

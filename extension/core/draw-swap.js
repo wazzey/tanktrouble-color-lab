@@ -89,88 +89,90 @@ export function startDrawSwap() {
   picQueue = Promise.resolve();
   origDrawImage = CanvasRenderingContext2D.prototype.drawImage;
   CanvasRenderingContext2D.prototype.drawImage = function (img, ...a) {
-    if (img instanceof HTMLImageElement) {
-      let rep = drawSwap.get(img);
-      if (rep === undefined) {
-        const m = /[?&]ttcl=([\w-]+)/.exec(img.src || "");
-        rep = m ? m[1] : null;
-        drawSwap.set(img, rep);
-      }
-      const f = rep && artOf(rep);
-      // not drawn yet: ask for it, and the tank is redrawn when it's ready
-      if (rep && !f && !swapAsked.has(rep)) {
-        swapAsked.add(rep);
-        if (isRewardKey(rep)) {
-          trophyKeyArt(rep);
-        } else if (isCustomKey(rep)) {
-          getCustomArt(rep);
+    try {
+      if (img instanceof HTMLImageElement) {
+        let rep = drawSwap.get(img);
+        if (rep === undefined) {
+          const m = /[?&]ttcl=([\w-]+)/.exec(img.src || "");
+          rep = m ? m[1] : null;
+          drawSwap.set(img, rep);
         }
-      }
-      // ...and until then never the stand-in picture it's carried on (the game's Halloween pattern, or another item):
-      // a paint shows its main colour, an item nothing
-      if (rep && !f && isCustomKey(rep)) {
-        const pa = GX_PAINT[rep];
-        if (!pa || !pa.avg) {
+        const f = rep && artOf(rep);
+        // not drawn yet: ask for it, and the tank is redrawn when it's ready
+        if (rep && !f && !swapAsked.has(rep)) {
+          swapAsked.add(rep);
+          if (isRewardKey(rep)) {
+            trophyKeyArt(rep);
+          } else if (isCustomKey(rep)) {
+            getCustomArt(rep);
+          }
+        }
+        // ...and until then never the stand-in picture it's carried on (the game's Halloween pattern, or another item):
+        // a paint shows its main colour, an item nothing
+        if (rep && !f && isCustomKey(rep)) {
+          const pa = GX_PAINT[rep];
+          if (!pa || !pa.avg) {
+            return;
+          }
+          const r =
+            a.length === 2
+              ? [a[0], a[1], img.naturalWidth || 0, img.naturalHeight || 0]
+              : a.length === 4
+                ? a
+                : a.length === 8
+                  ? a.slice(4)
+                  : null;
+          if (!r) {
+            return;
+          }
+          const fs = this.fillStyle;
+          this.fillStyle = "#" + String(pa.avg).replace(/^0x/, "").padStart(6, "0");
+          this.fillRect(r[0], r[1], r[2], r[3]);
+          this.fillStyle = fs;
           return;
         }
-        const r =
-          a.length === 2
-            ? [a[0], a[1], img.naturalWidth || 0, img.naturalHeight || 0]
-            : a.length === 4
-              ? a
-              : a.length === 8
-                ? a.slice(4)
-                : null;
-        if (!r) {
-          return;
+        // a part mask right after a Color Lab paint (the game paints each part as: paint, then that part's shape):
+        // swap in the paint laid out for that part
+        if (!rep && this.globalCompositeOperation === "destination-atop") {
+          const pp = pendingPaint.get(this);
+          if (pp) {
+            pendingPaint.delete(this);
+            const part = partOfImg(img),
+              pc = part && partPaintFor(pp[0], part);
+            if (pc && pp[1].length === 4) {
+              this.globalCompositeOperation = "copy";
+              origDrawImage.call(this, pc, ...pp[1]);
+              this.globalCompositeOperation = "destination-atop";
+            }
+          }
         }
-        const fs = this.fillStyle;
-        this.fillStyle = "#" + String(pa.avg).replace(/^0x/, "").padStart(6, "0");
-        this.fillRect(r[0], r[1], r[2], r[3]);
-        this.fillStyle = fs;
-        return;
-      }
-      // a part mask right after a Color Lab paint (the game paints each part as: paint, then that part's shape):
-      // swap in the paint laid out for that part
-      if (!rep && this.globalCompositeOperation === "destination-atop") {
-        const pp = pendingPaint.get(this);
-        if (pp) {
-          pendingPaint.delete(this);
-          const part = partOfImg(img),
-            pc = part && partPaintFor(pp[0], part);
-          if (pc && pp[1].length === 4) {
-            this.globalCompositeOperation = "copy";
-            origDrawImage.call(this, pc, ...pp[1]);
-            this.globalCompositeOperation = "destination-atop";
+        if (f && !drawnArt.has(rep)) {
+          drawnArt.add(rep);
+        }
+        if (f && GX_PAINT[rep] && MAZE_TILE[rep]) {
+          if (this.globalCompositeOperation === "copy") {
+            pendingPaint.set(this, [rep, a]);
+          } else {
+            pendingPaint.delete(this);
+          }
+        }
+        if (f) {
+          const iw = img.naturalWidth || f.width,
+            ih = img.naturalHeight || f.height;
+          if (a.length === 2) {
+            return origDrawImage.call(this, f, a[0], a[1], iw, ih);
+          }
+          if (a.length === 4) {
+            return origDrawImage.call(this, f, ...a);
+          }
+          if (a.length === 8) {
+            const kx = f.width / iw,
+              ky = f.height / ih;
+            return origDrawImage.call(this, f, a[0] * kx, a[1] * ky, a[2] * kx, a[3] * ky, a[4], a[5], a[6], a[7]);
           }
         }
       }
-      if (f && !drawnArt.has(rep)) {
-        drawnArt.add(rep);
-      }
-      if (f && GX_PAINT[rep] && MAZE_TILE[rep]) {
-        if (this.globalCompositeOperation === "copy") {
-          pendingPaint.set(this, [rep, a]);
-        } else {
-          pendingPaint.delete(this);
-        }
-      }
-      if (f) {
-        const iw = img.naturalWidth || f.width,
-          ih = img.naturalHeight || f.height;
-        if (a.length === 2) {
-          return origDrawImage.call(this, f, a[0], a[1], iw, ih);
-        }
-        if (a.length === 4) {
-          return origDrawImage.call(this, f, ...a);
-        }
-        if (a.length === 8) {
-          const kx = f.width / iw,
-            ky = f.height / ih;
-          return origDrawImage.call(this, f, a[0] * kx, a[1] * ky, a[2] * kx, a[3] * ky, a[4], a[5], a[6], a[7]);
-        }
-      }
-    }
+    } catch {} // (a picture that can't be swapped is drawn as the game's own)
     return origDrawImage.call(this, img, ...a);
   };
 }

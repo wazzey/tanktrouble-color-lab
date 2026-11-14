@@ -647,7 +647,7 @@ export function mineRim(m, rim) {
   glFresh(game, tex.baseTexture);
   let sp = m.__ttclRim;
   if (!sp) {
-    sp = new PIXI.Sprite(tex);
+    sp = game.make.image(0, 0, tex); // (a Phaser image, as the game updates every child of a sprite and a bare PIXI sprite stops it)
     m.addChild(sp);
     m.__ttclRim = sp;
   } else if (sp.texture !== tex) {
