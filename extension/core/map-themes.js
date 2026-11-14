@@ -4,7 +4,6 @@ import {
   BULLET_STYLE,
   MAP_THEMES,
   SHIELD_COLOR,
-  addRim,
   altOnFloor,
   bulletArt,
   bulletAsked,
@@ -19,19 +18,17 @@ import {
   mapSheets,
   mapThemeList,
   mineRim,
-  mineTex,
-  missileTex,
   rimFor,
   tintNum,
   wallSym,
 } from "../content/maps.js";
 import { OBJ_CRATES } from "../content/maps-more.js";
-import { BULLET_MOTION, FACE_TRAVEL, glFresh, mazeParts } from "../content/maze-patterns.js";
+import { BULLET_MOTION, FACE_TRAVEL, glFresh } from "../content/maze-patterns.js";
 import { flatHex, toCss } from "../content/registries.js";
 import { loggedInIds, lookupById } from "./game-socket.js";
 import { laikaSkinChanged } from "./laika-look.js";
 import { SHARED, VIEW_REAL, getOverride, shareSee } from "./look-sharing.js";
-import { forgetMazeTanks, mazeFeature, mazeGame, mazePatternTick, patternSourceFor, perfOn } from "./maze.js";
+import { forgetMazeTanks, mazeGame, mazePatternTick, patternSourceFor, perfOn } from "./maze.js";
 import { mapT, pageForMaze } from "./page.js";
 import { SETTINGS, saveSettings } from "./storage.js";
 
@@ -801,118 +798,6 @@ function patchProjectiles(obj) {
     };
   }
 }
-function mineSkin(sprite) {
-  const id = sprite.playerId != null ? String(sprite.playerId) : null,
-    ov = id && getOverride(id),
-    parts = ov && mazeFeature() ? mazeParts(ov) : null,
-    v = parts && parts.turret;
-  if (!v) {
-    return;
-  }
-  const src = patternSourceFor(v);
-  if (!src) {
-    return;
-  } // (the pattern is still loading: this mine stays plain)
-  const game = sprite.game,
-    fr = game && mapFrame(game, "mine");
-  if (!fr) {
-    return;
-  }
-  const rimM = rimFor(v, MAP_FLOOR_NOW),
-    mk0 = v + "|" + (rimM ? rimM[0] + rimM[1] : "");
-  let tex = mineTex[mk0];
-  if (!tex) {
-    let base;
-    try {
-      base = game.cache.getBaseTexture("game");
-    } catch {}
-    const img = base && (base.__ttclMapOrig || base.source);
-    if (!img) {
-      return;
-    }
-    const c = document.createElement("canvas");
-    c.width = fr.w;
-    c.height = fr.h;
-    const g = c.getContext("2d"),
-      sw = src.width || 400,
-      sh = src.height || 240;
-    g.drawImage(src, sw * 0.3, sh * 0.25, sw * 0.4, sh * 0.5, 0, 0, fr.w, fr.h); // a piece of the pattern at about the turret's scale
-    g.globalCompositeOperation = "multiply";
-    g.drawImage(img, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h); // the game's shading
-    g.globalCompositeOperation = "destination-in";
-    g.drawImage(img, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h); // its exact shape
-    if (rimM) {
-      try {
-        addRim(
-          g,
-          fr.w,
-          fr.h,
-          (c2, x, y, ww, hh) => c2.drawImage(img, fr.x, fr.y, fr.w, fr.h, x, y, ww, hh),
-          rimM[0],
-          rimM[1],
-        );
-      } catch {}
-    }
-    tex = mineTex[mk0] = PIXI.Texture.fromCanvas(c);
-  }
-  glFresh(game, tex.baseTexture);
-  const w0 = sprite.width,
-    h0 = sprite.height;
-  sprite.__ttclMineOrig = sprite.__ttclMineOrig || sprite.texture;
-  sprite.__ttclScale = sprite.__ttclScale || [sprite.scale.x, sprite.scale.y];
-  PIXI.Sprite.prototype.setTexture.call(sprite, tex);
-  sprite.width = w0;
-  sprite.height = h0;
-  sprite.__ttclMine = true;
-  sprite.tint = 0xffffff;
-}
-function missileSkin(sprite) {
-  const id = sprite.playerId != null ? String(sprite.playerId) : null,
-    ov = id && getOverride(id),
-    parts = ov && mazeFeature() ? mazeParts(ov) : null,
-    v = parts && parts.turret;
-  if (!v) {
-    return;
-  }
-  const src = patternSourceFor(v);
-  if (!src) {
-    return;
-  } // (the pattern is still loading: this missile stays plain)
-  const game = sprite.game,
-    fr = game && mapFrame(game, sprite.frameName || "homingMissile");
-  if (!fr) {
-    return;
-  }
-  const key = v + "|" + fr.w + "x" + fr.h;
-  let tex = missileTex[key];
-  if (!tex) {
-    let base;
-    try {
-      base = game.cache.getBaseTexture("game");
-    } catch {}
-    const img = base && (base.__ttclMapOrig || base.source);
-    if (!img) {
-      return;
-    }
-    const c = document.createElement("canvas");
-    c.width = fr.w;
-    c.height = fr.h;
-    const g = c.getContext("2d"),
-      sw = src.width || 400,
-      sh = src.height || 240;
-    g.drawImage(src, sw * 0.35, sh * 0.2, sw * 0.3, sh * 0.6, 0, 0, fr.w, fr.h); // a piece of the pattern at about the turret's scale
-    g.globalCompositeOperation = "multiply";
-    g.drawImage(img, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h); // the game's shading
-    g.globalCompositeOperation = "destination-in";
-    g.drawImage(img, fr.x, fr.y, fr.w, fr.h, 0, 0, fr.w, fr.h); // its exact shape
-    tex = missileTex[key] = PIXI.Texture.fromCanvas(c);
-  }
-  glFresh(game, tex.baseTexture);
-  sprite.__ttclMslOrig = sprite.__ttclMslOrig || sprite.texture;
-  PIXI.Sprite.prototype.setTexture.call(sprite, tex);
-  sprite.__ttclMsl = true;
-  sprite.tint = 0xffffff;
-}
 function patchMissiles(obj) {
   const P = obj && Object.getPrototypeOf(obj);
   if (
@@ -927,30 +812,14 @@ function patchMissiles(obj) {
   P.__ttclMissiles = true;
   const orig = P.spawn;
   P.spawn = function (...a) {
-    try {
-      if (this.__ttclMsl && this.__ttclMslOrig) {
-        PIXI.Sprite.prototype.setTexture.call(this, this.__ttclMslOrig);
-        this.__ttclMsl = false;
-      }
-    } catch {} // (a reused missile starts as the game's own)
     const r = orig.apply(this, a);
-    try {
-      missileSkin(this);
-      for (const ms of [0, 40, 150, 400]) {
-        setTimeout(() => {
-          try {
-            if (this.__ttclMsl) {
-              this.tint = 0xffffff;
-            } else {
-              missileSkin(this);
-              if (!this.__ttclMsl) {
-                missileShow(this);
-              }
-            }
-          } catch {}
-        }, ms);
-      }
-    } catch {} // (the game tints it once the owner's details arrive)
+    for (const ms of [0, 40, 150, 400]) {
+      setTimeout(() => {
+        try {
+          missileShow(this);
+        } catch {}
+      }, ms);
+    } // (the game tints it once the owner's details arrive)
     return r;
   };
   if (typeof P.update === "function") {
@@ -958,7 +827,7 @@ function patchMissiles(obj) {
     P.update = function (...a) {
       const r = ou.apply(this, a);
       try {
-        if (this.visible && !this.__ttclMsl) {
+        if (this.visible) {
           missileShow(this);
         }
       } catch {}
@@ -974,33 +843,14 @@ function patchMines(obj) {
   P.__ttclMines = true;
   const orig = P.spawn;
   P.spawn = function (...a) {
-    try {
-      if (this.__ttclMine && this.__ttclMineOrig) {
-        PIXI.Sprite.prototype.setTexture.call(this, this.__ttclMineOrig);
-        if (this.__ttclScale) {
-          this.scale.set(this.__ttclScale[0], this.__ttclScale[1]);
-        }
-        this.__ttclMine = false;
-      }
-    } catch {}
     const r = orig.apply(this, a);
-    try {
-      mineSkin(this);
-      for (const ms of [0, 40, 150, 400]) {
-        setTimeout(() => {
-          try {
-            if (this.__ttclMine) {
-              this.tint = 0xffffff;
-            } else {
-              mineSkin(this);
-              if (!this.__ttclMine) {
-                mineShow(this);
-              }
-            }
-          } catch {}
-        }, ms);
-      }
-    } catch {} // (the game tints it once the owner's details arrive)
+    for (const ms of [0, 40, 150, 400]) {
+      setTimeout(() => {
+        try {
+          mineShow(this);
+        } catch {}
+      }, ms);
+    } // (the game tints it once the owner's details arrive)
     return r;
   };
   if (typeof P.update === "function") {
@@ -1008,7 +858,7 @@ function patchMines(obj) {
     P.update = function (...a) {
       const r = ou.apply(this, a);
       try {
-        if (this.visible && !this.__ttclMine) {
+        if (this.visible) {
           mineShow(this);
         }
       } catch {}
@@ -1046,14 +896,14 @@ function mineShow(m) {
   m.tint = nv;
   m.__ttclTintOut = nv;
   try {
-    mineRim(m, rimFor("0x" + nh.slice(1), fl));
-  } catch {}
+    mineRim(m, nv === c ? rimFor("0x" + nh.slice(1), fl) : null);
+  } catch {} // (a mine already lightened to show needs no edge as well)
 }
 function readOwnerTint(m) {
-  // the owner's turret colour as its tank shows it now (a team colour, say), or else the one the game gave it, which the
-  // game sometimes gives as text, '0x0d0208'
+  // the owner's turret colour as its tank shows it now (a team colour, say, or a pattern paint's main colour), or else
+  // the one the game gave it, which the game sometimes gives as text, '0x0d0208'
   const ov = m.playerId != null ? getOverride(String(m.playerId)) : null,
-    own = ov && ov.turret && !isPat(ov.turret) ? tintNum(ov.turret) : null;
+    own = ov && ov.turret ? tintNum(flatHex(ov.turret)) : null;
   return own != null ? own : tintNum(m.tint);
 }
 function patchTanks(obj) {

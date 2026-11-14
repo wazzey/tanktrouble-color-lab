@@ -360,21 +360,21 @@ export function altOnFloor(hex, floor, sameHue) {
   return "#" + best.map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 function readShadeOnFloor(hue, mx, mn, floor, lum) {
-  // the same hue and saturation, 10% lighter on a dark floor (darker on a light one) and then 5% more at a time, only
-  // until it shows. A colour that already shows stays as it is
+  // the same hue, 10% lighter on a dark floor (darker on a light one) and then 5% more at a time, only until it shows,
+  // a little softer so it stays a shade of its own colour. A colour that already shows stays as it is
   const fl = lum(floor),
     startL = (mx + mn) / 2,
     sat = mx - mn > 0.001 ? Math.min(1, (mx - mn) / (1 - Math.abs(2 * startL - 1))) : 0,
-    paint = (L) => {
+    paint = (L, soft) => {
       const k = (n) => (n + hue / 30) % 12,
-        a = sat * Math.min(L, 1 - L),
+        a = sat * soft * Math.min(L, 1 - L),
         f = (n) => L - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
       return [f(0), f(8), f(4)].map((v) => Math.round(v * 255));
     },
     shows = (c) =>
       Math.abs(lum(c) - fl) >= 0.25 || Math.hypot(c[0] - floor[0], c[1] - floor[1], c[2] - floor[2]) >= 150,
     hex = (c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
-  const own = paint(startL);
+  const own = paint(startL, 1);
   if (shows(own)) {
     return hex(own);
   }
@@ -385,7 +385,7 @@ function readShadeOnFloor(hue, mx, mn, floor, lum) {
   let last = own;
   for (const dir of [first, -first]) {
     for (let step = 0.1; step <= 0.61; step += 0.05) {
-      last = paint(Math.min(0.97, Math.max(0.03, startL + dir * step)));
+      last = paint(Math.min(0.97, Math.max(0.03, startL + dir * step)), 0.55);
       if (shows(last)) {
         return hex(last);
       }
@@ -593,10 +593,6 @@ export function wallSym(T, src, orig) {
 export const bulletTex = {},
   bulletReal = {},
   bulletAsked = new Set();
-// Mines in their owner's turret pattern (when that tank shows its turret pattern in the maze), same size and shape
-export const mineTex = {};
-// Homing missiles in their owner's turret pattern (the game tints them the turret colour, which is plain white for a patterned turret)
-export const missileTex = {};
 export function tintNum(t) {
   if (typeof t === "number") {
     return t;
