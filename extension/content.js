@@ -37,6 +37,7 @@ import { startAccountSync } from "./core/account-sync.js";
 import { startAdminPanel } from "./core/admin-panel.js";
 import { startAchievements } from "./core/achievements.js";
 import { startAnnouncements } from "./core/announcements.js";
+import { startCrashReports } from "./core/crash-reports.js";
 import { startCustomBoxArt } from "./core/custom-box-art.js";
 import { startDrawSwap } from "./core/draw-swap.js";
 import { startFeedback } from "./core/feedback.js";
@@ -67,6 +68,7 @@ import { startUpdates } from "./core/updates.js";
 
 if (!window.__ttColorLab) {
   startStorage();
+  startCrashReports();
   startLookSharing();
   startNetwork();
   startGarage();

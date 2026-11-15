@@ -264,6 +264,9 @@ async function ensureTables(env) {
       "CREATE TABLE IF NOT EXISTS fit_day (day TEXT PRIMARY KEY, picks TEXT NOT NULL, chosen INTEGER, link TEXT, msg TEXT, posted INTEGER NOT NULL DEFAULT 0)",
     ), // (each day's three Fit of the day picks, the one chosen and whether it's posted)
     env.DB.prepare("CREATE TABLE IF NOT EXISTS fit_never (pid TEXT PRIMARY KEY)"), // (tanks never to feature)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS crashes (day TEXT NOT NULL, sig TEXT NOT NULL, kind TEXT NOT NULL, ver TEXT, msg TEXT, loc TEXT, n INTEGER NOT NULL, PRIMARY KEY (day, sig))",
+    ), // (crash reports from Color Lab: what broke and where, counted per day)
     env.DB.prepare("CREATE INDEX IF NOT EXISTS verified_kh ON verified (keyhash)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS looks_kh ON looks (keyhash)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS feedback_kh ON feedback (keyhash)"),
@@ -345,7 +348,7 @@ const ipHash = (env, req) =>
   ); // (changes every day: can't be followed from one day to the next)
 
 // ---------- alerts: kept for the admin page, and sent to the owner's Discord (or similar) webhook if one is set ----------
-const URGENT = new Set(["quarantine", "flood", "spam", "admin lockout", "urgent test"]); // (only these ping you; everything else is posted quietly)
+const URGENT = new Set(["quarantine", "flood", "spam", "admin lockout", "urgent test", "crash", "tanktrouble update"]); // (only these ping you; everything else is posted quietly)
 async function alert(env, kind, text) {
   try {
     await env.DB.batch([
@@ -364,17 +367,18 @@ async function alert(env, kind, text) {
     content: (who ? "<@" + who + "> 🚨 " : "") + "**Color Lab " + kind + "**: " + String(text).slice(0, 1800),
     allowed_mentions: { users: who ? [who] : [] },
   });
-  if (env.DISCORD_BOT_TOKEN && env.ALERT_CHANNEL_ID) {
+  const channel =
+    (kind === "crash" && env.CRASH_CHANNEL_ID) ||
+    ((kind === "tanktrouble update" || kind === "store") && env.UPDATES_CHANNEL_ID) ||
+    env.ALERT_CHANNEL_ID; // (crash reports to #crashes, updates to #updates, everything else to #logs)
+  if (env.DISCORD_BOT_TOKEN && channel) {
     let why; // (through the bot, into your logs channel; if Discord says no, the reason is noted on the admin page)
     try {
-      const r = await fetch(
-        "https://discord.com/api/v10/channels/" + String(env.ALERT_CHANNEL_ID).trim() + "/messages",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bot " + String(env.DISCORD_BOT_TOKEN).trim() },
-          body: msg,
-        },
-      );
+      const r = await fetch("https://discord.com/api/v10/channels/" + String(channel).trim() + "/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bot " + String(env.DISCORD_BOT_TOKEN).trim() },
+        body: msg,
+      });
       if (r.ok) {
         return;
       }
@@ -2549,6 +2553,118 @@ async function applyLookExpiry(env) {
     }
   } // (open screens drop them at once; past 100, on their next refresh)
 }
+// Crash reports from Color Lab (an error in its own code, or the game stopping while it runs): counted per day, and the
+// first of each kind in a day pings you in #logs, at most 10 a day
+async function noteCrash(env, req, ctx) {
+  let b;
+  try {
+    b = await req.json();
+  } catch {
+    return json({ error: "bad json" }, 400);
+  }
+  const kind = b && (b.kind === "error" || b.kind === "freeze") ? b.kind : null;
+  if (!kind) {
+    return json({ error: "bad kind" }, 400);
+  }
+  await ensureTables(env);
+  const ver = String(req.headers.get("X-TTCL-Version") || "?").slice(0, 20),
+    msg = String(b.msg || "").slice(0, 200),
+    loc = String(b.where || "").slice(0, 200),
+    sig = kind + "|" + ver + "|" + msg + "|" + loc,
+    day = new Date().toISOString().slice(0, 10);
+  const r = await env.DB.prepare(
+    "INSERT INTO crashes (day, sig, kind, ver, msg, loc, n) VALUES (?, ?, ?, ?, ?, ?, 1) ON CONFLICT (day, sig) DO UPDATE SET n = n + 1 RETURNING n",
+  )
+    .bind(day, sig, kind, ver, msg, loc)
+    .first();
+  if (r && r.n === 1) {
+    const today = await env.DB.prepare("SELECT COUNT(*) AS n FROM crashes WHERE day = ?").bind(day).first();
+    if (today && today.n <= 10) {
+      ctx.waitUntil(
+        alert(
+          env,
+          "crash",
+          (kind === "freeze" ? "🧊 The game froze" : "💥 An error") +
+            " in Color Lab v" +
+            ver +
+            ": " +
+            msg +
+            (loc ? "\nat " + loc : "") +
+            "\n(more of the same today are only counted: see the weekly summary)",
+        ),
+      );
+    }
+  }
+  return json({ ok: true });
+}
+// TankTrouble's own updates: its release name (shown on every page) checked every 10 minutes, and a ping in #logs when it
+// changes, so Color Lab can be checked against the new version
+async function ttReleaseWatch(env) {
+  if (new Date().getUTCMinutes() % 10 !== 3) {
+    return;
+  }
+  let rel = null;
+  try {
+    const res = await fetch("https://tanktrouble.com/", {
+      headers: { "User-Agent": "ttcl-share (Color Lab look server)" },
+    });
+    rel = (/RELEASE-[\d-]+/.exec(await res.text()) || [])[0] || null;
+  } catch {}
+  if (!rel) {
+    return;
+  }
+  const was = await env.DB.prepare("SELECT k FROM alerted WHERE k LIKE 'ttrel:%'").first();
+  if (was && was.k === "ttrel:" + rel) {
+    return;
+  }
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM alerted WHERE k LIKE 'ttrel:%'"),
+    env.DB.prepare("INSERT INTO alerted (k, at) VALUES (?, ?)").bind("ttrel:" + rel, Date.now()),
+  ]);
+  if (was) {
+    await alert(
+      env,
+      "tanktrouble update",
+      "TankTrouble updated: " + was.k.slice(6) + " → " + rel + ". Worth checking Color Lab on it.",
+    );
+  } // (the first check only notes the version live now)
+}
+// Monday mornings: the week in #logs
+async function weeklySummary(env) {
+  const now = Date.now(),
+    week = now - 7 * DAY,
+    since = new Date(week).toISOString().slice(0, 10),
+    count = async (sql, ...args) => {
+      try {
+        const r = await env.DB.prepare(sql)
+          .bind(...args)
+          .first();
+        return (r && r.n) || 0;
+      } catch {
+        return 0;
+      }
+    };
+  const lines = [
+    "Copies used this week: " + (await count("SELECT COUNT(*) AS n FROM presence WHERE last > ?", week)),
+    "New copies: " + (await count("SELECT COUNT(*) AS n FROM presence WHERE first > ?", week)),
+    "Looks shared: " +
+      (await count("SELECT COUNT(*) AS n FROM looks")) +
+      " (" +
+      (await count("SELECT COUNT(*) AS n FROM looks WHERE updated > ?", week)) +
+      " changed this week)",
+    "Teams: " + (await count("SELECT COUNT(*) AS n FROM teams")),
+    "Feedback messages: " + (await count("SELECT COUNT(*) AS n FROM feedback WHERE at > ?", week)),
+    "Crash reports: " +
+      (await count("SELECT COALESCE(SUM(n), 0) AS n FROM crashes WHERE day >= ? AND kind = 'error'", since)) +
+      " errors, " +
+      (await count("SELECT COALESCE(SUM(n), 0) AS n FROM crashes WHERE day >= ? AND kind = 'freeze'", since)) +
+      " freezes",
+  ];
+  await env.DB.prepare("DELETE FROM crashes WHERE day < ?")
+    .bind(new Date(now - 60 * DAY).toISOString().slice(0, 10))
+    .run();
+  await alert(env, "weekly", "📊 **The week in Color Lab**\n" + lines.join("\n"));
+}
 // With a Chrome Web Store page, the forum reply follows the store rather than GitHub: every 10 minutes the server asks the
 // store which version it gives the public (the same update check Chrome itself uses). An upload still in review changes
 // nothing; once a newer version is live, ColorLab replies on the thread with that version's notes from the
@@ -2590,6 +2706,7 @@ async function releaseStoreCheck(env) {
   ) {
     return;
   } // (already on the forum)
+  await alert(env, "store", "Color Lab " + tag + " is live on the Chrome Web Store: copies update by themselves");
   if (live.split(".").length > 3) {
     await env.DB.prepare("INSERT OR REPLACE INTO alerted (k, at) VALUES (?, ?)")
       .bind("forumrel:" + tag, Date.now())
@@ -4126,10 +4243,14 @@ export default {
       await releaseStoreCheck(env);
       await fitTick(env);
       await applyLookExpiry(env);
+      await ttReleaseWatch(env);
       await forumWatch(env);
       await new Promise((r) => setTimeout(r, 30000));
       return forumWatch(env);
     } // (every minute: only the forum watch, checked twice - at the start and half a minute later)
+    if (new Date().getUTCDay() === 1) {
+      await weeklySummary(env);
+    } // (Monday mornings: the week in #logs)
     if (env.PROVEN_ONLY === "1") {
       const un =
         "SELECT pid FROM looks WHERE pid NOT IN (SELECT l.pid FROM looks l JOIN verified v ON v.pid = l.pid AND v.keyhash = l.keyhash)";
@@ -4811,6 +4932,15 @@ export default {
     if (url.pathname === "/github" && req.method === "POST") {
       return githubRelease(env, req, ctx);
     } // (GitHub tells the server when a release is published) // (Discord's Interactions Endpoint URL)
+    if (url.pathname === "/v1/crash") {
+      if (req.method !== "POST") {
+        return json({ error: "post only" }, 405);
+      }
+      if (await slowDown(env, req, "write", ctx)) {
+        return json({ error: "slow down" }, 429);
+      }
+      return noteCrash(env, req, ctx);
+    }
     if (url.pathname === "/v1/feedback" || url.pathname === "/v1/feedback/mine") {
       if (req.method !== "POST") {
         return json({ error: "post only" }, 405);

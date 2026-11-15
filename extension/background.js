@@ -213,6 +213,18 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
     // the owner's copy: recent server alerts
     url = SHARE_BASE + "/v1/alerts";
     opt = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: m.key }) };
+  } else if (m.op === "crash" && ["error", "freeze"].includes(m.kind)) {
+    // a crash report: what broke and where, with no key or player in it
+    url = SHARE_BASE + "/v1/crash";
+    opt = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: m.kind,
+        msg: String(m.msg || "").slice(0, 200),
+        where: String(m.where || "").slice(0, 200),
+      }),
+    };
   } else if (m.op === "online" && /^[0-9a-f]{64}$/.test(String(m.key || ""))) {
     // how many Color Lab players are online (and who, for the owner's copy)
     url = SHARE_BASE + "/v1/online";
@@ -432,6 +444,36 @@ function ttMark() {
   try {
     chrome.storage.session.set({ ttOpen: true });
   } catch {}
+  if (FROM_STORE && Date.now() - updateAsked > 3 * 3600000) {
+    updateAsked = Date.now();
+    chrome.runtime.requestUpdateCheck().catch(() => {});
+  } // (TankTrouble opened: ask the Web Store for a new version now, at most every 3 hours)
+}
+// A new version from the Chrome Web Store: switched to at once when no TankTrouble tab is open, otherwise when the last
+// one closes, with a note on the page meanwhile (Chrome itself waits for a restart, as the live connection keeps
+// Color Lab busy)
+let updateAsked = 0,
+  updateReady = false;
+chrome.runtime.onUpdateAvailable.addListener(() => {
+  updateReady = true;
+  applyUpdateWhenFree(true);
+});
+async function applyUpdateWhenFree(tell) {
+  if (!updateReady) {
+    return;
+  }
+  try {
+    const open = await chrome.tabs.query({ url: ["https://tanktrouble.com/*", "https://*.tanktrouble.com/*"] });
+    if (!open.length) {
+      chrome.runtime.reload();
+      return;
+    }
+    if (tell) {
+      for (const tab of open) {
+        chrome.tabs.sendMessage(tab.id, { type: "updateReady" }).catch(() => {});
+      }
+    }
+  } catch {}
 }
 async function ttGone() {
   try {
@@ -458,7 +500,10 @@ async function ttGone() {
   } catch {}
 }
 chrome.tabs.onRemoved.addListener(() => {
-  setTimeout(ttGone, 300);
+  setTimeout(() => {
+    ttGone();
+    applyUpdateWhenFree();
+  }, 300);
 });
 chrome.tabs.onUpdated.addListener((id, ch) => {
   if (ch.url && !/^https:\/\/([\w-]+\.)?tanktrouble\.com\//.test(ch.url)) {

@@ -218,6 +218,13 @@ export async function checkUpdate(force) {
 
 export function startUpdates() {
   EXT_VER = document.documentElement.dataset.ttclVer || ""; // this copy's version (set by bridge.js)
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toPage" || d.type !== "updateReady") {
+      return;
+    }
+    toast("Color Lab update ready ✨ It finishes when you close TankTrouble (or restart Chrome)", false, 12000);
+  });
   UPDATE_STEPS =
     '<div style="font-size:12px;color:#aaa;margin:6px 0 0;line-height:1.55">' +
     [

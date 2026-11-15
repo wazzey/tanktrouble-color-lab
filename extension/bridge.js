@@ -486,6 +486,8 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
       toPage({ type: "teamInvite", invite: m.invite });
     } else if (m && m.type === "teamNews" && alive()) {
       toPage({ type: "teamNews", ids: m.ids });
+    } else if (m && m.type === "updateReady" && alive()) {
+      toPage({ type: "updateReady" });
     }
   });
 
