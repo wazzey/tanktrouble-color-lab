@@ -2707,12 +2707,6 @@ async function releaseStoreCheck(env) {
     return;
   } // (already on the forum)
   await alert(env, "store", "Color Lab " + tag + " is live on the Chrome Web Store: copies update by themselves");
-  if (live.split(".").length > 3) {
-    await env.DB.prepare("INSERT OR REPLACE INTO alerted (k, at) VALUES (?, ?)")
-      .bind("forumrel:" + tag, Date.now())
-      .run();
-    return;
-  } // (a fix like 1.4.9.1 goes out quietly, with no forum reply)
   const lines = [];
   for (const branch of [tag, "main"]) {
     try {

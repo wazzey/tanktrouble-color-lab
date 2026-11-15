@@ -2,10 +2,15 @@
 // New installs get the tutorial (garage or panel, then the other one if they want). People who already had Color Lab
 // only get "What's new" for the things added since the version they last saw. Progress is saved (tt_tutorial), and
 // the backup copy keeps it through a reinstall. The ? buttons in the panel and the garage replay any of it.
-export const TUT_VER = 19,
-  TUT_LABEL = "v1.4.9";
+export const TUT_VER = 20,
+  TUT_LABEL = "v1.4.9.1";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
+  [20, "🧊", "<b>No more freezes</b>: the game no longer freezes when a mine is placed on some maps"],
+  [20, "💣", "<b>Mines and missiles</b>: in their owner's turret colour, lightened just enough to see on dark maps"],
+  [20, "⭐", "<b>TTOC star signs</b>: a Stars version of every TTOC sign, plus Galaxy Sparkles and Two-Tone"],
+  [20, "📰", "<b>News posts</b>: readable again with page themes on"],
+  [20, "🔄", "<b>Faster updates</b>: a new version applies as soon as you close TankTrouble"],
   [
     1,
     "🚜",
