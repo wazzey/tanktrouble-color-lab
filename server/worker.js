@@ -2873,6 +2873,69 @@ async function discordInteraction(env, req, ctx) {
   if (/^fit(pick|now|shuffle|pic|never|link):/.test(id)) {
     return fitAction(env, ctx, i, id, reply);
   }
+  if (i.type === 3 && /^ghreply:\d+$/.test(id)) {
+    return reply({
+      type: 9,
+      data: {
+        custom_id: "ghsend:" + id.slice(8),
+        title: "Reply on GitHub issue #" + id.slice(8),
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 4,
+                custom_id: "text",
+                style: 2,
+                label: "Your reply (posted on the issue as you)",
+                min_length: 1,
+                max_length: 4000,
+                required: true,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  }
+  if (i.type === 5 && /^ghsend:\d+$/.test(id)) {
+    const num = id.slice(7),
+      text = String(((((i.data.components || [])[0] || {}).components || [])[0] || {}).value || "").slice(0, 4000);
+    if (!env.GITHUB_TOKEN) {
+      return reply({
+        type: 4,
+        data: { content: "❌ Not posted: no GITHUB_TOKEN secret on the server.\n\n" + text, flags: 64 },
+      });
+    }
+    const r = await fetch("https://api.github.com/repos/wazzey/tanktrouble-color-lab/issues/" + num + "/comments", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + String(env.GITHUB_TOKEN).trim(),
+        Accept: "application/vnd.github+json",
+        "User-Agent": "ttcl-share",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ body: text }),
+    }).catch((e) => ({ ok: false, status: 0, text: async () => String((e && e.message) || e) }));
+    if (r.ok) {
+      const j = await r.json().catch(() => ({}));
+      return reply({
+        type: 4,
+        data: {
+          content: "✅ **Replied on #" + num + "**" + (j.html_url ? " <" + j.html_url + ">" : "") + "\n>>> " + text,
+          allowed_mentions: { parse: [] },
+        },
+      });
+    }
+    return reply({
+      type: 4,
+      data: {
+        content: "❌ Not posted on #" + num + ": " + r.status + " " + (await r.text()).slice(0, 200) + "\n\n" + text,
+        flags: 64,
+        allowed_mentions: { parse: [] },
+      },
+    });
+  }
   return reply({ type: 4, data: { content: "Unknown action.", flags: 64 } });
 }
 
@@ -3686,8 +3749,10 @@ const readAttachment = (ws) => {
 // The newest release on GitHub, asked for at most once an hour (kept in Cloudflare's cache), so every Color Lab
 // can check for updates without each one hitting GitHub (or needing permission to talk to it).
 const RELEASES = "https://api.github.com/repos/wazzey/tanktrouble-color-lab/releases/latest";
-// GitHub webhook (your Color Lab repo > Settings > Webhooks, "Releases" events, secret = GITHUB_WEBHOOK_SECRET): when a release is
-// published, the update check knows at once and #logs is told. Signed by GitHub, so nobody else can fake a release.
+// GitHub webhook (your Color Lab repo > Settings > Webhooks, "Releases" and "Issues" and "Issue comments" events, secret =
+// GITHUB_WEBHOOK_SECRET): when a release is published, the update check knows at once and #logs is told; a new issue, or
+// someone else's reply on one, pings you in GITHUB_CHANNEL_ID with a Reply button (answered on GitHub as you, with the
+// GITHUB_TOKEN secret). Signed by GitHub, so nobody else can fake one.
 async function githubRelease(env, req, ctx) {
   const secret = String(env.GITHUB_WEBHOOK_SECRET || "").trim();
   if (!secret) {
@@ -3727,6 +3792,55 @@ async function githubRelease(env, req, ctx) {
     b = JSON.parse(raw);
   } catch {
     return json({ error: "bad json" }, 400);
+  }
+  if ((ev === "issues" || ev === "issue_comment") && b.issue) {
+    const who = String((b.sender && b.sender.login) || "someone"),
+      opened = ev === "issues" && (b.action === "opened" || b.action === "reopened"),
+      replied = ev === "issue_comment" && b.action === "created" && who !== "wazzey";
+    if (opened || replied) {
+      const text = String((replied ? b.comment && b.comment.body : b.issue.body) || "")
+        .replace(/\s+/g, " ")
+        .slice(0, 300);
+      const mention = String(env.ALERT_MENTION || "").trim(),
+        ping = /^\d{15,22}$/.test(mention) ? "<@" + mention + "> " : "",
+        line =
+          (replied
+            ? "💬 **New reply** from "
+            : b.action === "reopened"
+              ? "🔁 **Issue reopened** by "
+              : "🐛 **New issue** from ") +
+          who +
+          ": **#" +
+          b.issue.number +
+          " " +
+          String(b.issue.title || "").slice(0, 120) +
+          "**" +
+          (text ? "\n> " + text : "") +
+          "\n<" +
+          String((replied && b.comment && b.comment.html_url) || b.issue.html_url || "") +
+          ">";
+      ctx.waitUntil(
+        env.GITHUB_CHANNEL_ID
+          ? discordPost(env, "/channels/" + String(env.GITHUB_CHANNEL_ID).trim() + "/messages", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                content: ping + line,
+                allowed_mentions: { users: ping ? [mention] : [] },
+                components: [
+                  {
+                    type: 1,
+                    components: [
+                      { type: 2, style: 1, label: "Reply on GitHub", custom_id: "ghreply:" + b.issue.number },
+                    ],
+                  },
+                ],
+              }),
+            })
+          : alert(env, "github issue", line),
+      );
+    }
+    return json({ ok: true });
   }
   if (ev !== "release" || !b.release) {
     return json({ ok: true, ignored: true });

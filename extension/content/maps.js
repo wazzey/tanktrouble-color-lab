@@ -361,13 +361,15 @@ export function altOnFloor(hex, floor, sameHue) {
 }
 function readShadeOnFloor(hue, mx, mn, floor, lum) {
   // the same hue, 10% lighter on a dark floor (darker on a light one) and then 5% more at a time, only until it shows,
-  // a little softer so it stays a shade of its own colour. A colour that already shows stays as it is
+  // a little softer so it stays a shade of its own colour. A near-black or near-white one keeps its faint tint as it is
+  // (just a touch stronger) rather than having it blown up into a bright colour. A colour that already shows stays
+  // as it is
   const fl = lum(floor),
     startL = (mx + mn) / 2,
     sat = mx - mn > 0.001 ? Math.min(1, (mx - mn) / (1 - Math.abs(2 * startL - 1))) : 0,
     paint = (L, soft) => {
       const k = (n) => (n + hue / 30) % 12,
-        a = sat * soft * Math.min(L, 1 - L),
+        a = soft === null ? Math.min(mx - mn, L, 1 - L) : sat * soft * Math.min(L, 1 - L),
         f = (n) => L - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
       return [f(0), f(8), f(4)].map((v) => Math.round(v * 255));
     },
@@ -382,11 +384,15 @@ function readShadeOnFloor(hue, mx, mn, floor, lum) {
   if (fl > 0.35 && fl < 0.65) {
     first = lum(own) >= fl ? 1 : -1;
   } // (a mid-tone floor: away from it, the way the colour already leans)
+  const soft = mx - mn < 0.12 ? null : 0.55;
   let last = own;
   for (const dir of [first, -first]) {
     for (let step = 0.1; step <= 0.61; step += 0.05) {
-      last = paint(Math.min(0.97, Math.max(0.03, startL + dir * step)), 0.55);
+      last = paint(Math.min(0.97, Math.max(0.03, startL + dir * step)), soft);
       if (shows(last)) {
+        if (soft === null && step > 0.1) {
+          return hex(paint(Math.min(0.97, Math.max(0.03, startL + dir * (step - 0.05))), soft));
+        } // (a near-black or near-white one stops a step short, a shade nearer its own colour)
         return hex(last);
       }
     }
