@@ -42,8 +42,9 @@ export function renderRequestTab() {
 <b>Request an item</b>
 <small class="mzsub">Try your own accessory on your tank, then send it to be added to Color Lab for everyone. Your picture only shows on your screen until it's approved.</small>
 <div class="mzseg" id="reqSlots"></div>
-<div class="row" style="gap:6px;margin:4px 0"><button class="small" id="reqPick">📁 Upload picture</button><button class="small grey" id="reqTemplate" title="A plain white tank (640 × 384) to draw your item on in any art app. Hide the tank before saving, and upload the picture at the same size: it lands exactly where you drew it">⬇ Tank</button><span class="status" id="reqPicMsg" style="margin:0">A PNG with a see-through background works best</span></div>
-<input type="file" id="reqFile" accept="image/png,image/webp,image/gif" hidden>
+<div class="row" style="gap:6px;margin:4px 0"><button class="small" id="reqPick">📁 Upload picture</button><button class="small grey" id="reqTemplate" title="A plain white tank (640 × 384) to draw your item on in any art app. Hide the tank before saving, and upload the picture at the same size: it lands exactly where you drew it">⬇ Tank</button></div>
+<div class="status" id="reqPicMsg" style="margin:0 0 4px">A see-through background works best (a plain one is removed for you)</div>
+<input type="file" id="reqFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 <canvas id="reqEdit" width="640" height="384" style="display:block;width:100%;aspect-ratio:640/384;background:radial-gradient(ellipse at center,rgba(66,127,255,.25),transparent 70%);border:1px solid #333;border-radius:8px;cursor:grab;touch-action:none"></canvas>
 <small class="mzsub" style="margin-top:3px">Drag to move · scroll to resize</small>
 <div class="row" style="gap:6px"><span class="minilbl">Size</span><input type="range" id="reqSize" min="0.05" max="4" step="0.01" style="flex:1;min-width:0"><span class="minilbl">Turn</span><input type="range" id="reqTurn" min="-180" max="180" step="1" style="flex:1;min-width:0"><button class="small grey" id="reqReset" title="Back to where this slot's items sit">↺</button></div>
@@ -179,15 +180,15 @@ function readRequestPicture(file) {
   if (!file) {
     return;
   }
-  if (!/^image\/(png|webp|gif)$/.test(file.type) || file.size > 4e6) {
-    msg.textContent = "Use a PNG (or WebP) under 4 MB";
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type) || file.size > 4e6) {
+    msg.textContent = "Use a PNG, JPG or WebP under 4 MB";
     return;
   }
   const fr = new FileReader();
   fr.onload = () => {
     const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, 512 / Math.max(img.width, img.height)),
+    img.onload = async () => {
+      const k = Math.min(1, 640 / Math.max(img.width, img.height)),
         c = document.createElement("canvas");
       c.width = Math.max(1, Math.round(img.width * k));
       c.height = Math.max(1, Math.round(img.height * k));
@@ -200,17 +201,30 @@ function readRequestPicture(file) {
           clear++;
         }
       }
-      REQ.pic = c.toDataURL("image/png");
-      REQ.img = c;
-      if (img.width >= 600 && Math.abs(img.width / img.height - 640 / 384) < 0.02) {
+      const solid = clear < (data.length / 4) * 0.05,
+        onTank =
+          Math.abs(img.width / img.height - 640 / 384) < 0.03 &&
+          (await applyTankCut(g, c.width, c.height).catch(() => false));
+      if (solid) {
+        applyBackgroundCut(g, c.width, c.height);
+      }
+      const layer = onTank || (img.width % 640 === 0 && img.width / 640 === img.height / 384),
+        pic = layer ? c : readCroppedPicture(c, g);
+      REQ.pic = pic.toDataURL("image/png");
+      REQ.img = pic;
+      if (layer) {
         REQ.x = 320;
         REQ.y = 192;
         REQ.turn = 0;
         REQ.size = 640 / c.width;
       } else {
-        REQ.size = Math.round((150 / Math.max(c.width, c.height)) * 100) / 100;
-      } // (drawn on the tank template: it goes exactly where it was drawn)
-      msg.textContent = clear < (data.length / 4) * 0.05 ? "Tip: a see-through background looks better" : "";
+        REQ.size = Math.round((150 / Math.max(pic.width, pic.height)) * 100) / 100;
+      } // (drawn on the tank template at its size: it goes exactly where it was drawn)
+      msg.textContent = onTank
+        ? "Tank removed: just your item is kept, where you drew it. White, grey or black parts over the tank go too"
+        : solid
+          ? "Background removed. If it took too much, use a PNG with a see-through background"
+          : "";
       applyRequestControls();
       drawRequestPreview();
     };
@@ -220,6 +234,135 @@ function readRequestPicture(file) {
     img.src = String(fr.result);
   };
   fr.readAsDataURL(file);
+}
+
+// a picture of the template tank wearing the item (drawn in an art app or by an AI): the tank is taken out, leaving the
+// item where it was drawn. Resolves false when the picture isn't the template tank
+async function applyTankCut(ctx, width, height) {
+  const look = REQ.look || (await readPreviewLook(await getAssetMap())),
+    tank = document.createElement("canvas"),
+    fit = document.createElement("canvas");
+  tank.width = 640;
+  tank.height = 384;
+  drawTankIcon(tank, "#ffffff", "#ffffff", "#ffffff", look.P, {});
+  fit.width = width;
+  fit.height = height;
+  const fitCtx = fit.getContext("2d", { willReadFrequently: true });
+  fitCtx.filter = "blur(2px)"; // (a little wider than the tank, for the edge round it)
+  fitCtx.drawImage(tank, 0, 0, width, height);
+  const shape = fitCtx.getImageData(0, 0, width, height).data,
+    pic = ctx.getImageData(0, 0, width, height),
+    px = pic.data,
+    corner = px[3] > 200 ? [px[0], px[1], px[2]] : null, // (the background's colour, when it has one)
+    plain = (at) => Math.max(px[at], px[at + 1], px[at + 2]) - Math.min(px[at], px[at + 1], px[at + 2]) <= 20;
+  let inside = 0,
+    grey = 0;
+  for (let i = 0; i < shape.length; i += 4) {
+    if (shape[i + 3] > 200) {
+      inside++;
+      if (px[i + 3] > 200 && plain(i)) {
+        grey++;
+      }
+    }
+  }
+  if (!inside || grey < inside * 0.6) {
+    return false;
+  }
+  for (let i = 0; i < shape.length; i += 4) {
+    const nearBack =
+      corner && Math.abs(px[i] - corner[0]) + Math.abs(px[i + 1] - corner[1]) + Math.abs(px[i + 2] - corner[2]) < 230;
+    if (shape[i + 3] > 8 && (plain(i) || nearBack)) {
+      px[i + 3] = 0;
+    }
+  }
+  ctx.putImageData(pic, 0, 0);
+  return true;
+}
+
+// just the item, without the empty space round it, so it's centred where it's placed
+function readCroppedPicture(canvas, ctx) {
+  const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let left = canvas.width,
+    top = canvas.height,
+    right = -1,
+    bottom = -1;
+  for (let i = 0; i < canvas.height; i++) {
+    for (let j = 0; j < canvas.width; j++) {
+      if (px[(i * canvas.width + j) * 4 + 3] > 20) {
+        left = Math.min(left, j);
+        right = Math.max(right, j);
+        top = Math.min(top, i);
+        bottom = Math.max(bottom, i);
+      }
+    }
+  }
+  if (right < 0) {
+    return canvas;
+  }
+  const out = document.createElement("canvas");
+  out.width = right - left + 1;
+  out.height = bottom - top + 1;
+  out.getContext("2d").drawImage(canvas, -left, -top);
+  return out;
+}
+
+// a picture with no see-through parts (a plain colour, or a checked pattern drawn in): the background joined to its edges is cleared
+function applyBackgroundCut(ctx, width, height) {
+  const pic = ctx.getImageData(0, 0, width, height),
+    px = pic.data,
+    corner = [px[0], px[1], px[2]],
+    seen = new Uint8Array(width * height),
+    todo = [];
+  const isNear = (at, range) => {
+    const gap = Math.abs(px[at * 4] - corner[0]) + Math.abs(px[at * 4 + 1] - corner[1]) + Math.abs(px[at * 4 + 2] - corner[2]);
+    return gap < range;
+  };
+  const isBackground = (at) => {
+    const red = px[at * 4],
+      green = px[at * 4 + 1],
+      blue = px[at * 4 + 2],
+      lightGrey = Math.max(red, green, blue) - Math.min(red, green, blue) <= 14 && Math.min(red, green, blue) >= 170;
+    return lightGrey || isNear(at, 40);
+  };
+  for (let i = 0; i < width; i++) {
+    todo.push(i, i + (height - 1) * width);
+  }
+  for (let i = 0; i < height; i++) {
+    todo.push(i * width, i * width + width - 1);
+  }
+  while (todo.length) {
+    const at = todo.pop();
+    if (seen[at] || !isBackground(at)) {
+      continue;
+    }
+    seen[at] = 1;
+    px[at * 4 + 3] = 0;
+    const col = at % width;
+    if (col > 0) {
+      todo.push(at - 1);
+    }
+    if (col < width - 1) {
+      todo.push(at + 1);
+    }
+    if (at >= width) {
+      todo.push(at - width);
+    }
+    if (at < width * (height - 1)) {
+      todo.push(at + width);
+    }
+  }
+  for (let i = 0; i < width * height; i++) {
+    const col = i % width,
+      byCleared =
+        (col > 0 && seen[i - 1]) ||
+        (col < width - 1 && seen[i + 1]) ||
+        (i >= width && seen[i - width]) ||
+        (i < width * (height - 1) && seen[i + width]);
+    if (!seen[i] && byCleared && px[i * 4 + 3] && isNear(i, 200)) {
+      px[i * 4 + 3] = 0;
+    }
+  } // (the soft edge where the item meets the background, which still has some of its colour)
+  ctx.putImageData(pic, 0, 0);
 }
 
 async function drawRequestPreview() {
