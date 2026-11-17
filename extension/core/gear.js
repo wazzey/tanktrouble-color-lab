@@ -8,7 +8,7 @@ import { laikaDog, laikaSkinChanged, redoLaikaSkin } from "./laika-look.js";
 import { shareCall, shareMine, shareMyLooks, shareWatch } from "./look-sharing.js";
 import { bulletMode, mapApplyNow, mapsFavsFirst, toggleMapFav } from "./map-themes.js";
 import { mazeTimer, perfOn } from "./maze.js";
-import { BULLET_COLS, bulletIcon, bulletWarn, mapThumb, renderMazeTab } from "./maze-tab.js";
+import { BULLET_COLS, bulletIcon, bulletWarn, isShown, mapThumb, renderMazeTab } from "./maze-tab.js";
 import { onlineFetch } from "./online.js";
 import { pageKeyNow, pagePal } from "./page.js";
 import { $, toast } from "./panel.js";
@@ -53,10 +53,13 @@ const gearOpen = () => {
 };
 function gearQuick() {
   const box = document.querySelector("#settings .content");
-  if (!box) {
+  let g = document.getElementById("ttclGear");
+  if (!box || !isShown("gear")) {
+    if (g) {
+      g.remove();
+    }
     return;
   }
-  let g = document.getElementById("ttclGear");
   if (g && g.parentNode !== box) {
     g.remove();
     g = null;
@@ -764,7 +767,7 @@ function gearPlace(force) {
   // the game places this box once when it opens it; ours is wider, so it gets a fixed width and sits under the gear, right-aligned. Only re-placed when it opens or the window size changes (never by its own width: that made it creep)
   const b = document.getElementById("settings"),
     gi = document.querySelector("#header .settings");
-  if (!b || !gi || getComputedStyle(b).display === "none") {
+  if (!b || !gi || !isShown("gear") || getComputedStyle(b).display === "none") {
     gearKey = "";
     return;
   }

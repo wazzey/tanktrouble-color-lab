@@ -52,6 +52,7 @@ import { EXT_ITEM, GAME_NAMES, restyleAcc } from "../content/registries.js";
 import { achPaintsOf, boxOpen, trophyUsable, usableTrophies } from "./achievements.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import { drawnArt, origDrawImage, queuedPic, swapAsked } from "./draw-swap.js";
+import { COMMUNITY_PICS, drawItemArt } from "./community.js";
 import { refreshSoon } from "./game-socket.js";
 import { garageGame, readGarageIcons } from "./garage.js";
 import {
@@ -270,6 +271,24 @@ function drawCustomArt(key) {
           CUSTOM_ICONS[key] = restyleAcc(ic, kind);
         } // its shelf picture, restyled the same way
         const c = restyleAcc(img, kind, 640, 384);
+        CUSTOM_ART[key] = c;
+        afterCustomArt(key);
+        return c;
+      })
+      .catch(() => null)
+      .finally(() => {
+        delete customReq[key];
+      });
+    return customReq[key];
+  }
+  if (COMMUNITY_PICS[key]) {
+    // a player-made item from the Community box: its picture placed where its maker put it
+    customReq[key] = loadImg(COMMUNITY_PICS[key].pic)
+      .then((img) => {
+        if (!img) {
+          return null;
+        }
+        const c = drawItemArt(img, COMMUNITY_PICS[key].place);
         CUSTOM_ART[key] = c;
         afterCustomArt(key);
         return c;
@@ -1562,6 +1581,14 @@ export function startCustomBoxArt() {
         "0xf2e6c8",
         "0x0c101c",
       ],
+    },
+    // Community: items players made themselves, approved by the Color Lab team (they come from the server)
+    {
+      id: "community",
+      name: "Community",
+      picFn: () => themedBoxPic("community"),
+      items: "community",
+      paints: [],
     },
     // Streetwear: headphones, beanies, sneakers, chains, a boombox and a hoodie hood
     {

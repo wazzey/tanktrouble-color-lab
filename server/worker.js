@@ -265,6 +265,15 @@ async function ensureTables(env) {
     ), // (each day's three Fit of the day picks, the one chosen and whether it's posted)
     env.DB.prepare("CREATE TABLE IF NOT EXISTS fit_never (pid TEXT PRIMARY KEY)"), // (tanks never to feature)
     env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS item_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, pid TEXT NOT NULL, keyhash TEXT NOT NULL, fid INTEGER, name TEXT NOT NULL, slot TEXT NOT NULL, credit TEXT, pic TEXT NOT NULL, place TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'waiting')",
+    ), // (items players asked for: waiting for review, approved or rejected)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS item_slots (pid TEXT PRIMARY KEY, extra INTEGER NOT NULL DEFAULT 0, asked INTEGER NOT NULL DEFAULT 0)",
+    ), // (extra request slots given to a player, and when they last asked for more)
+    env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS community_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, slot TEXT NOT NULL, credit TEXT, pic TEXT NOT NULL, place TEXT NOT NULL, at INTEGER NOT NULL)",
+    ), // (approved requests: in every copy's Community box)
+    env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS crashes (day TEXT NOT NULL, sig TEXT NOT NULL, kind TEXT NOT NULL, ver TEXT, msg TEXT, loc TEXT, n INTEGER NOT NULL, PRIMARY KEY (day, sig))",
     ), // (crash reports from Color Lab: what broke and where, counted per day)
     env.DB.prepare("CREATE INDEX IF NOT EXISTS verified_kh ON verified (keyhash)"),
@@ -2597,6 +2606,359 @@ async function noteCrash(env, req, ctx) {
   }
   return json({ ok: true });
 }
+// ---------- item requests: a player's own accessory, sent with its placement for the Color Lab team to review ----------
+// Only a proven tank can send one, with 3 waiting at a time (more when you allow it). Each request is a Color Lab
+// message too, so the player's answer arrives in their Messages; approved ones go into every copy's Community box
+const ITEM_SLOTS = new Set(["turret", "back", "front", "barrel"]),
+  ITEM_WAITING = 3;
+async function readItemSender(env, b) {
+  const pid = PID.test(String((b && b.pid) || "")) ? String(b.pid) : null;
+  if (!b || typeof b.key !== "string" || !KEY.test(b.key) || !pid) {
+    return { error: json({ error: "bad request" }, 400) };
+  }
+  await ensureTables(env);
+  const kh = await sha256(b.key);
+  if (await env.DB.prepare("SELECT 1 FROM banned WHERE hash = ?").bind(kh).first()) {
+    return { error: json({ error: "not allowed" }, 403) };
+  }
+  const v = await env.DB.prepare("SELECT 1 FROM verified WHERE pid = ? AND keyhash = ?").bind(pid, kh).first();
+  if (!v) {
+    return { error: json({ error: "prove" }, 403) };
+  } // (only the tank's proven owner)
+  const slots = await env.DB.prepare("SELECT extra, asked FROM item_slots WHERE pid = ?").bind(pid).first(),
+    waiting = await env.DB.prepare("SELECT COUNT(*) AS n FROM item_requests WHERE pid = ? AND status = 'waiting'")
+      .bind(pid)
+      .first();
+  return {
+    pid,
+    kh,
+    name: await tankName(env, pid),
+    waiting: (waiting && waiting.n) || 0,
+    limit: ITEM_WAITING + ((slots && slots.extra) || 0),
+    asked: (slots && slots.asked) || 0,
+  };
+}
+async function sendItemRequest(env, req) {
+  if (!env.DISCORD_BOT_TOKEN || !env.REQUESTS_CHANNEL_ID) {
+    return json({ error: "requests aren't open yet" }, 503);
+  }
+  let b;
+  try {
+    const t = await req.text();
+    if (t.length > 1200000) {
+      return json({ error: "picture too big" }, 413);
+    }
+    b = JSON.parse(t);
+  } catch {
+    return json({ error: "bad json" }, 400);
+  }
+  const who = await readItemSender(env, b);
+  if (who.error) {
+    return who.error;
+  }
+  if (who.waiting >= who.limit) {
+    return json({ error: "full" }, 429);
+  }
+  const name = String(b.name || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 28),
+    slot = ITEM_SLOTS.has(b.slot) ? b.slot : null,
+    p = b.place || {},
+    num = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v) || 0)),
+    place = { x: num(p.x, 0, 640), y: num(p.y, 0, 384), size: num(p.size, 0.05, 4) || 1, turn: num(p.turn, -180, 180) },
+    pic = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.pic || "")),
+    shot = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(b.preview || ""));
+  if (name.length < 2 || !slot || !pic) {
+    return json({ error: "a name, a slot and a PNG picture are needed" }, 400);
+  }
+  if (isOffensive(name)) {
+    return json({ error: "please keep the name friendly" }, 400);
+  }
+  const bin = Uint8Array.from(atob(pic[1]), (c) => c.charCodeAt(0));
+  if (bin.length > 600000) {
+    return json({ error: "picture too big" }, 413);
+  }
+  const now = Date.now(),
+    credit = b.credit === true ? who.name : null,
+    fb = await env.DB.prepare("INSERT INTO feedback (keyhash, who, text, at) VALUES (?, ?, ?, ?)")
+      .bind(who.kh, who.name, "🧩 Item request: " + name + " (" + slot + ")", now)
+      .run(),
+    fid = fb.meta && fb.meta.last_row_id;
+  await env.DB.prepare("INSERT INTO feedback_pids (fid, pid) VALUES (?, ?)").bind(fid, who.pid).run();
+  const ins = await env.DB.prepare(
+    "INSERT INTO item_requests (pid, keyhash, fid, name, slot, credit, pic, place, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+    .bind(who.pid, who.kh, fid, name, slot, credit, pic[0], JSON.stringify(place), now)
+    .run();
+  const rid = ins.meta && ins.meta.last_row_id;
+  const fd = new FormData();
+  fd.append(
+    "payload_json",
+    JSON.stringify({
+      content:
+        "🧩 **Item request #" +
+        rid +
+        "** from " +
+        who.name +
+        ": **" +
+        name +
+        "** (" +
+        slot +
+        ")" +
+        (credit ? "" : ", no credit") +
+        "\n" +
+        (who.waiting + 1) +
+        " of " +
+        who.limit +
+        " waiting",
+      allowed_mentions: { parse: [] },
+      components: [
+        {
+          type: 1,
+          components: [
+            { type: 2, style: 3, label: "Approve", custom_id: "ireqok:" + rid },
+            { type: 2, style: 4, label: "Reject", custom_id: "ireqno:" + rid },
+            { type: 2, style: 2, label: "Adjust", custom_id: "ireqfix:" + rid },
+            { type: 2, style: 1, label: "Reply", custom_id: "reply:" + fid },
+          ],
+        },
+      ],
+    }),
+  );
+  fd.append("files[0]", new Blob([bin], { type: "image/png" }), "item.png");
+  if (shot) {
+    fd.append(
+      "files[1]",
+      new Blob([Uint8Array.from(atob(shot[2]), (c) => c.charCodeAt(0))], { type: "image/" + shot[1] }),
+      "on-a-tank." + (shot[1] === "png" ? "png" : "jpg"),
+    );
+  }
+  const r = await discordPost(env, "/channels/" + String(env.REQUESTS_CHANNEL_ID).trim() + "/messages", {
+    method: "POST",
+    body: fd,
+  });
+  if (!r.ok) {
+    await env.DB.prepare("UPDATE item_requests SET status = 'failed' WHERE id = ?").bind(rid).run();
+    return json({ error: "couldn't reach Discord, try again later" }, 502);
+  }
+  return json({ ok: true, id: rid });
+}
+async function askMoreRequests(env, req) {
+  let b;
+  try {
+    b = await req.json();
+  } catch {
+    return json({ error: "bad json" }, 400);
+  }
+  const who = await readItemSender(env, b);
+  if (who.error) {
+    return who.error;
+  }
+  if (Date.now() - who.asked < DAY) {
+    return json({ error: "asked" }, 429);
+  }
+  await env.DB.prepare(
+    "INSERT INTO item_slots (pid, asked) VALUES (?, ?) ON CONFLICT (pid) DO UPDATE SET asked = excluded.asked",
+  )
+    .bind(who.pid, Date.now())
+    .run();
+  const done = await env.DB.prepare(
+    "SELECT COUNT(*) AS n, SUM(status = 'approved') AS ok FROM item_requests WHERE pid = ? AND status != 'failed'",
+  )
+    .bind(who.pid)
+    .first();
+  const note = String(b.note || "")
+    .replace(/\s+/g, " ")
+    .slice(0, 200);
+  const r = await discordPost(env, "/channels/" + String(env.REQUESTS_CHANNEL_ID).trim() + "/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content:
+        "➕ **" +
+        who.name +
+        "** wants to send more item requests (" +
+        who.waiting +
+        " waiting, " +
+        ((done && done.n) || 0) +
+        " sent, " +
+        ((done && done.ok) || 0) +
+        " approved)" +
+        (note ? "\n> " + note : ""),
+      allowed_mentions: { parse: [] },
+      components: [
+        {
+          type: 1,
+          components: [
+            { type: 2, style: 3, label: "Allow 3 more", custom_id: "imore:3:" + who.pid },
+            { type: 2, style: 3, label: "Allow 10 more", custom_id: "imore:10:" + who.pid },
+            { type: 2, style: 4, label: "No", custom_id: "imore:0:" + who.pid },
+          ],
+        },
+      ],
+    }),
+  });
+  return r.ok ? json({ ok: true }) : json({ error: "couldn't reach Discord, try again later" }, 502);
+}
+// the Discord buttons on a request: Approve, Reject (with a reason) and Adjust (name and placement), and Allow more
+async function itemAction(env, i, id, reply) {
+  const text = (n) => String(((((i.data.components || [])[n] || {}).components || [])[0] || {}).value || "").trim(),
+    box = (cid, label, value, long) => ({
+      type: 1,
+      components: [
+        { type: 4, custom_id: cid, style: long ? 2 : 1, label, value, required: !long, max_length: long ? 500 : 40 },
+      ],
+    });
+  const more = /^imore:(\d+):(\d+)$/.exec(id);
+  if (more) {
+    const n = Number(more[1]),
+      pid = more[2];
+    if (n) {
+      await env.DB.prepare(
+        "INSERT INTO item_slots (pid, extra) VALUES (?, ?) ON CONFLICT (pid) DO UPDATE SET extra = extra + excluded.extra",
+      )
+        .bind(pid, n)
+        .run();
+    }
+    const last = await env.DB.prepare("SELECT fid FROM item_requests WHERE pid = ? ORDER BY id DESC LIMIT 1")
+      .bind(pid)
+      .first();
+    if (last && last.fid) {
+      await env.DB.prepare("INSERT INTO replies (fid, text, at) VALUES (?, ?, ?)")
+        .bind(
+          last.fid,
+          n
+            ? "You can send " + n + " more item requests now 🧩"
+            : "Please wait until your item requests have been looked at before sending more",
+          Date.now(),
+        )
+        .run();
+    }
+    return reply({
+      type: 7,
+      data: { content: i.message.content + "\n" + (n ? "✅ Allowed " + n + " more" : "❌ Not now"), components: [] },
+    });
+  }
+  const m = /^(ireqok|ireqno|ireqfix|ireqnosend|ireqfixsend|ireqdel):(\d+)$/.exec(id),
+    rq = m && (await env.DB.prepare("SELECT * FROM item_requests WHERE id = ?").bind(Number(m[2])).first());
+  if (!rq) {
+    return reply({ type: 4, data: { content: "That request isn't there any more.", flags: 64 } });
+  }
+  const place = JSON.parse(rq.place);
+  if (m[1] === "ireqno") {
+    return reply({
+      type: 9,
+      data: {
+        custom_id: "ireqnosend:" + rq.id,
+        title: "Reject " + rq.name.slice(0, 30),
+        components: [box("why", "Why (the player sees this)", "", true)],
+      },
+    });
+  }
+  if (m[1] === "ireqfix") {
+    return reply({
+      type: 9,
+      data: {
+        custom_id: "ireqfixsend:" + rq.id,
+        title: "Adjust " + rq.name.slice(0, 30),
+        components: [
+          box("name", "Name", rq.name),
+          box("x", "Across (0 to 640)", String(place.x)),
+          box("y", "Down (0 to 384)", String(place.y)),
+          box("size", "Size", String(place.size)),
+          box("turn", "Turn (degrees)", String(place.turn)),
+        ],
+      },
+    });
+  }
+  if (m[1] === "ireqdel") {
+    if (rq.status !== "approved") {
+      return reply({ type: 4, data: { content: "Already " + rq.status + ".", flags: 64 } });
+    }
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM community_items WHERE id = ?").bind(rq.id),
+      env.DB.prepare("UPDATE item_requests SET status = 'removed' WHERE id = ?").bind(rq.id),
+    ]);
+    return reply({
+      type: 7,
+      data: {
+        content: i.message.content + "\n🗑 Removed from the Community box (gone for everyone within 5 minutes)",
+        components: [
+          { type: 1, components: [{ type: 2, style: 2, label: "Put it back", custom_id: "ireqok:" + rq.id }] },
+        ],
+      },
+    });
+  }
+  if (rq.status !== "waiting" && !(m[1] === "ireqok" && rq.status === "removed")) {
+    return reply({ type: 4, data: { content: "Already " + rq.status + ".", flags: 64 } });
+  } // (a removed item can be put back)
+  if (m[1] === "ireqfixsend") {
+    const num = (v, lo, hi, d) => (Number.isFinite(Number(v)) && v !== "" ? Math.min(hi, Math.max(lo, Number(v))) : d),
+      name = text(0).slice(0, 28) || rq.name,
+      np = {
+        x: num(text(1), 0, 640, place.x),
+        y: num(text(2), 0, 384, place.y),
+        size: num(text(3), 0.05, 4, place.size),
+        turn: num(text(4), -180, 180, place.turn),
+      };
+    await env.DB.prepare("UPDATE item_requests SET name = ?, place = ? WHERE id = ?")
+      .bind(name, JSON.stringify(np), rq.id)
+      .run();
+    return reply({
+      type: 4,
+      data: {
+        content:
+          "✏️ #" +
+          rq.id +
+          " is now **" +
+          name +
+          "** at " +
+          np.x +
+          ", " +
+          np.y +
+          ", size " +
+          np.size +
+          ", turn " +
+          np.turn,
+        allowed_mentions: { parse: [] },
+      },
+    });
+  }
+  const ok = m[1] === "ireqok",
+    why = ok ? "" : text(0);
+  await env.DB.prepare("UPDATE item_requests SET status = ? WHERE id = ?")
+    .bind(ok ? "approved" : "rejected", rq.id)
+    .run();
+  if (ok) {
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO community_items (id, name, slot, credit, pic, place, at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    )
+      .bind(rq.id, rq.name, rq.slot, rq.credit, rq.pic, rq.place, Date.now())
+      .run();
+  }
+  if (rq.fid && rq.status === "waiting") {
+    await env.DB.prepare("INSERT INTO replies (fid, text, at) VALUES (?, ?, ?)")
+      .bind(
+        rq.fid,
+        ok
+          ? "✅ Your item " + rq.name + " was added! It's in the garage's Community box for everyone 🧩"
+          : "Your item " + rq.name + " wasn't added" + (why ? ": " + why : ""),
+        Date.now(),
+      )
+      .run();
+  }
+  return reply({
+    type: 7,
+    data: {
+      content:
+        i.message.content + "\n" + (ok ? "✅ Approved: in the Community box" : "❌ Rejected" + (why ? ": " + why : "")),
+      components: ok
+        ? [{ type: 1, components: [{ type: 2, style: 4, label: "Remove", custom_id: "ireqdel:" + rq.id }] }]
+        : [],
+    },
+  });
+}
 // TankTrouble's own updates: its release name (shown on every page) checked every 10 minutes, and a ping in #logs when it
 // changes, so Color Lab can be checked against the new version
 async function ttReleaseWatch(env) {
@@ -2981,6 +3343,9 @@ async function discordInteraction(env, req, ctx) {
     } // (sent just after the reply below: a follow-up needs the first answer to be there)
     return reply({ type: 4, data: { content: text, flags: 64, allowed_mentions: { parse: [] } } });
   } // (just your text, so "Copy Text" copies only that; the link comes next)
+  if (/^(ireqok|ireqno|ireqfix|ireqnosend|ireqfixsend|ireqdel):\d+$|^imore:\d+:\d+$/.test(id)) {
+    return itemAction(env, i, id, reply);
+  }
   if (/^fit(pick|now|shuffle|pic|never|link):/.test(id)) {
     return fitAction(env, ctx, i, id, reply);
   }
@@ -4926,6 +5291,58 @@ export default {
     if (url.pathname === "/github" && req.method === "POST") {
       return githubRelease(env, req, ctx);
     } // (GitHub tells the server when a release is published) // (Discord's Interactions Endpoint URL)
+    if (url.pathname === "/v1/itemreq" || url.pathname === "/v1/itemreq/more") {
+      if (req.method !== "POST") {
+        return json({ error: "post only" }, 405);
+      }
+      if (await isBlocked(env, req)) {
+        return json({ error: "shut out for an hour for flooding" }, 429);
+      }
+      if (await slowDown(env, req, "write", ctx)) {
+        return json({ error: "slow down" }, 429);
+      }
+      return url.pathname === "/v1/itemreq" ? sendItemRequest(env, req) : askMoreRequests(env, req);
+    }
+    if (url.pathname === "/v1/community") {
+      await ensureTables(env);
+      const { results } = await env.DB.prepare(
+        "SELECT id, name, slot, credit, place, at FROM community_items ORDER BY id",
+      ).all();
+      return json(
+        {
+          items: (results || []).map((r) => ({
+            key: "cm-" + r.id,
+            name: r.name,
+            slot: r.slot,
+            credit: r.credit,
+            place: JSON.parse(r.place),
+            at: r.at,
+          })),
+        },
+        200,
+        { "Cache-Control": "public, max-age=300" },
+      );
+    }
+    if (/^\/v1\/community\/\d+\.png$/.test(url.pathname)) {
+      await ensureTables(env);
+      const r = await env.DB.prepare("SELECT pic FROM community_items WHERE id = ?")
+        .bind(Number(url.pathname.slice(14, -4)))
+        .first();
+      const stored = r && /^data:image\/png;base64,(.+)$/.exec(r.pic);
+      if (!stored) {
+        return json({ error: "not found" }, 404);
+      }
+      return new Response(
+        Uint8Array.from(atob(stored[1]), (c) => c.charCodeAt(0)),
+        {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=604800",
+            "Access-Control-Allow-Origin": "*",
+          },
+        },
+      );
+    }
     if (url.pathname === "/v1/crash") {
       if (req.method !== "POST") {
         return json({ error: "post only" }, 405);

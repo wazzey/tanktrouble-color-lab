@@ -14,6 +14,7 @@ import { MAX_PRESETS } from "./panel-actions.js";
 import { afterPresetChange, renderList, updateSaveLabel } from "./saved-looks.js";
 import { uiConfirm } from "./settings.js";
 import { PLAYER_COLOR_MAP, SETTINGS, hasLook, presetSig, saveSettings, saveToStorage, syncActive } from "./storage.js";
+import { setOpen, showTab } from "./tabs.js";
 import { esc } from "./trophy-counting.js";
 import { openHelp, tutClose } from "./tutorial-run.js";
 
@@ -215,7 +216,7 @@ function announceReal(pid) {
     }
   }, 400);
 }
-function garageRedraw() {
+export function garageRedraw() {
   const id = selPid();
   if (id) {
     refreshTanks([id], true);
@@ -1359,6 +1360,10 @@ export function addGarageButton() {
     );
     cog.style.marginLeft = "-4px";
     cog.style.minWidth = "24px";
+    mk("ttcl-greq", "🧩", "Request an item: put your own accessory on your tank and send it in (Color Lab)", () => {
+      setOpen(true);
+      showTab("req");
+    });
     mk(
       "ttcl-glooksb",
       "💾 Looks",
@@ -1375,7 +1380,8 @@ export function addGarageButton() {
   const hd = SETTINGS.hide || {};
   const gd = form.querySelector(".ttcl-gdice"),
     gp = form.querySelector(".ttcl-gpower"),
-    go = form.querySelector(".ttcl-gdiceopt");
+    go = form.querySelector(".ttcl-gdiceopt"),
+    gr = form.querySelector(".ttcl-greq");
   if (gd) {
     gd.style.display = hd.gdice ? "none" : "";
   }
@@ -1384,6 +1390,9 @@ export function addGarageButton() {
   }
   if (gp) {
     gp.style.display = hd.gpower ? "none" : "";
+  }
+  if (gr) {
+    gr.style.display = hd.greq ? "none" : "";
   }
 }
 export function syncGarageButton(b) {

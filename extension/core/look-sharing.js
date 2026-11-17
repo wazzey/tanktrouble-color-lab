@@ -578,6 +578,11 @@ export function shareMyLooks(force, soon) {
     force || soon ? 500 : 5000,
   );
 }
+// a request's picture on your own tank (🧩 Request > Try it on): only on your screen, never saved or shared
+let tryOn = null;
+export function applyTryOn(pid, slot, key) {
+  tryOn = pid ? { pid: String(pid), slot, key } : null;
+}
 export function getOverride(id, now) {
   if (!SETTINGS.on) {
     return null;
@@ -585,11 +590,12 @@ export function getOverride(id, now) {
   if (VIEW_REAL.has(String(id))) {
     return null;
   } // you switched this tank to its real look (its profile's Real button)
-  const team = teamLookFor(String(id));
-  if (team) {
-    return Object.assign({}, readLookFor(id, now), team);
-  } // (playing with a teammate: the team's look over its own)
-  return readLookFor(id, now);
+  const team = teamLookFor(String(id)),
+    look = team ? Object.assign({}, readLookFor(id, now), team) : readLookFor(id, now); // (playing with a teammate: the team's look over its own)
+  if (tryOn && tryOn.pid === String(id)) {
+    return Object.assign({}, look, { acc: Object.assign({}, look && look.acc, { [tryOn.slot]: "ttcl:" + tryOn.key }) });
+  }
+  return look;
 }
 function readLookFor(id, now) {
   if (SETTINGS.party && partyColours[id]) {
@@ -605,7 +611,7 @@ export function hasOverrides() {
   if (!SETTINGS.on) {
     return false;
   }
-  if (shareSee()) {
+  if (tryOn || shareSee()) {
     return true;
   }
   if (SETTINGS.party) {

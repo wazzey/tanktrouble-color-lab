@@ -414,11 +414,18 @@ export function startTutorialRun() {
         x: "Color Lab's own achievements. Earn them in online rounds to unlock extra items (and, for the hardest, a paint) in the <b>Achievements</b> box. Each one says how to get it.",
       },
       {
+        before: () => showTab("req"),
+        el: () => $("paneReq"),
+        area: "req",
+        t: "Request an item 🧩",
+        x: "Made your own accessory? Pick its slot, <b>Upload</b> a picture (<b>⬇ Tank</b> gives you the plain tank to draw on), then drag it into place. The mouse wheel or <b>Size</b> makes it bigger or smaller and <b>Turn</b> rotates it. Give it a name, tick that it's your own work and press <b>Send</b>. If it's approved it goes in the garage's <b>Community</b> box for everyone, with your name on it.",
+      },
+      {
         before: () => showTab("settings"),
         el: () => $("paneSet"),
         area: "settings",
         t: "Settings ⚙",
-        x: "Hide anything you don't use (in the panel and the garage), turn maze patterns on or off, replay this tutorial, and make or load a <b>backup</b>.",
+        x: "Hide anything you don't use (in the panel, the garage and on the page, or all of Color Lab's page boxes at once with <b>🪶 Lite mode</b>), turn maze patterns on or off, replay this tutorial, and make or load a <b>backup</b>.",
       },
       {
         before: () => {

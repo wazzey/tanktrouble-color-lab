@@ -23,7 +23,7 @@ import {
   srvManual,
 } from "./look-sharing.js";
 import { SET_ITEMS, isShown } from "./maze-tab.js";
-import { onlineFetch } from "./online.js";
+import { onlineDraw, onlineFetch } from "./online.js";
 import { renderPalette, renderSources } from "./palette.js";
 import { $, panel, panelHost, toast } from "./panel.js";
 import { renderList } from "./saved-looks.js";
@@ -68,6 +68,25 @@ export function renderSettings() {
         renderSettings();
       });
     }
+  }
+  {
+    const lite = SET_ITEMS.setPage.every(([k]) => !isShown(k));
+    row(
+      $("setPage"),
+      lite,
+      "🪶 Lite mode",
+      "Hides all of Color Lab's boxes on the page. Alt+C or the extension icon still opens the panel",
+      () => {
+        SETTINGS.hide = Object.assign({}, SETTINGS.hide);
+        for (const [k] of SET_ITEMS.setPage) {
+          SETTINGS.hide[k] = !lite;
+        }
+        saveSettings();
+        applyShown();
+        renderSettings();
+      },
+    );
+    $("setPage").prepend($("setPage").lastChild);
   }
   {
     const sh = $("setShare");
@@ -417,6 +436,8 @@ export function applyShown() {
   // garage
   vis(document.querySelector(".garage form .ttcl-gdice"), isShown("gdice"));
   vis(document.querySelector(".garage form .ttcl-gpower"), isShown("gpower"));
+  vis(document.querySelector(".garage form .ttcl-greq"), isShown("greq"));
+  onlineDraw();
   try {
     renderGarageSearch();
     renderGarageMaze();

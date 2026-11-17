@@ -213,6 +213,50 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
     // the owner's copy: recent server alerts
     url = SHARE_BASE + "/v1/alerts";
     opt = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: m.key }) };
+  } else if (m.op === "community") {
+    // the Community box: approved player-made items, each with its picture
+    fetch(SHARE_BASE + "/v1/community")
+      .then((r) => r.json())
+      .then(async (data) => {
+        const items = (Array.isArray(data && data.items) ? data.items : []).slice(0, 300);
+        for (const it of items) {
+          try {
+            const r = await fetch(SHARE_BASE + "/v1/community/" + String(it.key).slice(3) + ".png");
+            const bytes = new Uint8Array(await r.arrayBuffer());
+            let bin = "";
+            for (let i = 0; i < bytes.length; i += 8192) {
+              bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+            }
+            it.pic = r.ok ? "data:image/png;base64," + btoa(bin) : "";
+          } catch {
+            it.pic = "";
+          }
+        }
+        reply({ ok: true, data: { items } });
+      })
+      .catch(() => reply({ ok: false }));
+    return true;
+  } else if ((m.op === "itemreq" || m.op === "itemmore") && pid && /^[0-9a-f]{64}$/.test(String(m.key || ""))) {
+    // a request for a player-made item, or for more request slots: sent with the tank's own key
+    url = SHARE_BASE + (m.op === "itemreq" ? "/v1/itemreq" : "/v1/itemreq/more");
+    opt = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        m.op === "itemreq"
+          ? {
+              key: m.key,
+              pid,
+              name: String(m.name || "").slice(0, 40),
+              slot: String(m.slot || ""),
+              credit: m.credit === true,
+              pic: typeof m.pic === "string" ? m.pic : "",
+              place: m.place && typeof m.place === "object" ? m.place : null,
+              preview: typeof m.preview === "string" ? m.preview : "",
+            }
+          : { key: m.key, pid, note: String(m.note || "").slice(0, 200) },
+      ),
+    };
   } else if (m.op === "crash" && ["error", "freeze"].includes(m.kind)) {
     // a crash report: what broke and where, with no key or player in it
     url = SHARE_BASE + "/v1/crash";

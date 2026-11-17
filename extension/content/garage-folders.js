@@ -31,6 +31,7 @@ export const BOX_GROUPS = [
   },
   { id: "fun", name: "Fun & Games", icon: "🎲", color: "#ff8a1f", boxes: ["arcade", "casino", "sweets", "betabw"] },
   { id: "nature", name: "Nature", icon: "🌴", color: "#2fb070", boxes: ["safari", "deepsea", "tropical"] },
+  { id: "community", name: "Community", icon: "🧩", color: "#20b8a8", boxes: ["community"] },
   { id: "ttoc", name: "TTOC", icon: "🎖", color: "#d4a017", boxes: TTOC_THEMES.map((t) => t.id) },
 ];
 export const isLabBoxId = (id) => Number(id) >= 9000;
@@ -100,6 +101,7 @@ export const CUSTOM_BOX_IDS = {
   cursed: 9027,
   streetwear: 9028,
   betabw: 9029,
+  community: 9070,
 };
 TTOC_THEMES.forEach((t, i) => {
   CUSTOM_BOX_IDS[t.id] = 9030 + i;

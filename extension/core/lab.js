@@ -14,6 +14,7 @@ import {
 } from "./feedback.js";
 import { loggedInIds } from "./game-socket.js";
 import { shareCall } from "./look-sharing.js";
+import { isShown } from "./maze-tab.js";
 import { pageKeyNow, pagePal } from "./page.js";
 import { $, toast } from "./panel.js";
 import { SETTINGS, saveSettings } from "./storage.js";
@@ -512,7 +513,7 @@ export function labDraw() {
 function labSnippet() {
   // the box under "Message the laboratory" on the right (in the page theme like the game's boxes)
   const host = document.getElementById("tertiaryContent");
-  if (!host || !SETTINGS.on) {
+  if (!host || !SETTINGS.on || !isShown("lab")) {
     const o = D("ttclLabSnippet");
     if (o) {
       o.remove();

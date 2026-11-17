@@ -2,6 +2,7 @@ import { roundState } from "./achievements.js";
 import { LOBBY_GAMES, loggedInIds, rpc } from "./game-socket.js";
 import { GAME_STATE } from "./garage.js";
 import { incognito, shareCall, shareMine, srvOn } from "./look-sharing.js";
+import { isShown } from "./maze-tab.js";
 import { toast } from "./panel.js";
 import { SETTINGS, saveSettings } from "./storage.js";
 import { clBadge } from "./team-badges.js";
@@ -146,9 +147,9 @@ export async function onlineFetch() {
   onlineDraw();
   return !onlineErr;
 }
-function onlineDraw() {
+export function onlineDraw() {
   const old = document.getElementById("ttclOnline");
-  if (!SETTINGS.on) {
+  if (!SETTINGS.on || !isShown("online")) {
     if (old) {
       old.remove();
     }

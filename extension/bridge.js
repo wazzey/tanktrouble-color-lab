@@ -153,7 +153,11 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
   }
   const keyFor = async (d) => {
     // a tank's own look and proof use its account's key; a message is sent with the key of the account it's sent as
-    const pid = ["put", "delete", "vstart", "vcheck", "team"].includes(d.op) ? d.pid : d.op === "fbsend" ? d.as : null;
+    const pid = ["put", "delete", "vstart", "vcheck", "team", "itemreq", "itemmore"].includes(d.op)
+      ? d.pid
+      : d.op === "fbsend"
+        ? d.as
+        : null;
     if (PID.test(String(pid || ""))) {
       const a = await readAccount(String(pid));
       if (a) {
@@ -386,6 +390,10 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
         d.op === "announce" ||
         d.op === "team" ||
         d.op === "teams" ||
+        d.op === "crash" ||
+        d.op === "itemreq" ||
+        d.op === "itemmore" ||
+        d.op === "community" ||
         (DEV_BUILD && (d.op === "inbox" || d.op === "alerts" || d.op === "fdraft" || d.op === "owner")))
     ) {
       // Shared looks: the extension's background page talks to Color Lab's look server, never the page itself.
@@ -419,6 +427,15 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
               kind: d.kind,
               team: d.team,
               on: d.on,
+              msg: d.msg,
+              where: d.where,
+              name: d.name,
+              slot: d.slot,
+              credit: d.credit,
+              pic: d.pic,
+              place: d.place,
+              note: d.note,
+              preview: d.preview,
               adm: DEV_BUILD ? d.adm : undefined,
               read: DEV_BUILD ? d.read : undefined,
             },
@@ -432,7 +449,14 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
         }
       };
       const go = () => {
-        if (d.op === "get" || d.op === "teams" || d.op === "watch" || d.op === "latest") {
+        if (
+          d.op === "get" ||
+          d.op === "teams" ||
+          d.op === "watch" ||
+          d.op === "latest" ||
+          d.op === "crash" ||
+          d.op === "community"
+        ) {
           send(null);
         } else {
           keyFor(d)

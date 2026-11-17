@@ -172,35 +172,40 @@ async function renderPreview() {
       }
       renderAccs();
     }
-    const P = {};
-    await Promise.all(
-      PART_NAMES.map(async (n) => {
-        P[n] = map[n] ? await loadImg(map[n]) : null;
-      }),
-    );
-    const f = getForm(),
-      d = resolved && resolved.data;
-    const pick = (k, field) => f[k] || (d && d[field]) || null;
-    const [tc, trc, bc] = await Promise.all([
-      resolvePaint(map, pick("turret", "turretColour")),
-      resolvePaint(map, pick("treads", "treadColour")),
-      resolvePaint(map, pick("base", "baseColour")),
-    ]);
-    const accSrc = Object.assign({}, d || {});
-    for (const slot in formAcc) {
-      accSrc[slot + "Accessory"] = formAcc[slot];
-    }
-    const acc = await loadAccessories(map, accSrc);
+    const look = await readPreviewLook(map);
     if (seq !== pvSeq) {
       return;
     }
-    drawTankIcon(cv, tc, trc, bc, P, acc);
+    drawTankIcon(cv, look.tc, look.trc, look.bc, look.P, look.acc);
     msg.textContent = "";
   } catch (e) {
     if (seq === pvSeq) {
       msg.textContent = "Preview unavailable: " + ((e && e.message) || e);
     }
   }
+}
+
+// The tank as the Paint tab shows it: its parts, paints and accessories, ready for drawTankIcon
+export async function readPreviewLook(map) {
+  const P = {};
+  await Promise.all(
+    PART_NAMES.map(async (n) => {
+      P[n] = map[n] ? await loadImg(map[n]) : null;
+    }),
+  );
+  const f = getForm(),
+    d = resolved && resolved.data;
+  const pick = (k, field) => f[k] || (d && d[field]) || null;
+  const [tc, trc, bc] = await Promise.all([
+    resolvePaint(map, pick("turret", "turretColour")),
+    resolvePaint(map, pick("treads", "treadColour")),
+    resolvePaint(map, pick("base", "baseColour")),
+  ]);
+  const accSrc = Object.assign({}, d || {});
+  for (const slot in formAcc) {
+    accSrc[slot + "Accessory"] = formAcc[slot];
+  }
+  return { P, tc, trc, bc, acc: await loadAccessories(map, accSrc) };
 }
 
 export function freePreviewMemory() {
@@ -405,6 +410,7 @@ select:focus{border-color:#427fff}
       <button class="tab" id="tabSaved" title="Your saved tanks">💾<span class="tlbl"> Saved</span><span class="count" id="savedCount">0</span></button>
       <button class="tab" id="tabMaze" title="Maze: map themes, bullets and patterns in the maze">🗺<span class="tlbl"> Maze</span></button>
       <button class="tab" id="tabAch" title="Color Lab achievements: what you've earned, and how to get the rest">🏆<span class="tlbl"> Awards</span></button>
+      <button class="tab" id="tabReq" title="Request an item: try your own accessory on your tank, then send it to be added to Color Lab">🧩<span class="tlbl"> Request</span></button>
     </div>
     <span class="row">
       <button class="small on" id="power" title="Custom colours on / off">⏻</button>
@@ -551,12 +557,15 @@ select:focus{border-color:#427fff}
 
   <div class="pane" id="paneMaze" hidden><div id="mazeBody"></div></div>
   <div class="pane" id="paneAch" hidden><div id="achBody"></div></div>
+  <div class="pane" id="paneReq" hidden><div id="reqBody"></div></div>
   <div class="pane" id="paneSet" hidden>
     <div class="sethead"><button class="small grey" id="setBack" title="Back">‹ Back</button><span>Settings</span></div>
     <div class="sublbl">Show in this panel</div>
     <div class="setlist" id="setPanel"></div>
     <div class="sublbl">Show in the garage</div>
     <div class="setlist" id="setGarage"></div>
+    <div class="sublbl">Show on the page</div>
+    <div class="setlist" id="setPage"></div>
     <div class="sublbl">Color Lab boxes</div>
     <small class="mzsub">Switch off boxes you don't use: they leave the garage and swatches and are never loaded</small>
     <div class="setlist" id="setBoxes"></div>

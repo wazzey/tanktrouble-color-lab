@@ -36,7 +36,13 @@ export const SET_ITEMS = {
     ["gsearch", "🔍 Find in garage", "The search list, bottom-left"],
     ["gdice", "🎲 Random look", ""],
     ["gpower", "⏻ On / off", ""],
+    ["greq", "🧩 Request an item", ""],
     ["gmz", "Pattern in-maze buttons", ""],
+  ],
+  setPage: [
+    ["online", "🟢 Color Lab online box", "On the left of the lobby"],
+    ["lab", "💬 Message Color Lab box", "On the right of the lobby. Your messages are still here in Settings"],
+    ["gear", "Color Lab in the game's settings box", "Under Server and Quality: on / off, online / offline and maps"],
   ],
 };
 // ---------- Maze tab: patterns in the maze, the map and bullets, all in one place ----------

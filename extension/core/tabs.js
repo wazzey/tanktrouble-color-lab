@@ -4,6 +4,7 @@ import { DEV_TROPHIES, h2StatsCheck } from "./achievements.js";
 import { fbRefresh } from "./feedback.js";
 import { loggedInIds } from "./game-socket.js";
 import { mazeTimer } from "./maze.js";
+import { renderRequestTab } from "./item-requests.js";
 import { renderMazeTab } from "./maze-tab.js";
 import { renderPalette, renderSources } from "./palette.js";
 import { $, freePreviewMemory, panel, panelHost, refreshRealLabels, schedulePreview, toast } from "./panel.js";
@@ -85,15 +86,20 @@ export function showTab(t) {
   $("paneSet").hidden = t !== "settings";
   $("paneMaze").hidden = t !== "maze";
   $("paneAch").hidden = t !== "ach";
+  $("paneReq").hidden = t !== "req";
   $("tabPaint").classList.toggle("on", t === "paint");
   $("tabSaved").classList.toggle("on", t === "saved");
   $("tabMaze").classList.toggle("on", t === "maze");
   $("tabAch").classList.toggle("on", t === "ach");
+  $("tabReq").classList.toggle("on", t === "req");
   if (t === "maze") {
     renderMazeTab();
   }
   if (t === "ach") {
     renderAch();
+  }
+  if (t === "req") {
+    renderRequestTab();
   }
   $("setBtn").classList.toggle("on", t === "settings");
   $("setBtn").classList.toggle("grey", t !== "settings");
@@ -289,6 +295,7 @@ export function startTabs() {
   $("tabSaved").onclick = () => showTab("saved");
   $("tabMaze").onclick = () => showTab("maze");
   $("tabAch").onclick = () => showTab("ach");
+  $("tabReq").onclick = () => showTab("req");
   $("palToggle").onclick = () => {
     const p = $("swatches");
     p.hidden = !p.hidden;
