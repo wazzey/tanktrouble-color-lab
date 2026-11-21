@@ -1193,7 +1193,7 @@ function recolour2(img, fn, extra) {
   const c = document.createElement("canvas");
   c.width = img.width;
   c.height = img.height;
-  const g = c.getContext("2d");
+  const g = c.getContext("2d", { willReadFrequently: true }); // (items read the recoloured copy back again)
   g.drawImage(img, 0, 0);
   const id = g.getImageData(0, 0, c.width, c.height),
     d = id.data,
