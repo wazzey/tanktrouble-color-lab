@@ -260,6 +260,11 @@ export function openHelp(where) {
             "Real = your normal garage (saved to your account). Color Lab = every box and item plus the Color Lab boxes; everything you pick there only changes your tank for you",
           ],
           ["🎲", "Random look: choose parts, item slots and boxes, then Roll"],
+          [
+            "🛞 Treads",
+            "The Backer Treads in one colour or two-tone, from TankTrouble's paints, Color Lab's paints or any colour",
+          ],
+          ["✨ Item effects", "An item you're wearing in its other styles, or made Glass or Transparent"],
           ["💾 Looks", "Your saved looks for this tank: switch with one click, or + New look to start another"],
           [
             "Pattern in-maze",

@@ -1248,10 +1248,10 @@ function populateGarageTreads(p) {
     two = /^bk-two-([a-z0-9-]+)_([a-z0-9-]+)-front33$/.exec(wornKey),
     one = /^bk-one-([a-z0-9-]+)-front33$/.exec(wornKey),
     wornPaint = BACKER_VARIANTS[wornKey] && BACKER_VARIANTS[wornKey].paint;
+  const picked = two ? [two[1], two[2]] : [one ? one[1] : wornPaint || "gp42", "1a1a1a"];
   let mode = two ? "two" : "one",
     side = 0,
-    source = "game";
-  const picked = two ? [two[1], two[2]] : [one ? one[1] : wornPaint || "gp42", "1a1a1a"];
+    source = GX_PAINT[picked[0]] ? "lab" : "game"; // (opens on the paints the picked one is from)
   const isColour = (value) => /^[0-9a-f]{6}$/.test(value);
   const nameOf = (value) =>
     isColour(value)
@@ -1371,6 +1371,7 @@ function populateGarageTreads(p) {
       chip.title = "Tread blocks " + (index + 1) + ": click, then pick a paint or a colour below";
       chip.onclick = () => {
         side = index;
+        source = GX_PAINT[picked[index]] ? "lab" : isColour(picked[index]) ? source : "game";
         populatePicker();
       };
       sides.appendChild(chip);
