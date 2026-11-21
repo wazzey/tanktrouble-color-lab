@@ -493,6 +493,7 @@ function ttMark() {
     updateAsked = Date.now();
     chrome.runtime.requestUpdateCheck().catch(() => {});
   } // (TankTrouble opened: ask the Web Store for a new version now, at most every 3 hours)
+  applyUpdateWhenFree(true); // (an update already waiting: this tab gets its Update now bar too)
 }
 // A new version from the Chrome Web Store: switched to at once when no TankTrouble tab is open, otherwise when the last
 // one closes, with a note on the page meanwhile (Chrome itself waits for a restart, as the live connection keeps
@@ -552,7 +553,10 @@ chrome.tabs.onRemoved.addListener(() => {
 });
 chrome.tabs.onUpdated.addListener((id, ch) => {
   if (ch.url && !/^https:\/\/([\w-]+\.)?tanktrouble\.com\//.test(ch.url)) {
-    setTimeout(ttGone, 300);
+    setTimeout(() => {
+      ttGone();
+      applyUpdateWhenFree();
+    }, 300);
   }
 });
 chrome.tabs.onRemoved.addListener((tabId) => {

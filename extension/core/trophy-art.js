@@ -400,7 +400,10 @@ export function themedBoxPic(kind) {
     return themedReq[kind];
   }
   return (themedReq[kind] = getAssetMap()
-    .then((map) => (map["box1"] ? loadImg(map["box1"]) : null))
+    .then((map) => {
+      const box = "box" + ((EXT_BOXPIC[kind] && EXT_BOXPIC[kind].from) || 1);
+      return map[box] ? loadImg(map[box]) : null;
+    })
     .then(async (img) => {
       if (!img) {
         return null;

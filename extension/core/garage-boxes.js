@@ -27,7 +27,7 @@ import {
 } from "../content/garage-folders.js";
 import { loadImg } from "../content/images.js";
 import { MAZE_TILE } from "../content/maze-patterns.js";
-import { EXT_ITEM } from "../content/registries.js";
+import { BACKER_VARIANTS, EXT_ITEM } from "../content/registries.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import {
   CUSTOM_BOXES,
@@ -39,6 +39,7 @@ import {
   getCustomArt,
   isCustomKey,
   readGalaxyBox,
+  redrawBacker,
 } from "./custom-box-art.js";
 import { trophyAccValue } from "./draw-swap.js";
 import { garageSig, garageSnap, lookupById, refreshSoon, refreshTanks, rpc, warmLooks } from "./game-socket.js";
@@ -869,11 +870,44 @@ function bgSwap(lk, url) {
         if (ent.base && ent.base.dirty) {
           ent.base.dirty();
         }
+        if (lk.endsWith("preprocess")) {
+          applyWelderPoints(gm, lk.slice(0, -"preprocess".length), img);
+        }
       } catch {}
       img.onload = null;
     };
     img.src = url;
   } catch {}
+}
+// The garage picks where the welding sparks fly from once, when it opens, from the item's picture. An item still
+// being drawn then had its stand-in's points (the middle of the tank), so they're picked again from the real picture
+function applyWelderPoints(gm, accKey, img) {
+  const states = gm.state && gm.state.states,
+    owner = [states && states.Main, states && states.Load].find(
+      (state) => state && state.accessoryToWelderPoints && state.accessoryToWelderPoints[accKey],
+    );
+  if (!owner) {
+    return;
+  }
+  const width = 640,
+    height = 384,
+    c = document.createElement("canvas");
+  c.width = width;
+  c.height = height;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const px = g.getImageData(0, 0, width, height).data,
+    points = owner.accessoryToWelderPoints[accKey];
+  points.length = 0;
+  for (let i = 0; i < width / 10; i++) {
+    for (let j = 0; j < Math.floor(height / 10); j++) {
+      const x = Math.floor((i + 0.5) * 10 + (Math.random() * 2 - 1) * 10),
+        y = Math.floor((j + 0.5) * 10 + (Math.random() * 2 - 1) * 10);
+      if (x >= 0 && y >= 0 && x < width && y < height && px[(y * width + x) * 4 + 3]) {
+        points.push({ x: x / width - 0.5, y: y / height - 0.5 });
+      }
+    }
+  } // (the game's own sampling: a 10px grid, each point nudged up to 10px)
 }
 export function bgBox(boxId) {
   // the box you opened goes first
@@ -1074,6 +1108,10 @@ export function garagePicFor(key) {
   }
   const frame = artOf(key);
   if (!frame) {
+    return;
+  }
+  if (!CUSTOM_ICONS[key] && BACKER_VARIANTS[key]) {
+    redrawBacker(key);
     return;
   }
   if (!CUSTOM_ICONS[key] && GX_ACC[key]) {

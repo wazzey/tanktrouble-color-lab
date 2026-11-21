@@ -1155,8 +1155,10 @@ function populateGarageFx(p) {
         for (const index of [0, 1]) {
           const chip = document.createElement("button");
           chip.type = "button";
-          chip.className = "small" + (index === side ? "" : " grey");
-          chip.style.cssText = "flex:1;display:flex;align-items:center;gap:5px;min-width:0";
+          chip.className = "small";
+          chip.style.cssText =
+            "flex:1;display:flex;align-items:center;gap:5px;min-width:0" +
+            (index === side ? ";box-shadow:0 0 0 2px #ffd54a" : ";opacity:.55"); // (the slot being picked for stands out)
           const chipName = document.createElement("span");
           chipName.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
           chipName.textContent = /^[0-9a-f]{6}$/.test(picked[index])
@@ -1170,13 +1172,19 @@ function populateGarageFx(p) {
           };
           host.appendChild(chip);
         }
-        pick.querySelector(".colour").value = "#" + (/^[0-9a-f]{6}$/.test(picked[side]) ? picked[side] : "e02020");
+        const colourPicked = /^[0-9a-f]{6}$/.test(picked[side]);
+        pick.querySelector(".colour").value = "#" + (colourPicked ? picked[side] : "e02020");
+        pick.querySelector(".colour").style.outline = colourPicked ? "2px solid #ffd54a" : "";
+        for (const dot of pick.querySelectorAll(".paints span")) {
+          dot.style.boxShadow =
+            dot.dataset.key === picked[side] ? "0 0 0 3px #ffd54a" : "0 0 0 1px rgba(255,255,255,.35)";
+        } // (that slot's paint or colour is ringed)
       };
       for (const key of paints) {
         const dot = swatch(key, 22);
         dot.title = GX_PAINT[key].name;
+        dot.dataset.key = key;
         dot.style.cursor = "pointer";
-        dot.style.boxShadow = "0 0 0 1px rgba(255,255,255,.35)";
         dot.onclick = () => {
           picked[side] = key;
           populateSides();

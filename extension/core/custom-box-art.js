@@ -85,6 +85,7 @@ EXT_BOXPIC.glass = {
   overlay() {},
 }; // (the Glass box's picture: pale glass blue)
 EXT_BOXPIC.backer = {
+  from: 6,
   ramp: [
     [0, [30, 18, 2]],
     [0.35, [130, 84, 10]],
@@ -93,7 +94,7 @@ EXT_BOXPIC.backer = {
     [1, [255, 255, 255]],
   ],
   overlay() {},
-}; // (the Backer box's picture: gold, so it isn't mistaken for the game's green Backer box)
+}; // (the Backer box's picture: the game's green Backer box in gold, so the two aren't mistaken)
 export const boxEnabled = (id) => !(SETTINGS.boxOff && SETTINGS.boxOff[id]); // a Color Lab box switched off in ⚙ Settings: not shown, not loaded
 export const boxAvailable = (b) =>
   b.trophies ? boxOpen(b.id) || usableTrophies().some((t) => t.box === b.trophies) : boxOpen(b.id);
@@ -403,6 +404,11 @@ export function getCustomArt(key) {
     .finally(() => {
       delete savedReq[key];
     }));
+}
+// a Backer item's shelf picture is drawn from the game's own icon, which a saved picture doesn't carry
+export function redrawBacker(key) {
+  delete CUSTOM_ART[key];
+  return drawCustomArt(key);
 }
 function drawCustomArt(key) {
   if (CUSTOM_ART[key]) {
@@ -1315,7 +1321,7 @@ export function afterCustomArt(key) {
       }
     });
   }
-  if (GX_ACC[key] && !CUSTOM_ICONS[key] && !GARAGE_PICS["i:" + key]) {
+  if (GX_ACC[key] && !BACKER_VARIANTS[key] && !CUSTOM_ICONS[key] && !GARAGE_PICS["i:" + key]) {
     if (TANK_PARTS) {
       const w = wornIcon(key, CUSTOM_ART[key]);
       if (w) {

@@ -110,7 +110,7 @@ TTOC_THEMES.forEach((t, i) => {
 });
 export const GARAGE_PICS = {}; // picture address marker → data URL for the garage loader
 // ART_REV changes only when Color Lab's pictures change (not on every update), so saved pictures survive updates
-export const ART_REV = "art-2026-10-31-v1f"; // (f: items shown on their own, tank bits cleaned off)
+export const ART_REV = "art-2026-11-21-v1"; // (Backer items drawn upright on the shelf)
 export const BOX_ART_REV = {
   agent: "pic-items-3",
   ninja: "pic-items-3",
@@ -121,7 +121,7 @@ export const BOX_ART_REV = {
   elements: "boxpic-2",
   materials: "boxpic-2",
   glass: "cans-4",
-  backer: "gold-1",
+  backer: "gold-2",
   eyewear: "boxpic-4",
   wildwest: "pic-hat-4",
   tropical: "pic-hat-1",
