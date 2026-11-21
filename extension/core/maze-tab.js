@@ -268,6 +268,26 @@ export function renderMazeTab() {
     toast("Patterns in the maze " + (SETTINGS.mazePatterns ? "on" : "off") + " (next round)");
   };
   st.appendChild(tg);
+  for (const [key, title, about] of [
+    ["mazeBacker", "Backer Treads in the maze", "Off = treads in their own colour, without the Backer Treads blocks"],
+    ["mazeGlass", "Glass and Transparent in the maze", "Off = see-through paints show as their main colour"],
+  ]) {
+    const row = document.createElement("div");
+    row.className = "setrow";
+    row.innerHTML =
+      '<span class="tog' +
+      (SETTINGS[key] !== false ? " on" : "") +
+      '"></span><span><span></span><small></small></span>';
+    row.children[1].children[0].textContent = title;
+    row.children[1].children[1].textContent = about;
+    row.onclick = () => {
+      SETTINGS[key] = SETTINGS[key] === false;
+      saveSettings();
+      renderMazeTab();
+      toast(title + " " + (SETTINGS[key] ? "on" : "off") + " (next round)");
+    };
+    st.appendChild(row);
+  } // (players' looks in a round, kept in Performance mode too)
   const lk = document.createElement("div");
   lk.className = "setrow";
   lk.innerHTML =

@@ -465,21 +465,23 @@ export function mazePatternTick() {
       if (mapNext !== undefined && isLaika(id)) {
         continue;
       } // between rounds: Laika's old tank is left alone, the next one arrives already dressed
-      const backer = ov && !(ov.maze && ov.maze.treads === false) ? mazeBackerTreads(ov) : null,
+      const backer =
+          ov && SETTINGS.mazeBacker !== false && !(ov.maze && ov.maze.treads === false) ? mazeBackerTreads(ov) : null,
         look = backer ? Object.assign({}, ov, { treads: backer }) : ov; // (Backer Treads worn: the treads in their look)
       mazeColours(t, id, look);
       let parts = SETTINGS.mazePatterns !== false ? mazeParts(look) : null;
-      if (parts && perfOn()) {
+      if (parts && (perfOn() || SETTINGS.mazeGlass === false)) {
         for (const part in parts) {
           const paint = parts[part] && patId(parts[part]);
-          if (paint && !paint.startsWith("bks~") && !PAINT_FX[paint]) {
+          const keep = paint && (paint.startsWith("bks~") || (PAINT_FX[paint] && SETTINGS.mazeGlass !== false));
+          if (paint && !keep && (perfOn() || PAINT_FX[paint])) {
             parts[part] = null;
           }
         }
         if (!parts.turret && !parts.base && !parts.treads) {
           parts = null;
         }
-      } // (Performance mode: patterns in their main colour, but a look's Backer Treads and see-through paints still show)
+      } // (Performance mode: patterns in their main colour; Backer Treads and see-through paints stay unless their own Maze tab switches are off)
       const sheet = parts ? mazeSheetFor(game, t, parts) : null;
       mazeSet(t, sheet && parts.base ? sheet : null);
       mazeSet(t.turret, sheet && parts.turret ? sheet : null);
