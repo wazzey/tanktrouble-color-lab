@@ -22,7 +22,7 @@ import {
   sakuraAcc,
 } from "../content/box-sakura.js";
 import { drawAura, drawEyewear } from "../content/box-shadow.js";
-import { ACC_BOXES, GX_ACC, GX_PAINT } from "../content/colours.js";
+import { ACC_BOXES, GX_ACC, GX_PAINT, PAINT_FX } from "../content/colours.js";
 import {
   CUSTOM_ART,
   CUSTOM_ICONS,
@@ -48,7 +48,8 @@ import { loadImg } from "../content/images.js";
 import { PICTURE_ITEMS, PICTURE_PAINTS, SHELF_PICS, drawHopper } from "../content/laika.js";
 import { rewardsOf, trophyByKey } from "../content/laika-trophies.js";
 import { CUSTOM_ANY_LAYOUT, MAZE_TILE } from "../content/maze-patterns.js";
-import { EXT_ITEM, GAME_NAMES, restyleAcc } from "../content/registries.js";
+import { BACKER_CAMO, BACKER_VARIANTS, EXT_BOXPIC, EXT_ITEM, GAME_NAMES, restyleAcc } from "../content/registries.js";
+import { drawPartFx } from "../content/tank-icon.js";
 import { achPaintsOf, boxOpen, trophyUsable, usableTrophies } from "./achievements.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import { drawnArt, origDrawImage, queuedPic, swapAsked } from "./draw-swap.js";
@@ -73,12 +74,79 @@ import { PLAYER_COLOR_MAP, SETTINGS } from "./storage.js";
 import { MASK_FIT, cropCanvas, sakuraBoxPic, sakuraSprites, shadowArt, themedBoxPic } from "./trophy-art.js";
 
 export let CUSTOM_BOXES;
+EXT_BOXPIC.glass = {
+  ramp: [
+    [0, [10, 24, 34]],
+    [0.35, [60, 120, 150]],
+    [0.65, [150, 210, 230]],
+    [0.88, [220, 245, 255]],
+    [1, [255, 255, 255]],
+  ],
+  overlay() {},
+}; // (the Glass box's picture: pale glass blue)
+EXT_BOXPIC.backer = {
+  ramp: [
+    [0, [30, 18, 2]],
+    [0.35, [130, 84, 10]],
+    [0.65, [222, 168, 40]],
+    [0.88, [255, 226, 140]],
+    [1, [255, 255, 255]],
+  ],
+  overlay() {},
+}; // (the Backer box's picture: gold, so it isn't mistaken for the game's green Backer box)
 export const boxEnabled = (id) => !(SETTINGS.boxOff && SETTINGS.boxOff[id]); // a Color Lab box switched off in ⚙ Settings: not shown, not loaded
 export const boxAvailable = (b) =>
   b.trophies ? boxOpen(b.id) || usableTrophies().some((t) => t.box === b.trophies) : boxOpen(b.id);
 export const boxShown = (b) => boxAvailable(b) && boxEnabled(b.id);
 const customBoxByPrefix = (key) => CUSTOM_BOXES.find((b) => b.prefix && key.startsWith(b.prefix));
-export const isCustomKey = (key) => !!customBoxByPrefix(String(key)) || !!GX_ACC[key] || !!GX_PAINT[key];
+// Glass and Transparent versions of any item (the item effect switch), named by the item they're made from:
+// "gls-g-turret43" (a game item) or "trn-c-cs-dice" (a Color Lab item). Each is listed in GX_ACC the first time it's met
+const FX_ACC = /^(gls|trn)-(g|c)-(.+)$/;
+function readFxAcc(key) {
+  const m = FX_ACC.exec(String(key));
+  if (!m) {
+    return null;
+  }
+  const game = m[2] === "g",
+    base = game ? null : GX_ACC[m[3]],
+    part = /(turret|barrel|front|back)\d+$/.exec(m[3]);
+  let slot = null;
+  if (game) {
+    slot = part && part.index === 0 ? part[1] : null;
+  } else if (base) {
+    slot = base.slot;
+  } else if (customBoxByPrefix(m[3]) && part) {
+    slot = part[1];
+  } // (a box item like "sp-turret43": the slot is in its key)
+  if (!slot) {
+    return null;
+  }
+  const name = (game ? GAME_NAMES[m[3]] : customTitle(m[3])) || m[3];
+  return (GX_ACC[key] = { slot, name: (m[1] === "gls" ? "Glass " : "Transparent ") + name, box: "glassfx" });
+}
+// A player's own two-tone Backer Treads, picked in the item effect switch. Each side is a paint or a colour:
+// "bk-two-pt-lava_e02020-front33". Listed the first time it's met, like the Glass and Transparent versions
+function readBackerTwo(key) {
+  const m = /^bk-two-([a-z0-9-]+)_([a-z0-9-]+)-front33$/.exec(String(key));
+  if (!m) {
+    return null;
+  }
+  const tone = (side) =>
+    /^[0-9a-f]{6}$/.test(side)
+      ? { rgb: [0, 2, 4].map((n) => parseInt(side.slice(n, n + 2), 16)) }
+      : GX_PAINT[side] && !PAINT_FX[side]
+        ? { paint: side }
+        : null;
+  const first = tone(m[1]),
+    second = tone(m[2]);
+  if (!first || !second) {
+    return null;
+  }
+  BACKER_VARIANTS[key] = { item: "front33", label: "Your two-tone", two: [first, second] };
+  return (GX_ACC[key] = { slot: "front", name: "Your Two-Tone Backer Treads", box: "backerfx" });
+}
+export const isCustomKey = (key) =>
+  !!customBoxByPrefix(String(key)) || !!(GX_ACC[key] || readFxAcc(key) || readBackerTwo(key)) || !!GX_PAINT[key];
 export const boxOfKey = (key) => {
   const b = customBoxByPrefix(String(key));
   if (b) {
@@ -129,6 +197,173 @@ export function customTitle(key) {
   const rest = key.slice(b.prefix.length);
   return b.name + " " + (GAME_NAMES[rest] || rest.replace(/^([a-z]+)(\d+)$/, "$1 #$2"));
 }
+// recolours only a Backer item's green, keeping the item's own shading
+function drawBackerVariant(img, vr, tiles) {
+  const width = img.naturalWidth || img.width,
+    height = img.naturalHeight || img.height,
+    fills = {};
+  for (const paint in tiles || {}) {
+    const fc = document.createElement("canvas");
+    fc.width = width;
+    fc.height = height;
+    const fg = fc.getContext("2d");
+    fg.fillStyle = fg.createPattern(tiles[paint], "repeat");
+    fg.setTransform(width / 1280, 0, 0, width / 1280, 0, 0);
+    fg.fillRect(0, 0, 1280, (height * 1280) / width);
+    fills[paint] = fg.getImageData(0, 0, width, height).data;
+  } // (each paint at half the size it has on a tank, so the pattern shows on a small item)
+  let left = 0,
+    right = width,
+    tones = null;
+  if (vr.rainbow || vr.two) {
+    const sc = document.createElement("canvas");
+    sc.width = width;
+    sc.height = height;
+    const sg = sc.getContext("2d", { willReadFrequently: true });
+    sg.drawImage(img, 0, 0);
+    const px = sg.getImageData(0, 0, width, height).data;
+    left = width;
+    right = 0;
+    let top = height,
+      bottom = 0;
+    for (let i = 3; i < px.length; i += 4) {
+      if (px[i]) {
+        const x = ((i - 3) / 4) % width,
+          y = Math.floor((i - 3) / 4 / width);
+        left = Math.min(left, x);
+        right = Math.max(right, x + 1);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y + 1);
+      }
+    } // (the rainbow runs across the item itself)
+    if (vr.two) {
+      // each tread block's bright face is found on its own (the darker ledges join the blocks), the blocks along the
+      // top and the bottom are coloured by turns from left to right, and the rest of the green spreads out from them
+      const green = (pixel, bright) => {
+        const at = pixel * 4,
+          brightest = Math.max(px[at], px[at + 1], px[at + 2]);
+        return (
+          px[at + 3] &&
+          px[at + 1] === brightest &&
+          brightest - Math.min(px[at], px[at + 1], px[at + 2]) >= 16 &&
+          (!bright || brightest >= 170)
+        );
+      };
+      const owner = new Int32Array(width * height).fill(-1),
+        blocks = [],
+        midY = (top + bottom) / 2;
+      for (let start = 0; start < width * height; start++) {
+        if (owner[start] !== -1 || !green(start, true)) {
+          continue;
+        }
+        const stack = [start];
+        let sumX = 0,
+          sumY = 0,
+          count = 0;
+        owner[start] = blocks.length;
+        while (stack.length) {
+          const pixel = stack.pop(),
+            x = pixel % width;
+          sumX += x;
+          sumY += Math.floor(pixel / width);
+          count++;
+          for (const next of [x > 0 ? pixel - 1 : -1, x < width - 1 ? pixel + 1 : -1, pixel - width, pixel + width]) {
+            if (next >= 0 && next < width * height && owner[next] === -1 && green(next, true)) {
+              owner[next] = blocks.length;
+              stack.push(next);
+            }
+          }
+        }
+        blocks.push({ x: sumX / count, y: sumY / count, tone: 0, block: count >= (width * height) / 8000 });
+      }
+      const real = blocks.filter((block) => block.block);
+      for (const row of [real.filter((block) => block.y < midY), real.filter((block) => block.y >= midY)]) {
+        row.sort((first, second) => first.x - second.x);
+        row.forEach((block, rank) => {
+          block.tone = rank % 2;
+        });
+      }
+      for (const block of blocks) {
+        if (!block.block && real.length) {
+          block.tone = real.reduce((best, other) =>
+            Math.hypot(other.x - block.x, other.y - block.y) < Math.hypot(best.x - block.x, best.y - block.y)
+              ? other
+              : best,
+          ).tone;
+        }
+      } // (specks too small to be a block take the colour of the block beside them)
+      tones = new Uint8Array(width * height);
+      let queue = [];
+      for (let pixel = 0; pixel < width * height; pixel++) {
+        if (owner[pixel] !== -1) {
+          tones[pixel] = blocks[owner[pixel]].tone;
+          queue.push(pixel);
+        }
+      }
+      while (queue.length) {
+        const nextQueue = [];
+        for (const pixel of queue) {
+          const x = pixel % width;
+          for (const next of [x > 0 ? pixel - 1 : -1, x < width - 1 ? pixel + 1 : -1, pixel - width, pixel + width]) {
+            if (next >= 0 && next < width * height && owner[next] === -1 && green(next, false)) {
+              owner[next] = owner[pixel];
+              tones[next] = tones[pixel];
+              nextQueue.push(next);
+            }
+          }
+        }
+        queue = nextQueue;
+      } // (each darker face and ledge takes the colour of the block it grows from)
+    }
+  }
+  const toRgb = (hue, sat, l) => {
+    const c2 = (1 - Math.abs(2 * l - 1)) * sat,
+      h = hue / 60,
+      x2 = c2 * (1 - Math.abs((h % 2) - 1)),
+      m2 = l - c2 / 2,
+      rgb = [
+        [c2, x2, 0],
+        [x2, c2, 0],
+        [0, c2, x2],
+        [0, x2, c2],
+        [x2, 0, c2],
+        [c2, 0, x2],
+      ][Math.floor(h) % 6];
+    return [(rgb[0] + m2) * 255, (rgb[1] + m2) * 255, (rgb[2] + m2) * 255];
+  };
+  return recolour(img, (d, i) => {
+    const r = d[i] / 255,
+      g = d[i + 1] / 255,
+      b = d[i + 2] / 255,
+      max = Math.max(r, g, b),
+      min = Math.min(r, g, b),
+      light = (max + min) / 2,
+      chroma = max - min;
+    if (g !== max || chroma < 0.06) {
+      return;
+    }
+    const sat = chroma / (1 - Math.abs(2 * light - 1));
+    const spec = tones ? vr.two[tones[i / 4]] : vr,
+      fill = spec.paint && fills[spec.paint];
+    let rgb;
+    if (fill) {
+      const k = Math.min(1.6, light / 0.45);
+      rgb = [fill[i] * k, fill[i + 1] * k, fill[i + 2] * k];
+    } else if (vr.rainbow) {
+      const x = (i / 4) % width;
+      rgb = toRgb(Math.min(330, Math.max(0, ((x - left) / Math.max(1, right - left)) * 330)), sat, light);
+    } else {
+      rgb = spec.rgb
+        ? spec.rgb.map((value) => value * Math.min(1.6, light / 0.45))
+        : spec.hue == null
+          ? toRgb(0, 0, spec.black ? light * 0.35 : Math.min(0.85, light * 1.3))
+          : toRgb(spec.hue, sat, light);
+    }
+    d[i] = Math.min(255, rgb[0]);
+    d[i + 1] = Math.min(255, rgb[1]);
+    d[i + 2] = Math.min(255, rgb[2]);
+  });
+}
 let PAINT_ART = null;
 export function getCustomArt(key) {
   if (CUSTOM_ART[key]) {
@@ -174,6 +409,54 @@ function drawCustomArt(key) {
     return Promise.resolve(CUSTOM_ART[key]);
   }
   if (customReq[key]) {
+    return customReq[key];
+  }
+  if (BACKER_CAMO[key]) {
+    // the game's Emerald camo (Backer box) recoloured, cut from the hull and mirrored so it tiles like Color Lab's paints
+    customReq[key] = getAssetMap()
+      .then((map) => (map["colours/colour33"] ? loadImg(map["colours/colour33"]) : null))
+      .then((img) => {
+        if (!img) {
+          return null;
+        }
+        const scale = (img.naturalWidth || img.width) / 640,
+          patch = document.createElement("canvas"),
+          c = document.createElement("canvas");
+        patch.width = 200;
+        patch.height = 120;
+        patch
+          .getContext("2d")
+          .drawImage(
+            drawBackerVariant(img, BACKER_CAMO[key]),
+            200 * scale,
+            235 * scale,
+            200 * scale,
+            100 * scale,
+            0,
+            0,
+            200,
+            120,
+          );
+        c.width = 400;
+        c.height = 240;
+        const g = c.getContext("2d");
+        for (const [flipX, flipY] of [
+          [1, 1],
+          [-1, 1],
+          [1, -1],
+          [-1, -1],
+        ]) {
+          g.setTransform(flipX, 0, 0, flipY, flipX < 0 ? 400 : 0, flipY < 0 ? 240 : 0);
+          g.drawImage(patch, 0, 0);
+        } // (mirrored four ways, so the camo repeats without a seam)
+        CUSTOM_ART[key] = c;
+        afterCustomArt(key);
+        return c;
+      })
+      .catch(() => null)
+      .finally(() => {
+        delete customReq[key];
+      });
     return customReq[key];
   }
   if (PICTURE_PAINTS[key]) {
@@ -253,6 +536,35 @@ function drawCustomArt(key) {
       });
     return customReq[key];
   }
+  if (FX_ACC.test(key) && readFxAcc(key)) {
+    // an item made see-through: drawn like a part in the Glass or Transparent paint
+    const [, fx, kind, base] = FX_ACC.exec(key);
+    customReq[key] = (
+      kind === "g"
+        ? getAssetMap().then((map) => {
+            const u = map["acc640/" + base] || map["accessories/" + base];
+            return u ? loadImg(u) : null;
+          })
+        : getCustomArt(base)
+    )
+      .then((img) => {
+        if (!img) {
+          return null;
+        }
+        const c = document.createElement("canvas");
+        c.width = 640;
+        c.height = 384;
+        drawPartFx(c.getContext("2d"), img, PAINT_FX[fx === "gls" ? "pt-glass" : "pt-clear"], 640, 384);
+        CUSTOM_ART[key] = c;
+        afterCustomArt(key);
+        return c;
+      })
+      .catch(() => null)
+      .finally(() => {
+        delete customReq[key];
+      });
+    return customReq[key];
+  }
   if (/^(sh|gx|hv|hk|ho|op)-a-[a-z]+\d+$/.test(key)) {
     // a game accessory in Shadow / Cosmic / Heavenly / Hacker / Holo style
     const kind = key.slice(0, 2),
@@ -271,6 +583,40 @@ function drawCustomArt(key) {
           CUSTOM_ICONS[key] = restyleAcc(ic, kind);
         } // its shelf picture, restyled the same way
         const c = restyleAcc(img, kind, 640, 384);
+        CUSTOM_ART[key] = c;
+        afterCustomArt(key);
+        return c;
+      })
+      .catch(() => null)
+      .finally(() => {
+        delete customReq[key];
+      });
+    return customReq[key];
+  }
+  if (BACKER_VARIANTS[key]) {
+    // a green Backer item in another colour, a rainbow or in a pattern paint
+    const vr = BACKER_VARIANTS[key],
+      paints = [vr.paint].concat((vr.two || []).map((side) => side.paint)).filter(Boolean);
+    customReq[key] = Promise.all([getAssetMap(), ...paints.map((paint) => getCustomArt(paint))])
+      .then(async ([map]) => {
+        const u = map["acc640/" + vr.item] || map["accessories/" + vr.item];
+        const [img, ic] = await Promise.all([
+          u ? loadImg(u) : null,
+          map["accIcon/" + vr.item] ? loadImg(map["accIcon/" + vr.item]) : null,
+        ]);
+        if (!img) {
+          return null;
+        }
+        const tiles = {};
+        for (const paint of paints) {
+          if (MAZE_TILE[paint] || CUSTOM_ART[paint]) {
+            tiles[paint] = MAZE_TILE[paint] || CUSTOM_ART[paint];
+          }
+        }
+        if (ic) {
+          CUSTOM_ICONS[key] = drawBackerVariant(ic, vr, tiles);
+        }
+        const c = drawBackerVariant(img, vr, tiles);
         CUSTOM_ART[key] = c;
         afterCustomArt(key);
         return c;
@@ -1013,7 +1359,21 @@ export function gxCanIcon(key) {
     if (!f) {
       return gxPaintIcon(key);
     }
-    gxCans[key] = GARAGE_PICS["can:" + key] = paintLabel(f, 78, 183, true, key).toDataURL();
+    let can = paintLabel(f, 78, 183, true, key);
+    if (PAINT_FX[key]) {
+      const solid = can;
+      can = document.createElement("canvas");
+      can.width = solid.width;
+      can.height = solid.height;
+      drawPartFx(
+        can.getContext("2d"),
+        solid,
+        Object.assign({}, PAINT_FX[key], { fill: PAINT_FX[key].fill * 2.5 }),
+        solid.width,
+        solid.height,
+      );
+    } // (a see-through paint's can is see-through too)
+    gxCans[key] = GARAGE_PICS["can:" + key] = can.toDataURL();
     picCacheSave();
   }
   return gxCans[key];
@@ -1110,8 +1470,12 @@ function hackerBoxPic() {
 export function customAccValue(key) {
   const box = customBoxByPrefix(key);
   // the picture the game loads before ours is drawn over it: one of the same slot (or a pattern paint)
-  const carrier = GX_ACC[key]
-    ? "accessories/" + GX_ACC[key].slot + "1"
+  const acc = GX_ACC[key] || readFxAcc(key) || readBackerTwo(key);
+  if (!acc && !GX_PAINT[key] && !box) {
+    return null;
+  }
+  const carrier = acc
+    ? "accessories/" + acc.slot + "1"
     : GX_PAINT[key]
       ? "colours/colour13"
       : "accessories/" + key.slice(box.prefix.length);
@@ -1178,6 +1542,7 @@ export function startCustomBoxArt() {
       picFrom: 3,
       pix: "fire",
       picFn: () => themedBoxPic("elements"),
+      items: "elements",
       paints: [
         "p:pt-lava",
         "p:pt-ocean",
@@ -1197,6 +1562,7 @@ export function startCustomBoxArt() {
       picFrom: 9,
       pix: "chrome",
       picFn: () => themedBoxPic("materials"),
+      items: "materials",
       paints: [
         "p:pt-carbon",
         "p:pt-marble",
@@ -1208,6 +1574,21 @@ export function startCustomBoxArt() {
         "0x8a5628",
         "0xd4a017",
         "0xc0c6d0",
+      ],
+    },
+    {
+      id: "glass",
+      name: "Glass",
+      picFrom: 9,
+      pix: "chrome",
+      picFn: () => themedBoxPic("glass"),
+      paints: [
+        "p:pt-clear",
+        "p:pt-glass",
+        "p:pt-glass-blue",
+        "p:pt-glass-green",
+        "p:pt-glass-pink",
+        "p:pt-glass-smoke",
       ],
     },
     // Heaven: the author's Celestial Heart box (its own picture) and its items
@@ -1591,6 +1972,13 @@ export function startCustomBoxArt() {
       paints: [],
     },
     // Streetwear: headphones, beanies, sneakers, chains, a boombox and a hoodie hood
+    {
+      id: "backer",
+      name: "Backer",
+      picFn: () => themedBoxPic("backer"),
+      items: "backer",
+      paints: Object.keys(BACKER_CAMO).map((key) => "p:" + key),
+    },
     {
       id: "streetwear",
       name: "Streetwear",

@@ -536,6 +536,16 @@ export const GX_ACC = {
   "cs-dice": { slot: "back", name: "Lucky Dice", box: "casino" },
   "cs-aura": { slot: "front", name: "Aura: Jackpot", box: "casino" },
 };
+// how see-through a part in these paints is (fill), how much of its shading shows (shade) and its glint of light
+const GLASS_FX = { fill: 0.12, shade: 0.3, glint: 0.55 };
+export const PAINT_FX = {
+  "pt-clear": { fill: 0.03, shade: 0.15, glint: 0 },
+  "pt-glass": GLASS_FX,
+  "pt-glass-blue": GLASS_FX,
+  "pt-glass-green": GLASS_FX,
+  "pt-glass-pink": GLASS_FX,
+  "pt-glass-smoke": GLASS_FX,
+};
 export const GX_PAINT = {
   "gx-nebula": { name: "Nebula", avg: "0x5a2a9a" },
   "gx-starfield": { name: "Starfield", avg: "0x121638" },
@@ -560,6 +570,13 @@ export const GX_PAINT = {
   "pt-rainbow": { name: "Rainbow", avg: "0x8f8f5a" },
   "pt-sunset": { name: "Sunset", avg: "0xd5604f" },
   "pt-candy": { name: "Candy Cane", avg: "0xff9aaa" },
+  // Glass box: see-through parts (PAINT_FX)
+  "pt-clear": { name: "Transparent", avg: "0xe8ecf4" },
+  "pt-glass": { name: "Glass", avg: "0xd8e6f0" },
+  "pt-glass-blue": { name: "Blue Glass", avg: "0x5aaaff" },
+  "pt-glass-green": { name: "Green Glass", avg: "0x5ae69a" },
+  "pt-glass-pink": { name: "Pink Glass", avg: "0xff7ac8" },
+  "pt-glass-smoke": { name: "Smoke Glass", avg: "0x5a5e6a" },
   // Heaven box (from hand-made paint cubes)
   "hv-pearl": { name: "Pearly Gates", avg: "0xbdbfca" },
   "hv-clouds": { name: "Clouds of Valhalla", avg: "0x849baf" },

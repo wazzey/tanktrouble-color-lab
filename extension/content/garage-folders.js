@@ -20,14 +20,14 @@ export const BOX_GROUPS = [
     name: "Sci-Fi & Tech",
     icon: "🚀",
     color: "#18b8d8",
-    boxes: ["hacker", "holo", "mech", "steampunk", "materials"],
+    boxes: ["hacker", "holo", "mech", "steampunk", "materials", "glass"],
   },
   {
     id: "street",
     name: "Street & Style",
     icon: "🏁",
     color: "#ff4f8a",
-    boxes: ["racing", "graffiti", "agent", "wildwest", "eyewear", "streetwear"],
+    boxes: ["racing", "graffiti", "agent", "wildwest", "eyewear", "streetwear", "backer"],
   },
   { id: "fun", name: "Fun & Games", icon: "🎲", color: "#ff8a1f", boxes: ["arcade", "casino", "sweets", "betabw"] },
   { id: "nature", name: "Nature", icon: "🌴", color: "#2fb070", boxes: ["safari", "deepsea", "tropical"] },
@@ -102,6 +102,8 @@ export const CUSTOM_BOX_IDS = {
   streetwear: 9028,
   betabw: 9029,
   community: 9070,
+  glass: 9071,
+  backer: 9072,
 };
 TTOC_THEMES.forEach((t, i) => {
   CUSTOM_BOX_IDS[t.id] = 9030 + i;
@@ -118,6 +120,8 @@ export const BOX_ART_REV = {
   sakura: "pic-eyewear-1",
   elements: "boxpic-2",
   materials: "boxpic-2",
+  glass: "cans-4",
+  backer: "gold-1",
   eyewear: "boxpic-4",
   wildwest: "pic-hat-4",
   tropical: "pic-hat-1",

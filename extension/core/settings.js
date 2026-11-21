@@ -437,6 +437,7 @@ export function applyShown() {
   vis(document.querySelector(".garage form .ttcl-gdice"), isShown("gdice"));
   vis(document.querySelector(".garage form .ttcl-gpower"), isShown("gpower"));
   vis(document.querySelector(".garage form .ttcl-greq"), isShown("greq"));
+  vis(document.querySelector(".garage form .ttcl-gfx"), isShown("gfx"));
   onlineDraw();
   try {
     renderGarageSearch();

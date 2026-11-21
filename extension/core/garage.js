@@ -1,4 +1,4 @@
-import { ACC_SLOTS } from "../content/colours.js";
+import { ACC_SLOTS, PAINT_FX } from "../content/colours.js";
 import {
   GARAGE_PICS,
   bgPending,
@@ -110,6 +110,40 @@ function garageWriteInner(body) {
   );
 }
 // the garage's tank pictures (the one being dressed and the ones along the bottom)
+// the garage's spray cans in a see-through paint: no solid can body behind, and their shading as faint as the can
+// (the paint on the can is drawn faint by draw-swap)
+export function applySprayCanFx() {
+  const gm = garageGame && garageGame.deref(),
+    cans = [];
+  const walk = (node, depth) => {
+    if (!node || depth > 6) {
+      return;
+    }
+    if (node.maskedColour && node.shade) {
+      cans.push(node);
+    }
+    for (const child of node.children || []) {
+      walk(child, depth + 1);
+    }
+  };
+  walk(gm && gm.world, 0);
+  for (const can of cans) {
+    const v = can.colour ? normVal(can.colour.rawValue) : "",
+      fx = typeof v === "string" && v.startsWith("p:") ? PAINT_FX[v.slice(2)] : null,
+      alpha = fx ? fx.shade : 1;
+    if (can.shade.alpha !== alpha) {
+      can.shade.alpha = alpha;
+    }
+    if (fx && !can.__ttclBody) {
+      gm.__ttclBlankCan = gm.__ttclBlankCan || gm.make.bitmapData(can.texture.width, can.texture.height);
+      can.__ttclBody = can.key;
+      can.loadTexture(gm.__ttclBlankCan);
+    } else if (!fx && can.__ttclBody) {
+      can.loadTexture(can.__ttclBody);
+      can.__ttclBody = null;
+    } // (cans are reused for other paints: their body goes back)
+  }
+}
 export function readGarageIcons() {
   const gm = garageGame && garageGame.deref(),
     main = gm && gm.state && gm.state.states && gm.state.states.Main;

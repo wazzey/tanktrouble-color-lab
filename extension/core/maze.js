@@ -1,8 +1,9 @@
-import { GX_PAINT, isPat, patId } from "../content/colours.js";
+import { GX_PAINT, PAINT_FX, isPat, patId } from "../content/colours.js";
 import { CUSTOM_ART, SIDE_DESIGN, treadPrint } from "../content/custom-boxes.js";
 import { imgCache, loadImg } from "../content/images.js";
 import { isLaika } from "../content/laika.js";
 import { MAP_THEMES, addRim, altOnFloor, bulletArt, mapFrame, rimFor } from "../content/maps.js";
+import { drawPartFx } from "../content/tank-icon.js";
 import {
   MAZE_GROUPS,
   MAZE_TILE,
@@ -92,8 +93,11 @@ const TEXTURED_TANKS = new Set([
   167,
 ]);
 function mazeSheetFor(game, sprite, parts) {
+  // see-through paints in a round: 10% with an outline that shows on the floor (light on a dark map, dark on a light one)
+  const fl = MAP_FLOOR_NOW || [200, 200, 200],
+    ring = (0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255 < 0.45 ? "rgba(240,244,255,0.95)" : "rgba(30,30,40,0.9)";
   const baseTex = sprite.__ttclOrigBase || sprite.texture.baseTexture,
-    key = (baseTex.uid || 0) + "|" + parts.turret + "|" + parts.base + "|" + parts.treads;
+    key = (baseTex.uid || 0) + "|" + parts.turret + "|" + parts.base + "|" + parts.treads + "|" + ring;
   if (mazeSheets[key]) {
     glFresh(game, mazeSheets[key]);
     return mazeSheets[key];
@@ -149,6 +153,22 @@ function mazeSheetFor(game, sprite, parts) {
     tc.width = f.width;
     tc.height = f.height;
     const tg = tc.getContext("2d");
+    const fx = PAINT_FX[patId(parts[part])];
+    if (fx) {
+      const pc = document.createElement("canvas");
+      pc.width = f.width;
+      pc.height = f.height;
+      const pg = pc.getContext("2d");
+      pg.drawImage(src, 0, 0, f.width, f.height);
+      pg.globalCompositeOperation = "multiply";
+      pg.drawImage(img, f.x, f.y, f.width, f.height, 0, 0, f.width, f.height);
+      pg.globalCompositeOperation = "destination-in";
+      pg.drawImage(img, f.x, f.y, f.width, f.height, 0, 0, f.width, f.height);
+      drawPartFx(tg, pc, { fill: 0.1, glint: part === "turret" ? fx.glint : 0 }, f.width, f.height, ring);
+      sg.clearRect(f.x, f.y, f.width, f.height);
+      sg.drawImage(tc, f.x, f.y);
+      continue;
+    }
     // same pattern scale on every part: the base (68 wide) shows the whole pattern, smaller parts a piece of it.
     // Paints drawn for the side view (sponsor liveries) are turned so they run along the tank like on its pictures.
     const pk = patId(parts[part]);

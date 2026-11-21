@@ -181,7 +181,7 @@ export const GAME_NAMES = {
   front28: "Invisible",
   front29: "Invisible",
   front30: "Invisible",
-  front33: "Striped Ring",
+  front33: "Backer Treads",
   front34: "Green K",
   front37: "Crash Test Sign",
   front38: "Chequered Strip",
@@ -405,6 +405,7 @@ export const RESTYLE_ITEMS = {
   front4: "Teeth",
   front43: "Gem",
   front160: "Radiation Sign",
+  front33: "Backer Treads",
 };
 for (const k in RESTYLE_ITEMS) {
   if (GAME_NAMES[k]) {
@@ -426,6 +427,106 @@ for (const kind in RESTYLE_KINDS) {
       name: RESTYLE_KINDS[kind][0] + " " + RESTYLE_ITEMS[item],
       box: RESTYLE_KINDS[kind][1],
     };
+  }
+}
+// The green Backer items in other colours and a rainbow (the Backer box), and in pattern paints (each in the box its
+// paint is in). Only the item's green changes. key: { item, label, hue (null = grey), black, rainbow, paint }
+export const BACKER_VARIANTS = {};
+const BACKER_ITEMS = ["front33", "turret33", "barrel33", "front34"];
+const BACKER_COLOURS = [
+  ["red", "Red", 0, "0xbe2a2a"],
+  ["orange", "Orange", 28, "0xc8701e"],
+  ["gold", "Gold", 48, "0xc8a020"],
+  ["cyan", "Cyan", 185, "0x1eaabe"],
+  ["blue", "Blue", 218, "0x2a5ac8"],
+  ["purple", "Purple", 275, "0x7a2ac8"],
+  ["pink", "Pink", 325, "0xc82a8a"],
+  ["silver", "Silver", null, "0x9a9a9a"],
+  ["black", "Black", null, "0x262626"],
+];
+// the Backer box's Emerald camo paint in the same colours
+export const BACKER_CAMO = {};
+for (const [id, label, hue, avg] of BACKER_COLOURS) {
+  BACKER_CAMO["bc-" + id] = { hue, black: id === "black" };
+  GX_PAINT["bc-" + id] = { name: label + " Backer Camo", avg };
+}
+const addBackerVariant = (item, id, label, box, extra) => {
+  const base = GAME_NAMES[item].replace(/^Green /, "").replace(" (Classic)", "");
+  BACKER_VARIANTS["bk-" + id + "-" + item] = Object.assign({ item, label }, extra);
+  GX_ACC["bk-" + id + "-" + item] = {
+    slot: item.replace(/\d+$/, ""),
+    name: label + " " + base,
+    box,
+  };
+};
+for (const item of BACKER_ITEMS) {
+  for (const [id, label, hue] of BACKER_COLOURS) {
+    addBackerVariant(item, id, label, "backer", { hue, black: id === "black" });
+  }
+}
+const BACKER_PAINTS = [
+  ["pt-spraycamo", "graffiti"],
+  ["pt-chequered", "racing"],
+  ["pt-lava", "elements"],
+  ["pt-goldleaf", "sakura"],
+  ["pt-holo", "holo"],
+  ["pt-carbon", "materials"],
+  ["pt-tiger", "safari"],
+  ["pt-zebra", "safari"],
+  ["pt-toxic", "elements"],
+  ["pt-ice", "elements"],
+  ["pt-synthwave", "arcade"],
+  ["pt-plasma", "mech"],
+  ["pt-sakura", "sakura"],
+  ["pt-opal", "holo"],
+  ["pt-oilslick", "mech"],
+  ["pt-coderain", "hacker"],
+  ["pt-thunder", "elements"],
+  ["pt-ocean", "elements"],
+  ["pt-neonmaze", "arcade"],
+  ["pt-circuit", "hacker"],
+  ["pt-glitch", "hacker"],
+  ["pt-goldfoil", "materials"],
+  ["pt-chrome", "materials"],
+  ["pt-marble", "materials"],
+  ["pt-candy", "holo"],
+  ["pt-rust", "steampunk"],
+  ["pt-scales", "deepsea"],
+  ["pt-splatter", "graffiti"],
+  ["pt-waves", "tropical"],
+  ["pt-jungle", "safari"],
+  ["pt-leopard", "safari"],
+  ["pt-jackpot", "casino"],
+  ["pt-hexarmour", "mech"],
+  ["pt-denim", "wildwest"],
+  ["pt-velvet", "kingdom"],
+  ["gx-nebula", undefined],
+  ["gx-aurora", undefined],
+  ["gx-starfield", undefined],
+]; // (the box each paint is in; Galaxy lists items with no box)
+const backerColour = (id) => {
+  const found = BACKER_COLOURS.find((c) => c[0] === id);
+  return { hue: found[2], black: id === "black" };
+};
+for (const [first, second] of [
+  ["red", "black"],
+  ["blue", "gold"],
+  ["purple", "gold"],
+  ["black", "gold"],
+  ["orange", "black"],
+  ["cyan", "pink"],
+  ["black", "silver"],
+  ["red", "blue"],
+]) {
+  const name = (id) => BACKER_COLOURS.find((c) => c[0] === id)[1];
+  addBackerVariant("front33", first + second, name(first) + " & " + name(second), "backer", {
+    two: [backerColour(first), backerColour(second)],
+  });
+} // (two-tone, the tread blocks take the two colours in turn)
+for (const item of BACKER_ITEMS) {
+  addBackerVariant(item, "rainbow", "Rainbow", "backer", { rainbow: true });
+  for (const [paint, box] of BACKER_PAINTS) {
+    addBackerVariant(item, paint.slice(3), GX_PAINT[paint].name, box, { paint });
   }
 }
 GX_ACC["sk-a-turret111"] = { slot: "turret", name: "Sakura Petal Pile", box: "sakura" };

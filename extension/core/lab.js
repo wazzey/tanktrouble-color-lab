@@ -1,4 +1,5 @@
 import { annLink, annList, annMark, annUnread } from "./announcements.js";
+import { applyCommunityWear, readCommunityReply } from "./community.js";
 import {
   fbFast,
   fbImages,
@@ -97,7 +98,7 @@ function labCss() {
 #ttclLab .pv img{height:46px;border-radius:4px;border:1px solid #777;vertical-align:middle}#ttclLab .pv span{display:inline-block;margin:0 6px 6px 0}
 #ttclLab .badge{background:#e33;color:#fff;border-radius:9px;padding:0 7px;font-size:12px;margin-left:4px}`;
 }
-function labBubble(me, who, at, text) {
+function labBubble(me, who, at, text, item) {
   return (
     '<div class="msg' +
     (me ? "" : " imp") +
@@ -109,6 +110,7 @@ function labBubble(me, who, at, text) {
       : LAB_ICON.replace('width="26" height="26"', 'width="20" height="20"') + ' <span class="nm">Color Lab</span>') +
     '</div><div class="bd">' +
     esc(text) +
+    readCommunityReply(item) +
     "</div></div>"
   );
 }
@@ -117,7 +119,7 @@ function labMsgs(items, who) {
   for (const it of items || []) {
     m.push({ me: true, who: it.who || who, text: it.text, at: it.at, id: it.id });
     for (const r of it.replies || []) {
-      m.push({ me: false, text: r.text, at: r.at });
+      m.push({ me: false, text: r.text, at: r.at, item: r.item });
     }
   }
   return m.sort((a, b) => a.at - b.at);
@@ -329,7 +331,7 @@ export function labDraw() {
     if (msgs.length > show.length) {
       h += '<button class="medium" data-k="older">Show older</button>';
     }
-    h += show.map((m) => labBubble(m.me, m.who, m.at, m.text)).join("") || "";
+    h += show.map((m) => labBubble(m.me, m.who, m.at, m.text, m.item)).join("") || "";
     h +=
       '<h2>Send a message to Color Lab</h2><div class="sub">Got ideas, found a bug, need help or just love Color Lab? Let us know!</div>' +
       '<textarea id="labText" maxlength="1500" placeholder="Message"></textarea>' +
@@ -388,6 +390,9 @@ export function labDraw() {
     const a = k.dataset.k;
     if (a === "close") {
       return labClose();
+    }
+    if (a === "wear") {
+      return applyCommunityWear(k.dataset.id);
     }
     if (DEV_BUILD && (a === "mine" || a === "inbox" || a === "alerts")) {
       labView = a;

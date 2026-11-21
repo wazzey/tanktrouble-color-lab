@@ -253,6 +253,7 @@ chrome.runtime.onMessage.addListener((m, sender, reply) => {
               pic: typeof m.pic === "string" ? m.pic : "",
               place: m.place && typeof m.place === "object" ? m.place : null,
               preview: typeof m.preview === "string" ? m.preview : "",
+              orig: typeof m.orig === "string" ? m.orig : "",
             }
           : { key: m.key, pid, note: String(m.note || "").slice(0, 200) },
       ),
@@ -567,11 +568,20 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   }
 });
 
-// The DEV build only: the page can ask for the extension to reload itself while testing
+// The DEV build only: the page can ask for the extension to reload itself while testing, and open TankTrouble tabs
+// are refreshed after a reload so they run the new build (the old one stops working in them)
 if (DEV_BUILD) {
   chrome.runtime.onMessage.addListener((m) => {
     if (m && m.type === "devReload") {
       setTimeout(() => chrome.runtime.reload(), 100);
+    }
+  });
+  chrome.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === "update") {
+      const open = await chrome.tabs.query({ url: ["https://tanktrouble.com/*", "https://*.tanktrouble.com/*"] });
+      for (const tab of open) {
+        chrome.tabs.reload(tab.id);
+      }
     }
   });
 }

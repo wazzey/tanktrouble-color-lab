@@ -23,7 +23,8 @@ const REQ = {
   turn: 0,
   look: null,
   busy: false,
-  tryKey: "",
+  drafts: {}, // the other slots' pictures and placements: one draft per slot, tried on together, sent one at a time
+  tryKeys: [],
 };
 const REQ_SLOTS = [
   ["turret", "🎩 Hat / face", 281, 150],
@@ -39,10 +40,11 @@ export function renderRequestTab() {
   }
   if (!host.children.length) {
     host.innerHTML = `
-<b>Request an item</b>
+<div class="row" style="gap:6px;align-items:center"><b style="flex:1">Request an item</b><button class="small" id="reqGuideBtn" title="A step by step guide to making and sending your own item">📖 How to make an item</button></div>
+<div id="reqGuide" hidden style="border:1px solid #ffd54a;border-radius:8px;padding:6px 8px;margin:4px 0;background:rgba(255,213,74,.08)"></div>
 <small class="mzsub">Try your own accessory on your tank, then send it to be added to Color Lab for everyone. Your picture only shows on your screen until it's approved.</small>
 <div class="mzseg" id="reqSlots"></div>
-<div class="row" style="gap:6px;margin:4px 0"><button class="small" id="reqPick">📁 Upload picture</button><button class="small grey" id="reqTemplate" title="A plain white tank (640 × 384) to draw your item on in any art app. Hide the tank before saving, and upload the picture at the same size: it lands exactly where you drew it">⬇ Tank</button></div>
+<div class="row" style="gap:6px;margin:4px 0;flex-wrap:wrap"><button class="small" id="reqPick">📁 Upload picture</button><button class="small grey" id="reqTemplate" title="A plain white tank (640 × 384) to draw your item on in any art app. Hide the tank before saving, and upload the picture at the same size: it lands exactly where you drew it">⬇ Tank</button><button class="small grey" id="reqUndo" hidden title="Put your picture back exactly as you uploaded it, with nothing removed, to place it yourself">↩ Undo auto-cut</button></div>
 <div class="status" id="reqPicMsg" style="margin:0 0 4px">A see-through background works best (a plain one is removed for you)</div>
 <input type="file" id="reqFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 <canvas id="reqEdit" width="640" height="384" style="display:block;width:100%;aspect-ratio:640/384;background:radial-gradient(ellipse at center,rgba(66,127,255,.25),transparent 70%);border:1px solid #333;border-radius:8px;cursor:grab;touch-action:none"></canvas>
@@ -59,23 +61,18 @@ export function renderRequestTab() {
 <div class="row" style="gap:6px"><button class="small" id="reqSend" style="flex:1">📨 Send request</button><button class="small grey" id="reqMore" hidden>Ask to send more</button></div>
 <div class="status" id="reqMsg"></div>`;
     const slots = $("reqSlots");
-    for (const [id, label, x, y] of REQ_SLOTS) {
+    for (const [id, label] of REQ_SLOTS) {
       const b = document.createElement("button");
       b.className = "small grey";
       b.dataset.slot = id;
-      b.textContent = label;
-      b.onclick = () => {
-        REQ.slot = id;
-        REQ.x = x;
-        REQ.y = y;
-        REQ.turn = 0;
-        applyRequestControls();
-        drawRequestPreview();
-      };
+      b.dataset.label = label;
+      b.onclick = () => applyRequestSlot(id);
       slots.appendChild(b);
     }
+    $("reqGuideBtn").onclick = () => populateRequestGuide($("reqGuide").hidden ? 0 : -1);
     $("reqPick").onclick = () => $("reqFile").click();
     $("reqTemplate").onclick = applyRequestTemplate;
+    $("reqUndo").onclick = applyRequestUndoCut;
     $("reqFile").onchange = (e) => {
       readRequestPicture(e.target.files && e.target.files[0]);
       e.target.value = "";
@@ -149,6 +146,115 @@ export function renderRequestTab() {
   drawRequestPreview();
 }
 
+// ---------- How to make an item: a step by step guide that points at each part of the tab ----------
+const GUIDE_URL = "https://github.com/wazzey/tanktrouble-color-lab/blob/main/docs/ITEM-REQUESTS.md";
+const GUIDE_STEPS = [
+  [
+    "reqSlots",
+    "Pick where your item goes",
+    "Hat / face sits on the dome, Back behind the tank, Front low at the front and Barrel on the gun. You can make one item for each, and they're tried on together.",
+  ],
+  [
+    "reqTemplate",
+    "Get the tank to draw on",
+    "⬇ Tank saves a plain white tank picture (640 × 384). Draw your item on it in any art app, hide or delete the tank, and save it at the same size: it then lands exactly where you drew it. No art app? Use the AI prompt below.",
+    true,
+  ],
+  [
+    "reqPick",
+    "Upload your picture",
+    "A plain background and a leftover tank are cut away for you. If it cuts too much, press ↩ Undo auto-cut to get your picture back as you uploaded it.",
+  ],
+  [
+    "reqEdit",
+    "Place it",
+    "Drag the item to move it, scroll or use Size to resize it and Turn to tilt it. ↺ puts it back where that slot's items sit. Check the player bar and profile previews underneath.",
+  ],
+  [
+    "reqTry",
+    "Try it on your tank",
+    "Wear it to see it in the garage and in games. Only you see it until it's approved. ✕ Take it off removes it.",
+  ],
+  [
+    "reqSend",
+    "Name it and send it",
+    "Give it a name, tick that you made the picture yourself, and send it. When it's approved you get a reply with its picture and a 🎩 Wear it button, and it goes in the Community box for everyone.",
+  ],
+  [
+    "reqPick",
+    "If it still doesn't fit",
+    "Upload just the item on its own, cut out with a see-through background, and place it by hand. The Color Lab team can also fix the placement before it's added.",
+    false,
+    true,
+  ],
+];
+
+function readGuidePrompt() {
+  const name = ($("reqName").value || "").trim() || "pirate hat";
+  return (
+    "Draw a " +
+    name +
+    " as a single accessory for a small cartoon tank, seen from the side with the tank facing right. " +
+    "Bold flat colours, a thick dark outline, simple shapes that still read when tiny. " +
+    "Only the item on its own on a fully transparent background (PNG), centred, no tank, no shadow, no text, no frame."
+  );
+}
+
+function populateRequestGuide(step) {
+  const box = $("reqGuide");
+  for (const el of box.parentNode.querySelectorAll("[data-guide]")) {
+    el.style.outline = "";
+    delete el.dataset.guide;
+  }
+  if (step < 0 || step >= GUIDE_STEPS.length) {
+    box.hidden = true;
+    return;
+  }
+  const [id, title, text, prompt, link] = GUIDE_STEPS[step],
+    target = $(id),
+    esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  box.hidden = false;
+  box.innerHTML =
+    "<b>" +
+    (step + 1) +
+    " / " +
+    GUIDE_STEPS.length +
+    " · " +
+    esc(title) +
+    '</b><div class="mzsub" style="margin:3px 0">' +
+    esc(text) +
+    "</div>" +
+    (prompt
+      ? '<textarea readonly rows="4" style="width:100%;box-sizing:border-box;font-size:11px">' +
+        esc(readGuidePrompt()) +
+        '</textarea><button class="small grey" data-g="copy">📋 Copy prompt</button> '
+      : "") +
+    (link ? '<a href="' + GUIDE_URL + '" target="_blank" rel="noopener">Full guide on GitHub</a>' : "") +
+    '<div class="row" style="gap:6px;margin-top:5px"><button class="small grey" data-g="back"' +
+    (step ? "" : " disabled") +
+    '>‹ Back</button><button class="small" data-g="next" style="flex:1">' +
+    (step === GUIDE_STEPS.length - 1 ? "Done ✓" : "Next ›") +
+    '</button><button class="small grey" data-g="close">✕</button></div>';
+  box.onclick = async (e) => {
+    const g = e.target.dataset && e.target.dataset.g;
+    if (g === "copy") {
+      try {
+        await navigator.clipboard.writeText(readGuidePrompt());
+        toast("📋 Prompt copied");
+      } catch {
+        toast("Couldn't copy, select the text and copy it instead", true);
+      }
+    } else if (g) {
+      populateRequestGuide(g === "next" ? step + 1 : g === "back" ? step - 1 : -1);
+    }
+  };
+  if (target) {
+    target.dataset.guide = "1";
+    target.style.outline = "2px solid #ffd54a";
+    target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
 // the plain white tank every item is drawn on, as a picture to draw an item over in any art app
 async function applyRequestTemplate() {
   try {
@@ -167,9 +273,55 @@ async function applyRequestTemplate() {
   }
 }
 
+// the picture back exactly as uploaded, nothing removed: the player places it by hand
+function applyRequestUndoCut() {
+  const s = REQ_SLOTS.find((x) => x[0] === REQ.slot);
+  REQ.img = REQ.raw;
+  REQ.pic = REQ.raw.toDataURL("image/png");
+  REQ.cut = false;
+  REQ.x = s[2];
+  REQ.y = s[3];
+  REQ.turn = 0;
+  REQ.size = Math.round((150 / Math.max(REQ.raw.width, REQ.raw.height)) * 100) / 100;
+  $("reqUndo").hidden = true;
+  $("reqPicMsg").textContent = "Your picture as you uploaded it: drag and resize it into place";
+  applyRequestControls();
+  drawRequestPreview();
+}
+
+// another slot: the one being placed is kept as that slot's draft, and the other slot's draft (or an empty one) opens
+function applyRequestSlot(id) {
+  if (REQ.img) {
+    REQ.drafts[REQ.slot] = {
+      pic: REQ.pic,
+      img: REQ.img,
+      raw: REQ.raw,
+      cut: REQ.cut,
+      x: REQ.x,
+      y: REQ.y,
+      size: REQ.size,
+      turn: REQ.turn,
+    };
+  } else {
+    delete REQ.drafts[REQ.slot];
+  }
+  const s = REQ_SLOTS.find((x) => x[0] === id);
+  Object.assign(
+    REQ,
+    REQ.drafts[id] || { pic: "", img: null, raw: null, cut: false, x: s[2], y: s[3], size: 1, turn: 0 },
+  );
+  REQ.slot = id;
+  $("reqUndo").hidden = !REQ.cut;
+  applyRequestControls();
+  drawRequestPreview();
+}
+
 function applyRequestControls() {
   for (const b of $("reqSlots").children) {
+    const has = b.dataset.slot === REQ.slot ? REQ.img : REQ.drafts[b.dataset.slot];
     b.classList.toggle("grey", b.dataset.slot !== REQ.slot);
+    b.textContent = b.dataset.label + (has ? " •" : "");
+    b.title = has ? "Has a picture" : "No picture yet";
   }
   $("reqSize").value = String(REQ.size);
   $("reqTurn").value = String(REQ.turn);
@@ -194,6 +346,10 @@ function readRequestPicture(file) {
       c.height = Math.max(1, Math.round(img.height * k));
       const g = c.getContext("2d", { willReadFrequently: true });
       g.drawImage(img, 0, 0, c.width, c.height);
+      const raw = document.createElement("canvas");
+      raw.width = c.width;
+      raw.height = c.height;
+      raw.getContext("2d").drawImage(c, 0, 0); // (the picture as uploaded, for ↩ Undo auto-cut and for the Color Lab team)
       const data = g.getImageData(0, 0, c.width, c.height).data;
       let clear = 0;
       for (let i = 3; i < data.length; i += 4) {
@@ -212,6 +368,8 @@ function readRequestPicture(file) {
         pic = layer ? c : readCroppedPicture(c, g);
       REQ.pic = pic.toDataURL("image/png");
       REQ.img = pic;
+      REQ.raw = raw;
+      REQ.cut = onTank || solid;
       if (layer) {
         REQ.x = 320;
         REQ.y = 192;
@@ -220,6 +378,7 @@ function readRequestPicture(file) {
       } else {
         REQ.size = Math.round((150 / Math.max(pic.width, pic.height)) * 100) / 100;
       } // (drawn on the tank template at its size: it goes exactly where it was drawn)
+      $("reqUndo").hidden = !REQ.cut;
       msg.textContent = onTank
         ? "Tank removed: just your item is kept, where you drew it. White, grey or black parts over the tank go too"
         : solid
@@ -314,7 +473,8 @@ function applyBackgroundCut(ctx, width, height) {
     seen = new Uint8Array(width * height),
     todo = [];
   const isNear = (at, range) => {
-    const gap = Math.abs(px[at * 4] - corner[0]) + Math.abs(px[at * 4 + 1] - corner[1]) + Math.abs(px[at * 4 + 2] - corner[2]);
+    const gap =
+      Math.abs(px[at * 4] - corner[0]) + Math.abs(px[at * 4 + 1] - corner[1]) + Math.abs(px[at * 4 + 2] - corner[2]);
     return gap < range;
   };
   const isBackground = (at) => {
@@ -377,6 +537,9 @@ async function drawRequestPreview() {
     }
     const look = REQ.look,
       acc = Object.assign({}, look.acc);
+    for (const slot in REQ.drafts) {
+      acc[slot] = drawItemArt(REQ.drafts[slot].img, REQ.drafts[slot]);
+    }
     if (REQ.img) {
       acc[REQ.slot] = drawItemArt(REQ.img, REQ);
     }
@@ -396,7 +559,7 @@ async function drawRequestPreview() {
 
 function applyRequestTryOn() {
   const me = loggedInIds(false)[0];
-  if (!REQ.img) {
+  if (!REQ.img && !Object.keys(REQ.drafts).length) {
     toast("Upload a picture first", true);
     return;
   }
@@ -404,15 +567,22 @@ function applyRequestTryOn() {
     toast("Log in to try it on your tank", true);
     return;
   }
-  if (REQ.tryKey) {
-    delete GX_ACC[REQ.tryKey];
-    delete CUSTOM_ART[REQ.tryKey];
+  for (const key of REQ.tryKeys) {
+    delete GX_ACC[key];
+    delete CUSTOM_ART[key];
   }
-  REQ.tryKey = "cmtry-" + Date.now(); // (a new key each time, so no old picture is reused)
-  GX_ACC[REQ.tryKey] = { slot: REQ.slot, name: "Your request", box: "request" };
-  CUSTOM_ART[REQ.tryKey] = drawItemArt(REQ.img, REQ);
+  REQ.tryKeys = [];
+  const acc = {},
+    drafts = Object.assign({}, REQ.drafts, REQ.img ? { [REQ.slot]: REQ } : {});
+  for (const slot in drafts) {
+    const key = "cmtry-" + slot + "-" + Date.now(); // (a new key each time, so no old picture is reused)
+    GX_ACC[key] = { slot, name: "Your request", box: "request" };
+    CUSTOM_ART[key] = drawItemArt(drafts[slot].img, drafts[slot]);
+    REQ.tryKeys.push(key);
+    acc[slot] = "ttcl:" + key;
+  } // (every slot's draft at once)
   PUBLIC_BOXES.add("request");
-  applyTryOn(me, REQ.slot, REQ.tryKey);
+  applyTryOn(me, acc);
   $("reqOff").hidden = false;
   applyNow([me], "On your tank, only on your screen. Moved it? Press Try it on again");
   garageRedraw();
@@ -420,12 +590,14 @@ function applyRequestTryOn() {
 
 function applyRequestTakeOff() {
   const me = loggedInIds(false)[0];
-  if (!REQ.tryKey) {
+  if (!REQ.tryKeys.length) {
     return;
   }
-  delete GX_ACC[REQ.tryKey];
-  delete CUSTOM_ART[REQ.tryKey];
-  REQ.tryKey = "";
+  for (const key of REQ.tryKeys) {
+    delete GX_ACC[key];
+    delete CUSTOM_ART[key];
+  }
+  REQ.tryKeys = [];
   applyTryOn(null);
   $("reqOff").hidden = true;
   if (me) {
@@ -462,6 +634,7 @@ async function applyRequestSend() {
       pic: REQ.pic,
       place: { x: REQ.x, y: REQ.y, size: REQ.size, turn: REQ.turn },
       preview: readRequestShot(),
+      orig: REQ.raw ? readOriginalShot() : "",
     }).catch(() => null);
     $("reqSend").disabled = false;
     const err = r && r.data && r.data.error;
@@ -503,14 +676,38 @@ async function applyRequestMore() {
   $("reqMore").hidden = r && r.ok;
 }
 
-// the tank with the item on it, as a picture for the Color Lab team to see the request by
-function readRequestShot() {
+// the picture as the player uploaded it, on the same dark background, so the team can see what was removed
+function readOriginalShot() {
   const c = document.createElement("canvas");
-  c.width = 640;
-  c.height = 384;
+  c.width = REQ.raw.width;
+  c.height = REQ.raw.height;
+  const g = c.getContext("2d");
+  g.fillStyle = "#2a2f3d";
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(REQ.raw, 0, 0);
+  return c.toDataURL("image/jpeg", 0.85);
+}
+
+// the tank with the item on it (this one only, not the other slots' drafts), as a picture for the Color Lab team
+function readRequestShot() {
+  const c = document.createElement("canvas"),
+    tank = document.createElement("canvas"),
+    look = REQ.look;
+  c.width = tank.width = 640;
+  c.height = tank.height = 384;
   const g = c.getContext("2d");
   g.fillStyle = "#2a2f3d";
   g.fillRect(0, 0, 640, 384);
-  g.drawImage($("reqEdit"), 0, 0);
+  if (look) {
+    drawTankIcon(
+      tank,
+      look.tc,
+      look.trc,
+      look.bc,
+      look.P,
+      Object.assign({}, look.acc, { [REQ.slot]: drawItemArt(REQ.img, REQ) }),
+    );
+    g.drawImage(tank, 0, 0);
+  }
   return c.toDataURL("image/jpeg", 0.85);
 }

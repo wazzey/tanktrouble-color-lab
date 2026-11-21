@@ -1,5 +1,7 @@
+import { GX_PAINT } from "../content/colours.js";
 import { noteRealGarageChange } from "../content/garage-folders.js";
 import { isTrophyVal } from "../content/laika-trophies.js";
+import { normVal } from "../content/registries.js";
 import { trophyUsable } from "./achievements.js";
 import { customUsable, isCustomKey } from "./custom-box-art.js";
 import { trophyAccValue } from "./draw-swap.js";
@@ -161,6 +163,18 @@ export function startNetwork() {
           if (fake) {
             return Promise.resolve(fake);
           } // an item you don't own: saved locally, never sent
+          let sent = null;
+          try {
+            sent = normVal(JSON.parse(body).params[2]);
+          } catch {}
+          if (body.includes("ttcl=") || (sent && GX_PAINT[sent.slice(2)])) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({ jsonrpc: "2.0", id: 1, result: { result: false, message: "Color Lab only" } }),
+                { headers: { "Content-Type": "application/json" } },
+              ),
+            );
+          } // (a Color Lab paint or item is never sent to TankTrouble, even if it couldn't be kept locally)
         } else {
           noteRealGarageChange(body);
         } // Real mode: always a real change, so other players must hear about it

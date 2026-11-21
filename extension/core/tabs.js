@@ -296,6 +296,7 @@ export function startTabs() {
   $("tabMaze").onclick = () => showTab("maze");
   $("tabAch").onclick = () => showTab("ach");
   $("tabReq").onclick = () => showTab("req");
+  $("tabReq").hidden = !DEV_BUILD; // (item requests: not open to players yet)
   $("palToggle").onclick = () => {
     const p = $("swatches");
     p.hidden = !p.hidden;

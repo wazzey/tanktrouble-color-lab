@@ -7,6 +7,10 @@ export const PUBLIC_BOXES = new Set([
   "galaxy",
   "elements",
   "materials",
+  "glass",
+  "backer",
+  "glassfx", // (Glass and Transparent versions of items: no box of their own, made with the item effect switch)
+  "backerfx", // (players' own two-tone Backer Treads: the same)
   "holo",
   "heaven",
   "shadow",

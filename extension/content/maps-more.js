@@ -1,4 +1,4 @@
-import { MAP_THEMES, drawGlyph, mapFloorField, mapNoise } from "./maps.js";
+import { MAP_THEMES, SHIELD_CRATE, drawGlyph, mapFloorField, mapNoise } from "./maps.js";
 
 // ---- more maps, each with a light and a dark version (built from a palette and a few motifs) ----
 export const MOTIF = {
@@ -266,7 +266,7 @@ export function mapVariant(p) {
     },
     crate: (g, glyph, k) => {
       const c = p.crate,
-        shield = k === 6;
+        shield = k === SHIELD_CRATE;
       g.fillStyle = c.edge;
       g.beginPath();
       g.roundRect(3, 3, 58, 58, 8);
@@ -892,7 +892,7 @@ export const DEC = {
       g.fillRect(1.5, h / 2 - 2.5, w - 3, 5);
     },
     crate: (g, glyph, k) => {
-      const neon = k === 6 ? "#0096c7" : "#7a3cff";
+      const neon = k === SHIELD_CRATE ? "#0096c7" : "#7a3cff";
       g.fillStyle = "#2a1a5e";
       g.beginPath();
       g.roundRect(3, 3, 58, 58, 8);
@@ -907,7 +907,7 @@ export const DEC = {
       g.roundRect(7, 7, 50, 50, 6);
       g.stroke();
       if (glyph) {
-        drawGlyph(g, glyph, k === 6 ? "#0096c7" : "#2a1a5e", null);
+        drawGlyph(g, glyph, k === SHIELD_CRATE ? "#0096c7" : "#2a1a5e", null);
       }
     },
   });
@@ -1009,7 +1009,7 @@ export const DEC = {
 // Themed crates (like the game's Halloween pumpkins and Christmas presents): a different object for each map, with the
 // weapon's symbol big on a badge in the middle so you can always tell what's inside (the shield's badge stays blue)
 export function objBadge(g, glyph, k, plate, ink, ring, r = 19) {
-  const shield = k === 6;
+  const shield = k === SHIELD_CRATE;
   g.fillStyle = ring || "rgba(0,0,0,.55)";
   g.beginPath();
   g.arc(32, 32, r + 2.5, 0, 7);
@@ -1046,10 +1046,10 @@ export const drawSymbol = (g, glyph, k, cx, cy, size, ink) => {
   g.translate(cx, cy);
   g.scale(sc, sc);
   g.translate(-32, -32);
-  drawGlyph(g, glyph, k === 6 ? "#ffffff" : ink, null);
+  drawGlyph(g, glyph, k === SHIELD_CRATE ? "#ffffff" : ink, null);
   g.restore();
 }; // the weapon's symbol, fitted to a spot
-export const shieldPlate = (k, c) => (k === 6 ? "#3d8fe0" : c); // the shield's spot is always blue
+export const shieldPlate = (k, c) => (k === SHIELD_CRATE ? "#3d8fe0" : c); // the shield's spot is always blue
 export const OBJ_CRATES = {
   // (g, glyph, k, dark): things you'd find in each map, the weapon's symbol where it reads best
   deepsea: (g, gl, k, d) => {
@@ -1084,7 +1084,7 @@ export const OBJ_CRATES = {
     g.stroke();
     const pr = g.createRadialGradient(28, 34, 2, 32, 40, 18);
     pr.addColorStop(0, "#ffffff");
-    pr.addColorStop(1, k === 6 ? "#3d8fe0" : "#e6e8f2");
+    pr.addColorStop(1, k === SHIELD_CRATE ? "#3d8fe0" : "#e6e8f2");
     g.fillStyle = pr;
     g.beginPath();
     g.arc(32, 40, 17, 0, 7);

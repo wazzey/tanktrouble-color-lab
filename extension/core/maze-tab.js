@@ -36,7 +36,8 @@ export const SET_ITEMS = {
     ["gsearch", "🔍 Find in garage", "The search list, bottom-left"],
     ["gdice", "🎲 Random look", ""],
     ["gpower", "⏻ On / off", ""],
-    ["greq", "🧩 Request an item", ""],
+    ...(DEV_BUILD ? [["greq", "🧩 Request an item", ""]] : []), // (item requests: not open to players yet)
+    ["gfx", "✨ Item effects", ""],
     ["gmz", "Pattern in-maze buttons", ""],
   ],
   setPage: [

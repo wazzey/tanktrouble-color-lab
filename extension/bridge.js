@@ -436,6 +436,7 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
               place: d.place,
               note: d.note,
               preview: d.preview,
+              orig: d.orig,
               adm: DEV_BUILD ? d.adm : undefined,
               read: DEV_BUILD ? d.read : undefined,
             },

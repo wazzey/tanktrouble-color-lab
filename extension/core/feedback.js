@@ -1,4 +1,5 @@
 import { backupOn, readAccountMessages } from "./account-sync.js";
+import { applyCommunityWear, readCommunityReply } from "./community.js";
 import { loggedInIds, lookupById } from "./game-socket.js";
 import { shareCall, shareMine } from "./look-sharing.js";
 import { $, panel, toast } from "./panel.js";
@@ -93,7 +94,7 @@ function fbRender() {
   for (const it of fbItems) {
     msgs.push({ me: true, text: it.text, at: it.at, id: it.id });
     for (const r of it.replies) {
-      msgs.push({ me: false, text: r.text, at: r.at, id: it.id });
+      msgs.push({ me: false, text: r.text, at: r.at, id: it.id, item: r.item });
     }
   }
   msgs.sort((a, b) => a.at - b.at);
@@ -127,7 +128,12 @@ function fbRender() {
       ago(m.at) +
       '</span></div><div style="white-space:pre-wrap;overflow-wrap:anywhere">' +
       esc(m.text) +
-      "</div>";
+      "</div>" +
+      readCommunityReply(m.item);
+    const wear = d.querySelector("[data-k=wear]");
+    if (wear) {
+      wear.onclick = () => applyCommunityWear(wear.dataset.id);
+    }
     L.appendChild(d);
   }
   L.scrollTop = L.scrollHeight; // (newest at the bottom, next to the box)

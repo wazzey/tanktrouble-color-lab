@@ -15,7 +15,49 @@ export const PART_NAMES = [
 ];
 export const bufA = document.createElement("canvas"),
   bufB = document.createElement("canvas"),
-  bufO = document.createElement("canvas");
+  bufO = document.createElement("canvas"),
+  bufFx = document.createElement("canvas");
+// a part in a see-through paint (PAINT_FX): faint, with a fine outline of its own, and for glass a glint of light
+export function drawPartFx(ctx, part, fx, width, height, ring = "rgba(240,244,255,0.95)") {
+  const line = Math.max(1, Math.round(width / 260)),
+    fg = bufFx.getContext("2d");
+  bufFx.width = width;
+  bufFx.height = height;
+  for (const [x, y] of [
+    [-line, 0],
+    [line, 0],
+    [0, -line],
+    [0, line],
+  ]) {
+    fg.drawImage(part, x, y, width, height);
+  }
+  fg.globalCompositeOperation = "destination-out";
+  fg.drawImage(part, 0, 0, width, height); // (just the ring round the part)
+  fg.globalCompositeOperation = "source-in";
+  fg.fillStyle = ring;
+  fg.fillRect(0, 0, width, height);
+  ctx.canvas.__ttclHasFx = true; // (its dark outline then goes round the solid parts only)
+  const was = ctx.globalAlpha;
+  ctx.globalAlpha = was * fx.fill;
+  ctx.drawImage(part, 0, 0, width, height);
+  ctx.globalAlpha = was;
+  ctx.drawImage(bufFx, 0, 0);
+  if (fx.glint) {
+    fg.globalCompositeOperation = "copy";
+    const band = fg.createLinearGradient(0, 0, width, height);
+    band.addColorStop(0.3, "rgba(255,255,255,0)");
+    band.addColorStop(0.36, `rgba(255,255,255,${fx.glint})`);
+    band.addColorStop(0.42, "rgba(255,255,255,0)");
+    band.addColorStop(0.47, "rgba(255,255,255,0)");
+    band.addColorStop(0.49, `rgba(255,255,255,${fx.glint * 0.6})`);
+    band.addColorStop(0.51, "rgba(255,255,255,0)");
+    fg.fillStyle = band;
+    fg.fillRect(0, 0, width, height);
+    fg.globalCompositeOperation = "destination-in";
+    fg.drawImage(part, 0, 0, width, height);
+    ctx.drawImage(bufFx, 0, 0);
+  }
+}
 export function drawTankIcon(cv, turretC, treadC, baseC, P, acc) {
   const W = cv.width,
     H = cv.height;
@@ -43,9 +85,16 @@ export function drawTankIcon(cv, turretC, treadC, baseC, P, acc) {
     }
     paint(c);
     tint.drawImage(mask, 0, 0, W, H);
-    comp.drawImage(bufB, 0, 0);
+    const fx = c && c.__ttclPaintFx;
+    if (fx) {
+      drawPartFx(comp, bufB, mask === P.turret ? fx : Object.assign({}, fx, { glint: 0 }), W, H); // (the glint on the dome only)
+    } else {
+      comp.drawImage(bufB, 0, 0);
+    }
     if (shade) {
+      comp.globalAlpha = fx ? fx.shade : 1;
       comp.drawImage(shade, 0, 0, W, H);
+      comp.globalAlpha = 1;
     }
   };
   if (acc.back) {

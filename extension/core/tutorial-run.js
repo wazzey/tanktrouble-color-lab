@@ -413,13 +413,17 @@ export function startTutorialRun() {
         t: "Achievements 🏆",
         x: "Color Lab's own achievements. Earn them in online rounds to unlock extra items (and, for the hardest, a paint) in the <b>Achievements</b> box. Each one says how to get it.",
       },
-      {
-        before: () => showTab("req"),
-        el: () => $("paneReq"),
-        area: "req",
-        t: "Request an item 🧩",
-        x: "Made your own accessory? Pick its slot, <b>Upload</b> a picture (<b>⬇ Tank</b> gives you the plain tank to draw on), then drag it into place. The mouse wheel or <b>Size</b> makes it bigger or smaller and <b>Turn</b> rotates it. Give it a name, tick that it's your own work and press <b>Send</b>. If it's approved it goes in the garage's <b>Community</b> box for everyone, with your name on it.",
-      },
+      ...(DEV_BUILD
+        ? [
+            {
+              before: () => showTab("req"),
+              el: () => $("paneReq"),
+              area: "req",
+              t: "Request an item 🧩",
+              x: "Made your own accessory? Pick its slot, <b>Upload</b> a picture (<b>⬇ Tank</b> gives you the plain tank to draw on), then drag it into place. The mouse wheel or <b>Size</b> makes it bigger or smaller and <b>Turn</b> rotates it. Give it a name, tick that it's your own work and press <b>Send</b>. If it's approved it goes in the garage's <b>Community</b> box for everyone, with your name on it.",
+            },
+          ]
+        : []), // (item requests: not open to players yet)
       {
         before: () => showTab("settings"),
         el: () => $("paneSet"),

@@ -404,7 +404,7 @@ export function syncGarageBack() {
   const pid = selPid(),
     f = boxFolder(),
     show = !!pid && garageAllOn(pid) && f !== "root";
-  b.style.display = show ? "" : "none";
+  b.style.visibility = show ? "" : "hidden"; // (its space is kept, so the buttons before it never move)
   const up = f.startsWith("lab:") ? "Custom" : "the folders";
   const txt = "← Back";
   if (b.textContent !== txt) {

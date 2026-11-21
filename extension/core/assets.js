@@ -1,4 +1,4 @@
-import { GX_PAINT, isPat, patId } from "../content/colours.js";
+import { GX_PAINT, PAINT_FX, isPat, patId } from "../content/colours.js";
 import { loadImg } from "../content/images.js";
 import { isTrophyVal } from "../content/laika-trophies.js";
 import { toCss } from "../content/registries.js";
@@ -107,7 +107,11 @@ export async function resolvePaint(map, colour) {
   }
   if (typeof colour === "string") {
     if (isPat(colour) && GX_PAINT[patId(colour)]) {
-      return (await getCustomArt(patId(colour))) || toCss(colour);
+      const art = await getCustomArt(patId(colour));
+      if (art && PAINT_FX[patId(colour)]) {
+        art.__ttclPaintFx = PAINT_FX[patId(colour)];
+      } // (see-through: drawn by drawPartFx)
+      return art || toCss(colour);
     } // Color Lab's own pattern paints
     if (isPat(colour)) {
       const u = map["colours/colour" + patId(colour)];
@@ -120,7 +124,7 @@ export async function resolvePaint(map, colour) {
   }
   const mk = /[?&]ttcl=([\w-]+)/.exec(String(colour.imageValue || ""));
   if (mk && GX_PAINT[mk[1]]) {
-    return (await getCustomArt(mk[1])) || toCss(colour.numericValue) || "#8a8a8a";
+    return (await resolvePaint(map, "p:" + mk[1])) || toCss(colour.numericValue) || "#8a8a8a";
   }
   const u = map["colours/colour" + colour.imageValue];
   return (u && (await loadImg(u))) || "#8a8a8a";

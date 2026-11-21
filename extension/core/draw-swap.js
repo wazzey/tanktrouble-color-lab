@@ -1,9 +1,10 @@
-import { GX_PAINT } from "../content/colours.js";
+import { GX_PAINT, PAINT_FX } from "../content/colours.js";
 import { CUSTOM_BOX_PICS, partPaintFor } from "../content/custom-boxes.js";
 import { CUSTOM_BOX_IDS, GARAGE_PICS, breathe } from "../content/garage-folders.js";
 import { artSrc } from "../content/images.js";
 import { isRewardKey } from "../content/laika.js";
 import { MAZE_TILE } from "../content/maze-patterns.js";
+import { drawPartFx } from "../content/tank-icon.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
 import { customAccValue, getCustomArt, isCustomKey } from "./custom-box-art.js";
 import { artOf, customBoxSheet, picCacheLoad, picCacheSave } from "./garage-boxes.js";
@@ -83,6 +84,18 @@ function partOfImg(img) {
   return partUrls[u] || null;
 }
 
+// a see-through paint's effect, when the picture is its paint or its garage can picture
+function readCanFx(img, rep, f) {
+  if (rep) {
+    return f && PAINT_FX[rep] ? PAINT_FX[rep] : null;
+  }
+  if (!String(img.src).startsWith("data:")) {
+    return null;
+  }
+  const key = Object.keys(PAINT_FX).find((k) => GARAGE_PICS["i:" + k] === img.src);
+  return key ? PAINT_FX[key] : null;
+}
+
 export function startDrawSwap() {
   // Box pictures for the Swatches tabs: the same saved pictures the garage uses (drawn once, then remembered),
   // and any not drawn yet are made one at a time so opening the panel doesn't stall the game.
@@ -90,14 +103,80 @@ export function startDrawSwap() {
   origDrawImage = CanvasRenderingContext2D.prototype.drawImage;
   CanvasRenderingContext2D.prototype.drawImage = function (img, ...a) {
     try {
+      // a part painted in a see-through paint, put on the tank: faint, with its outline (the game then adds its shading)
+      if (img instanceof HTMLCanvasElement && img.__ttclFx && img !== this.canvas) {
+        const fx = img.__ttclFx;
+        img.__ttclFx = null;
+        drawPartFx(
+          this,
+          img,
+          img.__ttclFxPart === "turret" ? fx : Object.assign({}, fx, { glint: 0 }),
+          img.width,
+          img.height,
+        ); // (the glint on the dome only)
+        this.__ttclFxShade = fx.shade;
+        return;
+      }
+      // the dark outline round a tank with see-through parts: traced round its solid parts only, or it darkens the faint ones
+      if (img instanceof HTMLCanvasElement && img.__ttclHasFx && this.globalCompositeOperation === "destination-atop") {
+        img.__ttclHasFx = false;
+        const solid = document.createElement("canvas");
+        solid.width = img.width;
+        solid.height = img.height;
+        const sg = solid.getContext("2d", { willReadFrequently: true });
+        sg.drawImage(img, 0, 0);
+        const px = sg.getImageData(0, 0, solid.width, solid.height);
+        for (let i = 3; i < px.data.length; i += 4) {
+          if (px.data[i] < 128) {
+            px.data[i] = 0;
+          }
+        }
+        sg.putImageData(px, 0, 0);
+        return origDrawImage.call(this, solid, ...a);
+      }
       if (img instanceof HTMLImageElement) {
+        if (this.__ttclFxShade != null) {
+          const was = this.globalAlpha;
+          this.globalAlpha = was * this.__ttclFxShade;
+          this.__ttclFxShade = null;
+          try {
+            return origDrawImage.call(this, img, ...a);
+          } finally {
+            this.globalAlpha = was;
+          }
+        } // (that part's shading, as faint)
         let rep = drawSwap.get(img);
         if (rep === undefined) {
           const m = /[?&]ttcl=([\w-]+)/.exec(img.src || "");
           rep = m ? m[1] : null;
           drawSwap.set(img, rep);
         }
+        if (this.globalCompositeOperation === "copy") {
+          this.canvas.__ttclFx = (rep && PAINT_FX[rep]) || null;
+        } // (the game paints a part here first, then cuts it to shape and puts it on the tank)
         const f = rep && artOf(rep);
+        // a see-through paint's spray can (the game masks the can's picture onto the can shape): drawn faint, with its outline
+        const canFx =
+          this.globalCompositeOperation === "source-atop" && !this.canvas.__ttclCan ? readCanFx(img, rep, f) : null;
+        if (canFx) {
+          const width = this.canvas.width,
+            height = this.canvas.height,
+            can = document.createElement("canvas");
+          can.width = width;
+          can.height = height;
+          can.__ttclCan = true;
+          const cg = can.getContext("2d");
+          cg.drawImage(this.canvas, 0, 0);
+          cg.globalCompositeOperation = "source-atop";
+          cg.drawImage(img, ...a);
+          const op = this.globalCompositeOperation;
+          this.clearRect(0, 0, width, height);
+          this.globalCompositeOperation = "source-over";
+          drawPartFx(this, can, Object.assign({}, canFx, { fill: canFx.fill * 2.5 }), width, height); // (tinted a bit more, to tell the glass colours apart)
+          this.globalCompositeOperation = op;
+          this.canvas.__ttclHasFx = false;
+          return;
+        }
         // not drawn yet: ask for it, and the tank is redrawn when it's ready
         if (rep && !f && !swapAsked.has(rep)) {
           swapAsked.add(rep);
@@ -131,6 +210,9 @@ export function startDrawSwap() {
           this.fillStyle = fs;
           return;
         }
+        if (this.canvas.__ttclFx && this.globalCompositeOperation === "destination-atop") {
+          this.canvas.__ttclFxPart = partOfImg(img);
+        } // (which part a see-through paint is on)
         // a part mask right after a Color Lab paint (the game paints each part as: paint, then that part's shape):
         // swap in the paint laid out for that part
         if (!rep && this.globalCompositeOperation === "destination-atop") {

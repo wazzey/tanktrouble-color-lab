@@ -2387,6 +2387,41 @@ export function buildPaintPatterns() {
       return hsl(h, 0.55, 0.8 + (fbm(x / 15, y / 15, 35) - 0.5) * 0.2);
     }),
   );
+  P["pt-clear"] = tile((g) => {
+    for (let y = 0; y < HH; y += 8) {
+      for (let x = 0; x < W; x += 25) {
+        g.fillStyle = (x / 25 + y / 8) % 2 ? "#d3d8e2" : "#f7f9fc";
+        g.fillRect(x, y, 25, 8);
+      }
+    }
+  }); // (the usual see-through checks, so it reads as Transparent on the can)
+  for (const [k, top, col] of [
+    ["pt-glass", "#ffffff", "#bcdcec"],
+    ["pt-glass-blue", "#cfe6ff", "#3d8ff0"],
+    ["pt-glass-green", "#d2f7e3", "#2fc77a"],
+    ["pt-glass-pink", "#ffd9ee", "#ef4fa8"],
+    ["pt-glass-smoke", "#b6bac4", "#3c4049"],
+  ]) {
+    P[k] = tile((g) => {
+      const gr = g.createLinearGradient(0, 0, 0, HH);
+      gr.addColorStop(0, top);
+      gr.addColorStop(1, col);
+      g.fillStyle = gr;
+      g.fillRect(0, 0, W, HH);
+      g.fillStyle = "rgba(255,255,255,.75)";
+      for (const [x, w] of [
+        [90, 46],
+        [170, 16],
+      ]) {
+        g.beginPath();
+        g.moveTo(x, 0);
+        g.lineTo(x + w, 0);
+        g.lineTo(x + w - 120, HH);
+        g.lineTo(x - 120, HH);
+        g.fill();
+      }
+    });
+  } // (a shine so the cans read as glass; on the tank it's drawn faint, by drawPartFx)
   P["pt-rainbow"] = tile((g) => {
     for (let k = 0; k < 7; k++) {
       g.fillStyle = ["#ff3b3b", "#ff9d1c", "#ffe23b", "#3bd14a", "#2fa8ff", "#5b4bff", "#b23bff"][k];

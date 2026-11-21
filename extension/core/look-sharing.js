@@ -580,8 +580,8 @@ export function shareMyLooks(force, soon) {
 }
 // a request's picture on your own tank (🧩 Request > Try it on): only on your screen, never saved or shared
 let tryOn = null;
-export function applyTryOn(pid, slot, key) {
-  tryOn = pid ? { pid: String(pid), slot, key } : null;
+export function applyTryOn(pid, acc) {
+  tryOn = pid ? { pid: String(pid), acc } : null; // acc: { slot: "ttcl:key" }
 }
 export function getOverride(id, now) {
   if (!SETTINGS.on) {
@@ -593,7 +593,7 @@ export function getOverride(id, now) {
   const team = teamLookFor(String(id)),
     look = team ? Object.assign({}, readLookFor(id, now), team) : readLookFor(id, now); // (playing with a teammate: the team's look over its own)
   if (tryOn && tryOn.pid === String(id)) {
-    return Object.assign({}, look, { acc: Object.assign({}, look && look.acc, { [tryOn.slot]: "ttcl:" + tryOn.key }) });
+    return Object.assign({}, look, { acc: Object.assign({}, look && look.acc, tryOn.acc) });
   }
   return look;
 }

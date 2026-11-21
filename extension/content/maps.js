@@ -33,6 +33,7 @@ export function mapFrame(game, name) {
     return null;
   }
 }
+export const SHIELD_CRATE = 7; // the shield's crate (TankTrouble moved it from 6 when it added the frag bomb)
 export function crateGlyph(src, fr, n) {
   // the weapon symbol from the game's own crate (dark marks; the shield's light ring)
   const c = document.createElement("canvas");
@@ -47,7 +48,7 @@ export function crateGlyph(src, fr, n) {
       const i = (y * 64 + x) * 4,
         l = 0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2],
         inside = x >= 13 && x <= 51 && y >= 13 && y <= 51;
-      const on = inside && (n === 6 ? l > 185 : l < 110);
+      const on = inside && (n === SHIELD_CRATE ? l > 185 : l < 110);
       p[i] = p[i + 1] = p[i + 2] = 0;
       p[i + 3] = on ? 255 : 0;
     }
@@ -778,7 +779,7 @@ MAP_THEMES.deepsea = {
     g.fillStyle = "#a8842a";
     g.fillRect(9, 7, 1.5, 51);
     g.fillRect(50, 7, 1.5, 51);
-    g.fillStyle = k === 6 ? "#3d8fe0" : "#f1d08a";
+    g.fillStyle = k === SHIELD_CRATE ? "#3d8fe0" : "#f1d08a";
     g.beginPath();
     g.roundRect(15, 15, 34, 34, 5);
     g.fill();
@@ -786,7 +787,7 @@ MAP_THEMES.deepsea = {
     g.lineWidth = 2;
     g.stroke();
     if (glyph) {
-      drawGlyph(g, glyph, k === 6 ? "#ffffff" : "#3b2310", null);
+      drawGlyph(g, glyph, k === SHIELD_CRATE ? "#ffffff" : "#3b2310", null);
     }
   },
   decor: [
@@ -897,7 +898,7 @@ MAP_THEMES.arcade = {
     g.fillRect(1.5, h / 2 - 2.5, w - 3, 5);
   }, // a neon bar, square ends like the game's walls
   crate: (g, glyph, k) => {
-    const neon = k === 6 ? "#00e5ff" : "#ff2bd6";
+    const neon = k === SHIELD_CRATE ? "#00e5ff" : "#ff2bd6";
     g.fillStyle = "#0a0718";
     g.beginPath();
     g.roundRect(3, 3, 58, 58, 8);
@@ -917,7 +918,7 @@ MAP_THEMES.arcade = {
     g.roundRect(11, 11, 42, 42, 4);
     g.stroke();
     if (glyph) {
-      drawGlyph(g, glyph, k === 6 ? "#00e5ff" : "#fff200", neon);
+      drawGlyph(g, glyph, k === SHIELD_CRATE ? "#00e5ff" : "#fff200", neon);
     }
   },
   decor: [

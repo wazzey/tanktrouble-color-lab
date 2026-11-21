@@ -285,6 +285,9 @@ async function ensureTables(env) {
   try {
     await env.DB.prepare("ALTER TABLE logged ADD COLUMN srv TEXT").run();
   } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE replies ADD COLUMN item INTEGER").run();
+  } catch {} // (the Community item an approved request's reply is about)
   for (const t of ["bcast", "bcast_log"]) {
     try {
       await env.DB.prepare("ALTER TABLE " + t + " ADD COLUMN zip INTEGER").run();
@@ -1760,7 +1763,8 @@ async function feedbackOf(env, kh) {
     ).results || [];
   for (const it of items) {
     it.replies =
-      (await env.DB.prepare("SELECT text, at FROM replies WHERE fid = ? ORDER BY at").bind(it.id).all()).results || [];
+      (await env.DB.prepare("SELECT text, at, item FROM replies WHERE fid = ? ORDER BY at").bind(it.id).all())
+        .results || [];
   }
   return items;
 }
@@ -2668,7 +2672,8 @@ async function sendItemRequest(env, req) {
     num = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v) || 0)),
     place = { x: num(p.x, 0, 640), y: num(p.y, 0, 384), size: num(p.size, 0.05, 4) || 1, turn: num(p.turn, -180, 180) },
     pic = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.pic || "")),
-    shot = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(b.preview || ""));
+    shot = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(b.preview || "")),
+    orig = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.orig || ""));
   if (name.length < 2 || !slot || !pic) {
     return json({ error: "a name, a slot and a PNG picture are needed" }, 400);
   }
@@ -2734,6 +2739,13 @@ async function sendItemRequest(env, req) {
       "on-a-tank." + (shot[1] === "png" ? "png" : "jpg"),
     );
   }
+  if (orig && orig[1].length < 1400000) {
+    fd.append(
+      "files[2]",
+      new Blob([Uint8Array.from(atob(orig[1]), (c) => c.charCodeAt(0))], { type: "image/jpeg" }),
+      "as-uploaded.jpg",
+    );
+  } // (what the player uploaded, before Color Lab cut anything away)
   const r = await discordPost(env, "/channels/" + String(env.REQUESTS_CHANNEL_ID).trim() + "/messages", {
     method: "POST",
     body: fd,
@@ -2938,13 +2950,14 @@ async function itemAction(env, i, id, reply) {
       .run();
   }
   if (rq.fid && rq.status === "waiting") {
-    await env.DB.prepare("INSERT INTO replies (fid, text, at) VALUES (?, ?, ?)")
+    await env.DB.prepare("INSERT INTO replies (fid, text, at, item) VALUES (?, ?, ?, ?)")
       .bind(
         rq.fid,
         ok
           ? "✅ Your item " + rq.name + " was added! It's in the garage's Community box for everyone 🧩"
           : "Your item " + rq.name + " wasn't added" + (why ? ": " + why : ""),
         Date.now(),
+        ok ? rq.id : null,
       )
       .run();
   }

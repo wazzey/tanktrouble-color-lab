@@ -6,10 +6,30 @@ export const TUT_VER = 21,
   TUT_LABEL = "v1.5.0";
 export const WHATS_NEW = [
   // [version, emoji, text] - version 1: the first v2.6 notes, version 2: added since
+  ...(DEV_BUILD
+    ? [
+        [
+          21,
+          "🧩",
+          "<b>Request an item</b> (new 🧩 tab): make your own accessory with the 📖 step by step guide, try it on your tank and send it in. Approved ones go in the new <b>Community</b> box for everyone, with your name on them",
+        ],
+      ]
+    : []), // (item requests: not open to players yet)
+  [21, "🫧", "<b>Glass box</b>: see-through Transparent and Glass paints, plus Blue, Green, Pink and Smoke Glass"],
   [
     21,
-    "🧩",
-    "<b>Request an item</b> (new 🧩 tab): upload your own accessory, place it on your tank and send it in. Approved ones go in the new <b>Community</b> box for everyone, with your name on them",
+    "✨",
+    "<b>Item effects</b> (garage): switch the item you're wearing to Glass, Transparent or its other versions, and back to the original",
+  ],
+  [
+    21,
+    "💚",
+    "<b>Backer items</b>: the Backer Treads, Eye Mask, Skull and K in 9 colours and a rainbow (new <b>Backer</b> box), and in 21 pattern paints (in each paint's own box)",
+  ],
+  [
+    21,
+    "💥",
+    "<b>Frag bombs</b>: show on themed weapon crates, and take your bullet colour when coloured bullets are on",
   ],
   [
     21,

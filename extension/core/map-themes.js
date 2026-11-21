@@ -265,10 +265,9 @@ function buildMapSheet(game, base, key) {
     return fav;
   }; // the floor's average colour
   const glyphs = [];
-  for (let n = 0; n < 7; n++) {
-    const f = orig("crate0-" + n);
-    glyphs.push(f ? crateGlyph(src, f, n) : null);
-  }
+  for (let n = 0; orig("crate0-" + n); n++) {
+    glyphs.push(crateGlyph(src, orig("crate0-" + n), n));
+  } // (every weapon the game has a crate for, new ones included)
   for (const f of fd.getFrames()) {
     const n = f.name,
       fr = { x: f.x, y: f.y, w: f.width, h: f.height };
@@ -351,7 +350,7 @@ function buildMapSheet(game, base, key) {
           }
         }
       });
-    } else if ((m = /^crate(\d+)-(\d)$/.exec(n))) {
+    } else if ((m = /^crate(\d+)-(\d+)$/.exec(n))) {
       const k = +m[2],
         obj = SETTINGS.crateStyle !== "box" && !perfOn() && OBJ_CRATES[key];
       if (obj) {
@@ -373,7 +372,7 @@ function buildMapSheet(game, base, key) {
         g.drawImage(src, fr.x, fr.y, fr.w, fr.h, 0, 0, w, h);
         g.globalCompositeOperation = "source-over";
       });
-    } else if (/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(n) && shots) {
+    } else if (/^(bullet|doubleBarrel|shotgun|gatlingGun|fragBomb)$/.test(n) && shots) {
       const mk = document.createElement("canvas");
       mk.width = fr.w;
       mk.height = fr.h;
@@ -390,8 +389,8 @@ function buildMapSheet(game, base, key) {
           BULLET_STYLE[key] && key !== "graffiti" ? floorAvg() : null,
         ),
       );
-    } else if (n === "mineShrapnel") {
-      // a mine's shrapnel: the map's bullet colour (plain light shrapnel on a dark floor with plain bullets), so it shows on every map
+    } else if (n === "mineShrapnel" || n === "shrapnel") {
+      // a mine's or frag bomb's shrapnel: the map's bullet colour (plain light shrapnel on a dark floor with plain bullets), so it shows on every map
       const fl = floorAvg(),
         dk = (0.3 * fl[0] + 0.59 * fl[1] + 0.11 * fl[2]) / 255 < 0.45,
         col = shots ? bulletOnFloor(BULLET_COLOR[key] || T.bullet[0], fl) : dk ? "#eef0f4" : null;
@@ -620,7 +619,7 @@ function ownerTurret(id) {
   return null;
 }
 function bulletSkin(sprite, id, frame) {
-  if (!/^(bullet|doubleBarrel|shotgun|gatlingGun)$/.test(frame) || perfOn()) {
+  if (!/^(bullet|doubleBarrel|shotgun|gatlingGun|shrapnel|fragBomb)$/.test(frame) || perfOn()) {
     return;
   }
   const p = sprite.gameController && sprite.gameController.getProjectile && sprite.gameController.getProjectile(id);
@@ -798,6 +797,30 @@ function patchProjectiles(obj) {
     };
   }
 }
+function patchFragShots(obj) {
+  // the frag bomb and the shrapnel it bursts into: coloured like bullets (each class has one picture, given on creation)
+  const P = obj && Object.getPrototypeOf(obj),
+    frame = obj && obj.frameName;
+  if (!P || P.__ttclFrag || typeof P.spawn !== "function") {
+    return;
+  }
+  P.__ttclFrag = true;
+  const orig = P.spawn;
+  P.spawn = function (x, y, id) {
+    try {
+      if (this.__ttclBullet && this.__ttclBulletOrig) {
+        PIXI.Sprite.prototype.setTexture.call(this, this.__ttclBulletOrig);
+        this.scale.set(this.__ttclScale[0], this.__ttclScale[1]);
+        this.__ttclBullet = false;
+      }
+    } catch {} // (a reused picture starts plain: its last owner's colour isn't kept)
+    const r = orig.apply(this, arguments);
+    try {
+      bulletSkin(this, id, frame);
+    } catch {}
+    return r;
+  };
+}
 function patchMissiles(obj) {
   const P = obj && Object.getPrototypeOf(obj);
   if (
@@ -960,6 +983,9 @@ export function hookMapGroups() {
       }
       if (child && child.key === "game" && child.glow) {
         patchMines(child);
+      }
+      if (child && child.key === "game" && child.gameController && /^(shrapnel|fragBomb)$/.test(child.frameName)) {
+        patchFragShots(child);
       }
       if (child && child.key === "game" && child.gameController && typeof child.updateTarget === "function") {
         patchMissiles(child);
