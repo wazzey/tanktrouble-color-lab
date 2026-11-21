@@ -460,8 +460,8 @@ const addBackerVariant = (item, id, label, box, extra) => {
   };
 };
 for (const item of BACKER_ITEMS) {
-  for (const [id, label, hue] of BACKER_COLOURS) {
-    addBackerVariant(item, id, label, "backer", { hue, black: id === "black" });
+  for (const [id, label, hue, avg] of BACKER_COLOURS) {
+    addBackerVariant(item, id, label, "backer", { hue, black: id === "black", avg });
   }
 }
 const BACKER_PAINTS = [
@@ -506,7 +506,7 @@ const BACKER_PAINTS = [
 ]; // (the box each paint is in; Galaxy lists items with no box)
 const backerColour = (id) => {
   const found = BACKER_COLOURS.find((c) => c[0] === id);
-  return { hue: found[2], black: id === "black" };
+  return { hue: found[2], black: id === "black", avg: found[3] };
 };
 for (const [first, second] of [
   ["red", "black"],

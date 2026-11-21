@@ -37,7 +37,7 @@ import {
   wantGarageBox,
 } from "./garage.js";
 import { bgAdd, garageAllOn, garageAllRaw, garageMode, syncGarageBack } from "./garage-boxes.js";
-import { mazeFeature } from "./maze.js";
+import { mazeBackerTreads, mazeFeature } from "./maze.js";
 import { lightUrl } from "./palette.js";
 import { $, PARTS, toast } from "./panel.js";
 import { MAX_PRESETS } from "./panel-actions.js";
@@ -1619,7 +1619,7 @@ export function renderGarageMaze() {
     mazeFeature() &&
     garageAllOn(gid) &&
     !(SETTINGS.hide && SETTINGS.hide.gmz) &&
-    !!(p && PARTS.some(([k]) => isPat(p[k]))); // only when the tank has a pattern paint (keeps the bar on one line)
+    !!(p && (PARTS.some(([k]) => isPat(p[k])) || mazeBackerTreads(p))); // only when the tank has a pattern paint or Backer Treads (keeps the bar on one line)
   if (!show) {
     if (box) {
       box.remove();
@@ -1640,7 +1640,8 @@ export function renderGarageMaze() {
   } // (on its own line under the buttons, so showing it never moves them)
   box.innerHTML = '<span title="Show these patterns in the maze too">In maze:</span>';
   for (const [k, label] of PARTS) {
-    const has = !!(p && isPat(p[k])),
+    const what = p && !isPat(p[k]) && k === "treads" ? "Backer Treads" : "pattern",
+      has = !!(p && (isPat(p[k]) || (k === "treads" && mazeBackerTreads(p)))),
       on = has && !(p.maze && p.maze[k] === false),
       btn = document.createElement("button");
     btn.type = "button";
@@ -1652,7 +1653,7 @@ export function renderGarageMaze() {
       "padding:1px 5px;min-width:0;" +
       (has ? "opacity:" + (on ? 1 : 0.45) : "opacity:.3;filter:grayscale(1);cursor:default");
     btn.title = has
-      ? label + ": pattern " + (on ? "shown" : "not shown") + " in the maze. Click to switch."
+      ? label + ": " + what + " " + (on ? "shown" : "not shown") + " in the maze. Click to switch."
       : label + ": no pattern paint on this part";
     if (has) {
       btn.addEventListener("click", (ev) => {
@@ -1671,7 +1672,7 @@ export function renderGarageMaze() {
           renderList();
         } catch {}
         renderGarageMaze();
-        toast(label + " pattern " + (on ? "off" : "on") + " in the maze");
+        toast(label + " " + what + " " + (on ? "off" : "on") + " in the maze");
       });
     }
     box.appendChild(btn);

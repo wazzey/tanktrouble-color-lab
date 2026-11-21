@@ -17,7 +17,8 @@ import {
   tintOf,
 } from "../content/maze-patterns.js";
 import { ASSET_MAP, getAssetMap } from "./assets.js";
-import { getCustomArt } from "./custom-box-art.js";
+import { BACKER_VARIANTS } from "../content/registries.js";
+import { getCustomArt, isCustomKey } from "./custom-box-art.js";
 import { lookupById } from "./game-socket.js";
 import { getOverride } from "./look-sharing.js";
 import { MAP_FLOOR_NOW, mapNext } from "./map-themes.js";
@@ -52,6 +53,9 @@ export function patternSourceFor(v) {
     return null;
   }
   const id = patId(v);
+  if (id.startsWith("bks~")) {
+    return backerStripesFor(id);
+  } // Backer Treads in a round
   if (GX_PAINT[id]) {
     if (CUSTOM_ART[id]) {
       return MAZE_TILE[id] || CUSTOM_ART[id];
@@ -329,6 +333,53 @@ function hookAimLines(game) {
     }
   }
 }
+// The Backer Treads a look wears, for the tank's own treads in a round (the game draws no items there): its blocks as
+// stripes across the treads, in turn for a two-tone ("p:bks~p:pt-lava~0xc8a020"), or null
+export function mazeBackerTreads(look) {
+  const worn = /^ttcl:(.+)$/.exec(String((look && look.acc && look.acc.front) || ""));
+  const variant = worn && isCustomKey(worn[1]) && BACKER_VARIANTS[worn[1]];
+  if (!variant || variant.item !== "front33") {
+    return null;
+  } // (isCustomKey lists a player's own colours the first time they're met)
+  const tone = (spec) =>
+    spec.rainbow
+      ? "p:45"
+      : spec.paint
+        ? "p:" + spec.paint.replace(/^gp/, "")
+        : spec.rgb
+          ? "0x" + spec.rgb.map((n) => n.toString(16).padStart(2, "0")).join("")
+          : spec.avg || null;
+  const sides = variant.two ? variant.two.map(tone) : [tone(variant), tone(variant)];
+  return sides[0] && sides[1] ? "p:bks~" + sides.join("~") : null;
+}
+const backerStripes = {};
+// the stripes' picture, laid out like a paint (the tread takes a 70x228 strip of it): blocks with dark gaps between
+function backerStripesFor(id) {
+  if (backerStripes[id]) {
+    return backerStripes[id];
+  }
+  const sides = id.split("~").slice(1),
+    fills = sides.map((side) => (isPat(side) ? patternSourceFor(side) : "#" + side.slice(2)));
+  if (fills.some((fill) => !fill)) {
+    return null;
+  } // (a paint still loading)
+  const c = document.createElement("canvas");
+  c.width = 400;
+  c.height = 240;
+  const g = c.getContext("2d");
+  g.fillStyle = "#2b2b2b";
+  g.fillRect(0, 0, 400, 240);
+  for (let i = 0; i * 32 < 240; i++) {
+    const fill = fills[i % 2];
+    if (typeof fill === "string") {
+      g.fillStyle = fill;
+      g.fillRect(0, i * 32 + 5, 400, 22);
+    } else {
+      g.drawImage(fill, 0, i * 32 + 5, 400, 22, 0, i * 32 + 5, 400, 22);
+    }
+  } // (about seven blocks along a tread, like the item)
+  return (backerStripes[id] = c);
+}
 export function mazePatternTick() {
   const game = mazeGame && mazeGame.deref();
   if (!game || !game.world || game.pendingDestroy || !game.state || game.state.current !== "Game") {
@@ -372,8 +423,10 @@ export function mazePatternTick() {
       if (mapNext !== undefined && isLaika(id)) {
         continue;
       } // between rounds: Laika's old tank is left alone, the next one arrives already dressed
-      mazeColours(t, id, ov);
-      const parts = mazeFeature() ? mazeParts(ov) : null;
+      const backer = ov && !(ov.maze && ov.maze.treads === false) ? mazeBackerTreads(ov) : null,
+        look = backer ? Object.assign({}, ov, { treads: backer }) : ov; // (Backer Treads worn: the treads in their look)
+      mazeColours(t, id, look);
+      const parts = mazeFeature() ? mazeParts(look) : null;
       const sheet = parts ? mazeSheetFor(game, t, parts) : null;
       mazeSet(t, sheet && parts.base ? sheet : null);
       mazeSet(t.turret, sheet && parts.turret ? sheet : null);

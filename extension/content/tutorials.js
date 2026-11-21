@@ -20,7 +20,7 @@ export const WHATS_NEW = [
   [
     21,
     "🛞",
-    "<b>Treads</b> (garage): the Backer Treads in one colour or two-tone, from TankTrouble's paints (Onyx, Gold, the camos...), Color Lab's paints or any colour",
+    "<b>Treads</b> (garage): the Backer Treads in one colour or two-tone, from TankTrouble's paints (Onyx, Gold, the camos...), Color Lab's paints or any colour, and they show on your treads in a round",
   ],
   [
     21,
