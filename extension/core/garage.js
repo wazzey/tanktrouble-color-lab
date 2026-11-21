@@ -462,6 +462,18 @@ function watchGarageMain(st) {
     return;
   }
   st.__ttclWatched = true;
+  const create = st.create;
+  st.create = function (...a) {
+    try {
+      return create.apply(this, a);
+    } catch (error) {
+      if (Date.now() - (st.__ttclRetry || 0) < 5000) {
+        throw error;
+      }
+      st.__ttclRetry = Date.now();
+      this.state.start("Load");
+    }
+  }; // (a garage reload that crossed one still loading leaves a tank without its garage: loaded again, not frozen)
   garageWheel(st);
   if (typeof st._setTankIconSelection === "function") {
     const ot = st._setTankIconSelection;
