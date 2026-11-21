@@ -333,8 +333,9 @@ function hookAimLines(game) {
     }
   }
 }
-// The Backer Treads a look wears, for the tank's own treads in a round (the game draws no items there): its blocks as
-// stripes across the treads, in turn for a two-tone ("p:bks~p:pt-lava~0xc8a020"), or null
+// The Backer Treads a look wears, for the tank's own treads in a round (the game draws no items there): its blocks
+// across the treads, in turn for a two-tone, with the tank's own tread colour between them like the item
+// ("p:bks~p:pt-lava~0xc8a020~0x7a2ac8"), or null
 export function mazeBackerTreads(look) {
   const worn = /^ttcl:(.+)$/.exec(String((look && look.acc && look.acc.front) || ""));
   const variant = worn && isCustomKey(worn[1]) && BACKER_VARIANTS[worn[1]];
@@ -350,15 +351,18 @@ export function mazeBackerTreads(look) {
           ? "0x" + spec.rgb.map((n) => n.toString(16).padStart(2, "0")).join("")
           : spec.avg || null;
   const sides = variant.two ? variant.two.map(tone) : [tone(variant), tone(variant)];
-  return sides[0] && sides[1] ? "p:bks~" + sides.join("~") : null;
+  const own = look.treads && (isPat(look.treads) || /^0x/i.test(look.treads)) ? look.treads : "-";
+  return sides[0] && sides[1] ? "p:bks~" + sides.join("~") + "~" + own : null;
 }
 const backerStripes = {};
-// the stripes' picture, laid out like a paint (the tread takes a 70x228 strip of it): blocks with dark gaps between
+// the blocks' picture, laid out like a paint (the tread takes a 70x228 strip of it): 12 blocks, the tread's own
+// colour or paint between them (dark when the look has none)
 function backerStripesFor(id) {
   if (backerStripes[id]) {
     return backerStripes[id];
   }
-  const sides = id.split("~").slice(1),
+  const parts = id.split("~"),
+    sides = [parts[1], parts[2]].concat(parts[3] !== "-" ? [parts[3]] : []),
     fills = sides.map((side) => (isPat(side) ? patternSourceFor(side) : "#" + side.slice(2)));
   if (fills.some((fill) => !fill)) {
     return null;
@@ -367,17 +371,23 @@ function backerStripesFor(id) {
   c.width = 400;
   c.height = 240;
   const g = c.getContext("2d");
-  g.fillStyle = "#2b2b2b";
-  g.fillRect(0, 0, 400, 240);
-  for (let i = 0; i * 32 < 240; i++) {
-    const fill = fills[i % 2];
+  const paint = (fill, x, y, w, h) => {
     if (typeof fill === "string") {
       g.fillStyle = fill;
-      g.fillRect(0, i * 32 + 5, 400, 22);
+      g.fillRect(x, y, w, h);
     } else {
-      g.drawImage(fill, 0, i * 32 + 5, 400, 22, 0, i * 32 + 5, 400, 22);
+      g.drawImage(fill, x, y, w, h, x, y, w, h);
     }
-  } // (about seven blocks along a tread, like the item)
+  };
+  if (fills[2]) {
+    paint(fills[2], 0, 0, 400, 240);
+  } else {
+    g.fillStyle = "#2b2b2b";
+    g.fillRect(0, 0, 400, 240);
+  }
+  for (let i = 0; i < 12; i++) {
+    paint(fills[i % 2], 0, Math.round(i * 19 + 3), 70, 13);
+  } // (blocks along a tread, like the item)
   return (backerStripes[id] = c);
 }
 export function mazePatternTick() {
