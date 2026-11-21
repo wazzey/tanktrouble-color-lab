@@ -584,11 +584,23 @@ export function picCacheLoad() {
           });
         }
       } else {
+        // new art: everything is drawn again, except Color Lab's box pictures that haven't changed (BOX_ART_REV), so
+        // the garage doesn't show plain boxes after an update. Only while the game's own art is the same
+        const was = m.__boxrev || {},
+          sameGame = String(m.__rev || "").split("|")[1] === rev.split("|")[1];
         await new Promise((res) => {
-          const tx = db.transaction("pics", "readwrite");
-          tx.objectStore("pics").clear();
-          tx.objectStore("pics").put(rev, "__rev");
-          tx.objectStore("pics").put(Object.assign({}, BOX_ART_REV), "__boxrev");
+          const tx = db.transaction("pics", "readwrite"),
+            st = tx.objectStore("pics");
+          for (const k in m) {
+            const b = /^box\d+$/.test(k) && !/^box91\d\d$/.test(k) ? picEntryBox(k) : "";
+            if (sameGame && b && (was[b] || "") === (BOX_ART_REV[b] || "") && !String(m[k]).startsWith("blob:")) {
+              out[k] = m[k];
+            } else {
+              st.delete(k);
+            }
+          }
+          st.put(rev, "__rev");
+          st.put(Object.assign({}, BOX_ART_REV), "__boxrev");
           tx.oncomplete = res;
           tx.onerror = res;
         });

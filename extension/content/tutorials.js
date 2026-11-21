@@ -15,7 +15,7 @@ export const WHATS_NEW = [
   [
     21,
     "💚",
-    "<b>Backer items</b>: the Backer Treads, Eye Mask, Skull and K in 9 colours and a rainbow (new <b>Backer</b> box), and in 21 pattern paints (in each paint's own box)",
+    "<b>Backer items</b>: the Backer Treads, Eye Mask, Skull and K in 9 colours and a rainbow (new <b>Backer</b> box), and in 38 Color Lab paints (in each paint's own box)",
   ],
   [
     21,
