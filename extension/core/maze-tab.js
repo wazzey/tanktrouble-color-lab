@@ -545,7 +545,7 @@ export function renderMazeTab() {
     [
       "on",
       "⚡ On",
-      "Fewer effects in a round: no floor decorations, pattern paints in their main colour in the maze, plain crates and bullets. Your looks and the map colours stay",
+      "Fewer effects in a round: no floor decorations, pattern paints in their main colour in the maze, plain crates and bullets. Your looks (Backer Treads and Glass too) and the map colours stay",
     ],
     ["game", "⚡ On + game's maps", "Like On, with the game's own maps instead of Color Lab's"],
   ]) {
