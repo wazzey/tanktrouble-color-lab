@@ -1,6 +1,7 @@
 import { TUT_VER, tutCard, tutLayer } from "../content/tutorials.js";
 import { shareCall } from "./look-sharing.js";
 import { toast } from "./panel.js";
+import { ttWhere } from "./presence.js";
 import { SETTINGS, TUTS, WAS_USER, saveSettings, tutSave } from "./storage.js";
 import { esc } from "./trophy-counting.js";
 import { consentChoose, tutChoose, tutClose, whatsNew } from "./tutorial-run.js";
@@ -216,6 +217,37 @@ export async function checkUpdate(force) {
   );
 }
 
+// A Color Lab update has downloaded: a small bar with Update now (hidden during a match), and the update goes in by
+// itself once TankTrouble sits in the background outside a match, so the refresh happens while nobody's looking
+function applyUpdateReady() {
+  if (document.getElementById("ttcl-updbar")) {
+    return;
+  }
+  const bar = document.createElement("div");
+  bar.id = "ttcl-updbar";
+  bar.style.cssText =
+    "position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:2147482000;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;font:13px Arial,sans-serif;color:#fff;background:rgba(0,0,0,.85);border:2px solid #427fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.5)";
+  bar.innerHTML = '<span>Color Lab update ready ✨</span><button type="button" class="small">⟳ Update now</button>';
+  let asked = false;
+  const update = () => {
+    if (asked) {
+      return;
+    }
+    asked = true;
+    bar.querySelector("span").textContent = "Updating…";
+    window.postMessage({ __ttcl: true, dir: "toExt", type: "updateNow" }, "*");
+  };
+  bar.querySelector("button").onclick = update;
+  document.body.appendChild(bar);
+  setInterval(() => {
+    const where = ttWhere();
+    bar.style.display = where === "game" ? "none" : "flex";
+    if (document.hidden && where === "lobby") {
+      update();
+    }
+  }, 2000);
+}
+
 export function startUpdates() {
   EXT_VER = document.documentElement.dataset.ttclVer || ""; // this copy's version (set by bridge.js)
   window.addEventListener("message", (e) => {
@@ -223,7 +255,7 @@ export function startUpdates() {
     if (e.source !== window || !d || d.__ttcl !== true || d.dir !== "toPage" || d.type !== "updateReady") {
       return;
     }
-    toast("Color Lab update ready ✨ It finishes when you close TankTrouble (or restart Chrome)", false, 12000);
+    applyUpdateReady();
   });
   UPDATE_STEPS =
     '<div style="font-size:12px;color:#aaa;margin:6px 0 0;line-height:1.55">' +

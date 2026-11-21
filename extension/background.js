@@ -568,20 +568,32 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   }
 });
 
-// The DEV build only: the page can ask for the extension to reload itself while testing, and open TankTrouble tabs
-// are refreshed after a reload so they run the new build (the old one stops working in them)
+// The DEV build only: the page can ask for the extension to reload itself while testing
 if (DEV_BUILD) {
   chrome.runtime.onMessage.addListener((m) => {
     if (m && m.type === "devReload") {
       setTimeout(() => chrome.runtime.reload(), 100);
     }
   });
-  chrome.runtime.onInstalled.addListener(async (details) => {
-    if (details.reason === "update") {
-      const open = await chrome.tabs.query({ url: ["https://tanktrouble.com/*", "https://*.tanktrouble.com/*"] });
-      for (const tab of open) {
-        chrome.tabs.reload(tab.id);
-      }
-    }
-  });
 }
+// The page asks for a waiting update now (the player's Update now, or a quiet moment with TankTrouble in the background):
+// Color Lab restarts on the new version and then refreshes the TankTrouble tabs, as the old one stops working in them
+chrome.runtime.onMessage.addListener((m) => {
+  if (m && m.type === "updateNow") {
+    chrome.storage.local.set({ ttcl_update_refresh: true }, () => chrome.runtime.reload());
+  }
+});
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason !== "update") {
+    return;
+  }
+  const asked = await chrome.storage.local.get("ttcl_update_refresh");
+  if (!DEV_BUILD && !(asked && asked.ttcl_update_refresh)) {
+    return;
+  } // (the DEV build always refreshes them after a reload while testing)
+  await chrome.storage.local.remove("ttcl_update_refresh");
+  const open = await chrome.tabs.query({ url: ["https://tanktrouble.com/*", "https://*.tanktrouble.com/*"] });
+  for (const tab of open) {
+    chrome.tabs.reload(tab.id);
+  }
+});

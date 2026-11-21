@@ -481,6 +481,14 @@ import { applyVault, readAccountKey, readDetails, readVault } from "./vault.js";
       } else {
         go();
       }
+    } else if (d.type === "updateNow") {
+      // (switch to the Color Lab update that has downloaded: the page only asks once it's been told of one)
+      try {
+        const p = chrome.runtime.sendMessage({ type: "updateNow" });
+        if (p && p.catch) {
+          p.catch(() => {});
+        }
+      } catch {}
     } else if (DEV_BUILD && d.type === "devReload") {
       // (reload the extension from the page while testing)
       try {
