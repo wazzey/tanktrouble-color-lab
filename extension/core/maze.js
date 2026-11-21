@@ -205,6 +205,20 @@ function mazeSheetFor(game, sprite, parts) {
     }
     tg.globalCompositeOperation = "multiply";
     tg.drawImage(img, f.x, f.y, f.width, f.height, 0, 0, f.width, f.height); // the game's shading
+    if (src.over) {
+      tg.globalCompositeOperation = "source-over";
+      tg.drawImage(
+        src.over,
+        0,
+        0,
+        Math.min(sw, (f.width * sw) / 68),
+        Math.min(sh, (f.height * sh) / 84),
+        0,
+        0,
+        f.width,
+        f.height,
+      );
+    }
     tg.globalCompositeOperation = "destination-in";
     tg.drawImage(img, f.x, f.y, f.width, f.height, 0, 0, f.width, f.height);
     sg.clearRect(f.x, f.y, f.width, f.height);
@@ -363,7 +377,18 @@ function backerStripesFor(id) {
   }
   const parts = id.split("~"),
     sides = [parts[1], parts[2]].concat(parts[3] !== "-" ? [parts[3]] : []),
-    fills = sides.map((side) => (isPat(side) ? patternSourceFor(side) : "#" + side.slice(2)));
+    fills = sides.map((side) => {
+      const source = isPat(side) ? patternSourceFor(side) : "#" + side.slice(2);
+      if (!source || !source.tanks) {
+        return source;
+      }
+      const tread = document.createElement("canvas");
+      tread.width = 400;
+      tread.height = 240;
+      tread.getContext("2d").drawImage(source.tanks, 68, 0, 12, 80, 0, 0, 70, 228);
+      tread.shaded = true;
+      return tread;
+    }); // (the game's own paints: their tread as on a painted tank in a round, so the pattern is the same size)
   if (fills.some((fill) => !fill)) {
     return null;
   } // (a paint still loading)
@@ -371,14 +396,21 @@ function backerStripesFor(id) {
   c.width = 400;
   c.height = 240;
   const g = c.getContext("2d");
+  const over = document.createElement("canvas");
+  over.width = 400;
+  over.height = 240;
   const paint = (fill, x, y, w, h) => {
     if (typeof fill === "string") {
       g.fillStyle = fill;
       g.fillRect(x, y, w, h);
     } else {
       g.drawImage(fill, x, y, w, h, x, y, w, h);
+      if (fill.shaded) {
+        over.getContext("2d").drawImage(fill, x, y, w, h, x, y, w, h);
+        c.over = over;
+      }
     }
-  };
+  }; // (blocks of the game's paints come shaded already: put back over the game's shading, as on a painted tank)
   if (fills[2]) {
     paint(fills[2], 0, 0, 400, 240);
   } else {
