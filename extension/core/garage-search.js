@@ -4,16 +4,27 @@ import {
   GX_PAINT,
   PAINT_FX,
   PATTERN_AVG,
+  PATTERN_NAMES,
   boxLabel,
   isPat,
   normHex,
   patId,
 } from "../content/colours.js";
+import { CUSTOM_ICONS } from "../content/custom-boxes.js";
 import { CUSTOM_BOX_IDS, GARAGE_PICS, placeGarageSearch, renderBoxNav } from "../content/garage-folders.js";
 import { BACKER_VARIANTS, GAME_NAMES, RESTYLE_ITEMS, normVal, showVal, toCss } from "../content/registries.js";
 import { tutCard, tutLayer } from "../content/tutorials.js";
 import { ASSET_MAP } from "./assets.js";
-import { CUSTOM_BOXES, customAccValue, customTitle, customUsable, gxPaintIcon, isCustomKey } from "./custom-box-art.js";
+import {
+  CUSTOM_BOXES,
+  customAccValue,
+  customTitle,
+  customUsable,
+  getCustomArt,
+  gxPaintIcon,
+  isCustomKey,
+  redrawBacker,
+} from "./custom-box-art.js";
 import { liveSockets, loggedInIds, refreshTanks, rpc } from "./game-socket.js";
 import {
   applySprayCanFx,
@@ -32,7 +43,16 @@ import { $, PARTS, toast } from "./panel.js";
 import { MAX_PRESETS } from "./panel-actions.js";
 import { afterPresetChange, renderList, updateSaveLabel } from "./saved-looks.js";
 import { uiConfirm } from "./settings.js";
-import { PLAYER_COLOR_MAP, SETTINGS, hasLook, presetSig, saveSettings, saveToStorage, syncActive } from "./storage.js";
+import {
+  PLAYER_COLOR_MAP,
+  SETTINGS,
+  allBoxes,
+  hasLook,
+  presetSig,
+  saveSettings,
+  saveToStorage,
+  syncActive,
+} from "./storage.js";
 import { setOpen, showTab } from "./tabs.js";
 import { esc } from "./trophy-counting.js";
 import { openHelp, tutClose } from "./tutorial-run.js";
@@ -1118,98 +1138,17 @@ function populateGarageFx(p) {
       row.querySelector(".o").appendChild(b);
     }
     if (fam.game === "front33") {
-      const current = /^bk-two-([a-z0-9-]+)_([a-z0-9-]+)-front33$/.exec(fam.current),
-        picked = current ? [current[1], current[2]] : ["pt-lava", "1a1a1a"],
-        paints = Object.keys(GX_PAINT)
-          .filter((key) => customUsable(key) && !PAINT_FX[key])
-          .sort((first, second) => GX_PAINT[first].name.localeCompare(GX_PAINT[second].name)),
-        pick = document.createElement("div");
-      let side = 0;
-      pick.style.cssText = "margin-top:6px;padding:6px;border-radius:8px;background:rgba(66,127,255,.15)";
-      pick.innerHTML =
-        '<div style="margin-bottom:4px"><b>Your own two-tone</b></div>' +
-        '<div class="sides" style="display:flex;gap:6px;margin-bottom:6px"></div>' +
-        '<div style="display:flex;gap:6px">' +
-        '<div class="paints" style="flex:1;display:flex;flex-wrap:wrap;gap:3px;max-height:96px;overflow:auto"></div>' +
-        '<label style="width:56px;text-align:center;cursor:pointer;color:#aaa;font-size:11px">' +
-        '<input type="color" class="colour" style="width:44px;height:44px;border:0;padding:0;background:none;cursor:pointer">' +
-        "<br>Any colour</label></div>" +
-        '<button type="button" class="small apply" style="margin-top:6px;width:100%">Apply</button>';
-      const swatch = (value, size) => {
-        const dot = document.createElement("span"),
-          url = /^[0-9a-f]{6}$/.test(value) ? null : gxPaintIcon(value);
-        dot.style.cssText =
-          "display:inline-block;flex:none;width:" +
-          size +
-          "px;height:" +
-          size +
-          "px;border-radius:50%;background:" +
-          (url
-            ? "url(" + url + ") center/cover"
-            : "#" + (/^[0-9a-f]{6}$/.test(value) ? value : String(GX_PAINT[value].avg).slice(2)));
-        return dot;
+      const treads = document.createElement("button");
+      treads.type = "button";
+      treads.className = "small";
+      treads.style.cssText = "margin-top:2px;width:100%";
+      treads.textContent = "🛞 Colours, paints and two-tone: Treads";
+      treads.onclick = () => {
+        p.remove();
+        garageTreadsPanel(document.querySelector(".garage form .ttcl-gtreads") || treads);
       };
-      const populateSides = () => {
-        const host = pick.querySelector(".sides");
-        host.textContent = "";
-        for (const index of [0, 1]) {
-          const chip = document.createElement("button");
-          chip.type = "button";
-          chip.className = "small";
-          chip.style.cssText =
-            "flex:1;display:flex;align-items:center;gap:5px;min-width:0" +
-            (index === side ? ";box-shadow:0 0 0 2px #ffd54a" : ";opacity:.55"); // (the slot being picked for stands out)
-          const chipName = document.createElement("span");
-          chipName.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
-          chipName.textContent = /^[0-9a-f]{6}$/.test(picked[index])
-            ? "#" + picked[index]
-            : GX_PAINT[picked[index]].name;
-          chip.append(swatch(picked[index], 16), chipName);
-          chip.title = "Tread blocks " + (index + 1) + ": click, then pick a paint or a colour below";
-          chip.onclick = () => {
-            side = index;
-            populateSides();
-          };
-          host.appendChild(chip);
-        }
-        const colourPicked = /^[0-9a-f]{6}$/.test(picked[side]);
-        pick.querySelector(".colour").value = "#" + (colourPicked ? picked[side] : "e02020");
-        pick.querySelector(".colour").style.outline = colourPicked ? "2px solid #ffd54a" : "";
-        for (const dot of pick.querySelectorAll(".paints span")) {
-          dot.style.boxShadow =
-            dot.dataset.key === picked[side] ? "0 0 0 3px #ffd54a" : "0 0 0 1px rgba(255,255,255,.35)";
-        } // (that slot's paint or colour is ringed)
-      };
-      for (const key of paints) {
-        const dot = swatch(key, 22);
-        dot.title = GX_PAINT[key].name;
-        dot.dataset.key = key;
-        dot.style.cursor = "pointer";
-        dot.onclick = () => {
-          picked[side] = key;
-          populateSides();
-        };
-        pick.querySelector(".paints").appendChild(dot);
-      }
-      pick.querySelector(".colour").oninput = (event) => {
-        picked[side] = event.target.value.slice(1);
-        populateSides();
-      };
-      pick.querySelector(".apply").onclick = () => {
-        const key = "bk-two-" + picked[0] + "_" + picked[1] + "-front33",
-          value = customAccValue(key);
-        if (!value) {
-          toast("Not ready yet, try again in a moment", true);
-          return;
-        }
-        garageApply({ kind: "acc", slot, value, name: "Your Two-Tone Backer Treads" });
-        for (const ms of [900, 2500]) {
-          setTimeout(() => p.isConnected && p._redraw(), ms);
-        }
-      };
-      populateSides();
-      row.appendChild(pick);
-    } // (the Backer Treads in any two paints or colours: pick a side, then a paint on the left or a colour on the right)
+      row.appendChild(treads);
+    } // (the Backer Treads' colours have their own panel)
     body.appendChild(row);
   }
   if (!body.children.length) {
@@ -1259,10 +1198,10 @@ function readItemFamily(slot, worn) {
       }
     }
     for (const k in BACKER_VARIANTS) {
-      if (BACKER_VARIANTS[k].item === game && customUsable(k) && (!k.startsWith("bk-two-") || k === key)) {
+      if (BACKER_VARIANTS[k].item === game && customUsable(k) && (game !== "front33" || k === key)) {
         options.push([BACKER_VARIANTS[k].label, customAccValue(k), k]);
       }
-    } // (a green Backer item's other colours, and the player's own two-tone only while it's worn)
+    } // (a green Backer item's other colours; the Backer Treads' are in the 🛞 Treads panel, only the worn one here)
   } else {
     options.push(["Original", customAccValue(custom), custom]);
   }
@@ -1275,6 +1214,207 @@ function readItemFamily(slot, worn) {
     current: key || game,
     options: options.filter((o) => o[1]),
   };
+}
+// 🛞 Treads: the Backer Treads in one colour or two-tone, from TankTrouble's paints, Color Lab's paints or any colour
+function garageTreadsPanel(btn) {
+  let p = document.getElementById("ttcl-gtreads");
+  if (p) {
+    p.remove();
+    return;
+  }
+  p = document.createElement("div");
+  p.id = "ttcl-gtreads";
+  p.style.cssText =
+    "position:fixed;z-index:2147482500;width:320px;font:12px Arial,sans-serif;color:#eee;background:rgba(0,0,0,.92);border:3px solid #427fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden";
+  p.innerHTML =
+    '<div style="display:flex;align-items:center;padding:5px 8px;background:linear-gradient(#427fff,#0014ab)"><span style="flex:1;font:17px TankTrouble,Arial,sans-serif">🛞 Treads</span><span class="x" title="Close" style="cursor:pointer;font:bold 15px Arial;padding:0 4px">✕</span></div><div class="r" style="padding:7px"></div>';
+  document.body.appendChild(p);
+  p.querySelector(".x").onclick = () => p.remove();
+  populateGarageTreads(p);
+  const r = btn.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(innerWidth - 334, r.left + r.width / 2 - 160)) + "px";
+  p.style.top = Math.max(8, r.top - p.offsetHeight - 8) + "px";
+}
+function populateGarageTreads(p) {
+  const body = p.querySelector(".r"),
+    pid = selPid();
+  if (!pid || !garageAllOn(pid)) {
+    body.textContent = "Switch the garage to Color Lab (the button by Done) to change your treads.";
+    return;
+  }
+  const icon = readGarageIcons().find((i) => String(i.playerId) === String(pid)),
+    worn = /(?:^ttcl:|[?&]ttcl=)([\w-]+)/.exec(String((icon && icon.accessories && icon.accessories.front) || "")),
+    wornKey = worn ? worn[1] : "",
+    two = /^bk-two-([a-z0-9-]+)_([a-z0-9-]+)-front33$/.exec(wornKey),
+    one = /^bk-one-([a-z0-9-]+)-front33$/.exec(wornKey),
+    wornPaint = BACKER_VARIANTS[wornKey] && BACKER_VARIANTS[wornKey].paint;
+  let mode = two ? "two" : "one",
+    side = 0,
+    source = "game";
+  const picked = two ? [two[1], two[2]] : [one ? one[1] : wornPaint || "gp42", "1a1a1a"];
+  const isColour = (value) => /^[0-9a-f]{6}$/.test(value);
+  const nameOf = (value) =>
+    isColour(value)
+      ? "#" + value
+      : /^gp\d+$/.test(value)
+        ? PATTERN_NAMES[value.slice(2)]
+        : GX_PAINT[value]
+          ? GX_PAINT[value].name
+          : value;
+  const swatch = (value, size) => {
+    const dot = document.createElement("span"),
+      gameUrl = /^gp\d+$/.test(value) && ASSET_MAP && ASSET_MAP["colours/colour" + value.slice(2)],
+      url = gameUrl || (isColour(value) || !GX_PAINT[value] ? null : gxPaintIcon(value));
+    dot.style.cssText =
+      "display:inline-block;flex:none;width:" +
+      size +
+      "px;height:" +
+      size +
+      "px;border-radius:50%;background:" +
+      (gameUrl
+        ? "url(" + gameUrl + ") 50% 70%/500% auto"
+        : url
+          ? "url(" + url + ") center/cover"
+          : "#" + (isColour(value) ? value : String((GX_PAINT[value] || { avg: "0x888888" }).avg).slice(2)));
+    return dot;
+  };
+  // one colour: the box's own treads in that paint when there are some, so it's the same item as on the shelf
+  const readTreadsKey = () => {
+    if (mode === "two") {
+      return "bk-two-" + picked[0] + "_" + picked[1] + "-front33";
+    }
+    const own = "bk-" + picked[0].replace(/^[a-z]{2}-/, "") + "-front33";
+    return BACKER_VARIANTS[own] && BACKER_VARIANTS[own].paint === picked[0] ? own : "bk-one-" + picked[0] + "-front33";
+  };
+  const gamePaints = Object.keys(PATTERN_NAMES).map((id) => "gp" + id),
+    gameColours = [];
+  for (const [id, values] of Object.entries(allBoxes())) {
+    for (const v of values) {
+      const hex = !isPat(v) && +id < 9000 ? normHex(v) : null;
+      if (hex && !gameColours.includes(hex.slice(2))) {
+        gameColours.push(hex.slice(2));
+      }
+    }
+  } // (TankTrouble's own plain colours, from its boxes)
+  const labPaints = Object.keys(GX_PAINT)
+    .filter((key) => customUsable(key) && !PAINT_FX[key])
+    .sort((first, second) => GX_PAINT[first].name.localeCompare(GX_PAINT[second].name));
+  body.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+    '<div class="pv" style="flex:none;width:84px;height:84px;border-radius:8px;background:#2a2d38 center/contain no-repeat;border:1px solid #444"></div>' +
+    '<div style="flex:1;min-width:0"><b class="nm"></b><div class="modes" style="display:flex;gap:4px;margin-top:6px"></div></div></div>' +
+    '<div class="sides" style="display:flex;gap:6px;margin-bottom:6px"></div>' +
+    '<div class="tabs" style="display:flex;gap:4px;margin-bottom:5px"></div>' +
+    '<div style="display:flex;gap:6px">' +
+    '<div class="paints" style="flex:1;display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;height:128px;overflow:auto"></div>' +
+    '<label style="width:56px;text-align:center;cursor:pointer;color:#aaa;font-size:11px">' +
+    '<input type="color" class="colour" style="width:44px;height:44px;border:0;padding:0;background:none;cursor:pointer">' +
+    "<br>Any colour</label></div>" +
+    '<button type="button" class="small apply" style="margin-top:6px;width:100%">Put on</button>';
+  const button = (host, text, active, onclick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "small";
+    b.style.cssText = "flex:1;min-width:0" + (active ? ";box-shadow:0 0 0 2px #ffd54a" : ";opacity:.55"); // (the one in use stands out)
+    b.textContent = text;
+    b.onclick = onclick;
+    host.appendChild(b);
+  };
+  let previewFor = "";
+  const populatePreview = () => {
+    const key = readTreadsKey(),
+      pv = body.querySelector(".pv");
+    previewFor = key;
+    body.querySelector(".nm").textContent =
+      mode === "two" ? nameOf(picked[0]) + " & " + nameOf(picked[1]) : nameOf(picked[0]);
+    pv.style.backgroundImage = "";
+    if (!customAccValue(key)) {
+      return;
+    } // (lists it the first time it's met)
+    getCustomArt(key)
+      .then(() => (CUSTOM_ICONS[key] ? null : redrawBacker(key)))
+      .then(() => {
+        if (previewFor === key && CUSTOM_ICONS[key]) {
+          pv.style.backgroundImage = "url(" + CUSTOM_ICONS[key].toDataURL() + ")";
+        }
+      })
+      .catch(() => {});
+  };
+  const populatePicker = () => {
+    const modes = body.querySelector(".modes"),
+      sides = body.querySelector(".sides"),
+      tabs = body.querySelector(".tabs"),
+      paints = body.querySelector(".paints");
+    modes.textContent = "";
+    button(modes, "One colour", mode === "one", () => {
+      mode = "one";
+      side = 0;
+      populatePicker();
+    });
+    button(modes, "Two-tone", mode === "two", () => {
+      mode = "two";
+      populatePicker();
+    });
+    sides.textContent = "";
+    sides.style.display = mode === "two" ? "flex" : "none";
+    for (const index of mode === "two" ? [0, 1] : []) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "small";
+      chip.style.cssText =
+        "flex:1;display:flex;align-items:center;gap:5px;min-width:0" +
+        (index === side ? ";box-shadow:0 0 0 2px #ffd54a" : ";opacity:.55"); // (the side being picked stands out)
+      const chipName = document.createElement("span");
+      chipName.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      chipName.textContent = nameOf(picked[index]);
+      chip.append(swatch(picked[index], 16), chipName);
+      chip.title = "Tread blocks " + (index + 1) + ": click, then pick a paint or a colour below";
+      chip.onclick = () => {
+        side = index;
+        populatePicker();
+      };
+      sides.appendChild(chip);
+    }
+    tabs.textContent = "";
+    button(tabs, "TankTrouble", source === "game", () => {
+      source = "game";
+      populatePicker();
+    });
+    button(tabs, "Color Lab", source === "lab", () => {
+      source = "lab";
+      populatePicker();
+    });
+    paints.textContent = "";
+    for (const value of source === "game" ? gamePaints.concat(gameColours) : labPaints) {
+      const dot = swatch(value, 22);
+      dot.title = nameOf(value);
+      dot.style.cursor = "pointer";
+      dot.style.boxShadow = value === picked[side] ? "0 0 0 3px #ffd54a" : "0 0 0 1px rgba(255,255,255,.35)"; // (the picked one is ringed)
+      dot.onclick = () => {
+        picked[side] = value;
+        populatePicker();
+      };
+      paints.appendChild(dot);
+    }
+    const colour = body.querySelector(".colour");
+    colour.value = "#" + (isColour(picked[side]) ? picked[side] : "e02020");
+    colour.style.outline = isColour(picked[side]) ? "2px solid #ffd54a" : "";
+    populatePreview();
+  };
+  body.querySelector(".colour").oninput = (event) => {
+    picked[side] = event.target.value.slice(1);
+    populatePicker();
+  };
+  body.querySelector(".apply").onclick = () => {
+    const key = readTreadsKey(),
+      value = customAccValue(key);
+    if (!value) {
+      toast("Not ready yet, try again in a moment", true);
+      return;
+    }
+    garageApply({ kind: "acc", slot: "front", value, name: customTitle(key) });
+  };
+  populatePicker();
 }
 function garageLooksPanel(btn) {
   let p = document.getElementById("ttcl-glooks");
@@ -1607,6 +1747,12 @@ export function addGarageButton() {
         showTab("req");
       });
     } // (item requests: not open to players yet)
+    mk(
+      "ttcl-gtreads",
+      "🛞 Treads",
+      "Backer Treads in one colour or two-tone, from TankTrouble's paints, Color Lab's paints or any colour (Color Lab)",
+      (x) => garageTreadsPanel(x),
+    );
     mk(
       "ttcl-gfx",
       "✨ Item effects",

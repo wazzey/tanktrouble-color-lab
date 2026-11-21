@@ -11,6 +11,7 @@ export const PUBLIC_BOXES = new Set([
   "backer",
   "glassfx", // (Glass and Transparent versions of items: no box of their own, made with the item effect switch)
   "backerfx", // (players' own two-tone Backer Treads: the same)
+  "gamepaint", // (Backer Treads in TankTrouble's pattern paints: shown in the game's own boxes)
   "holo",
   "heaven",
   "shadow",

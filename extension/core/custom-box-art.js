@@ -22,7 +22,7 @@ import {
   sakuraAcc,
 } from "../content/box-sakura.js";
 import { drawAura, drawEyewear } from "../content/box-shadow.js";
-import { ACC_BOXES, GX_ACC, GX_PAINT, PAINT_FX } from "../content/colours.js";
+import { ACC_BOXES, GX_ACC, GX_PAINT, PAINT_FX, PATTERN_NAMES } from "../content/colours.js";
 import {
   CUSTOM_ART,
   CUSTOM_ICONS,
@@ -125,21 +125,31 @@ function readFxAcc(key) {
   const name = (game ? GAME_NAMES[m[3]] : customTitle(m[3])) || m[3];
   return (GX_ACC[key] = { slot, name: (m[1] === "gls" ? "Glass " : "Transparent ") + name, box: "glassfx" });
 }
-// A player's own two-tone Backer Treads, picked in the item effect switch. Each side is a paint or a colour:
-// "bk-two-pt-lava_e02020-front33". Listed the first time it's met, like the Glass and Transparent versions
+// A player's own Backer Treads, picked in the 🛞 Treads panel: one colour or two-tone. Each side is a Color Lab paint,
+// a TankTrouble pattern paint (gp42) or a colour: "bk-one-gp42-front33", "bk-two-pt-lava_e02020-front33".
+// Listed the first time it's met, like the Glass and Transparent versions
+const backerTone = (side) =>
+  /^[0-9a-f]{6}$/.test(side)
+    ? { rgb: [0, 2, 4].map((n) => parseInt(side.slice(n, n + 2), 16)) }
+    : (GX_PAINT[side] && !PAINT_FX[side]) || (/^gp\d+$/.test(side) && PATTERN_NAMES[side.slice(2)])
+      ? { paint: side }
+      : null;
 function readBackerTwo(key) {
+  const one = /^bk-one-([a-z0-9-]+)-front33$/.exec(String(key));
+  if (one) {
+    const tone = backerTone(one[1]);
+    if (!tone) {
+      return null;
+    }
+    BACKER_VARIANTS[key] = Object.assign({ item: "front33", label: "Your colour" }, tone);
+    return (GX_ACC[key] = { slot: "front", name: "Your Backer Treads", box: "backerfx" });
+  }
   const m = /^bk-two-([a-z0-9-]+)_([a-z0-9-]+)-front33$/.exec(String(key));
   if (!m) {
     return null;
   }
-  const tone = (side) =>
-    /^[0-9a-f]{6}$/.test(side)
-      ? { rgb: [0, 2, 4].map((n) => parseInt(side.slice(n, n + 2), 16)) }
-      : GX_PAINT[side] && !PAINT_FX[side]
-        ? { paint: side }
-        : null;
-  const first = tone(m[1]),
-    second = tone(m[2]);
+  const first = backerTone(m[1]),
+    second = backerTone(m[2]);
   if (!first || !second) {
     return null;
   }
@@ -417,10 +427,13 @@ function drawCustomArt(key) {
   if (customReq[key]) {
     return customReq[key];
   }
-  if (BACKER_CAMO[key]) {
-    // the game's Emerald camo (Backer box) recoloured, cut from the hull and mirrored so it tiles like Color Lab's paints
+  const gamePaint = /^gp(\d+)$/.exec(key);
+  if (BACKER_CAMO[key] || gamePaint) {
+    // the game's Emerald camo (Backer box) recoloured, or one of the game's pattern paints as it is (gp42, for Backer
+    // Treads), cut from the hull and mirrored so it tiles like Color Lab's paints
+    const colour = "colours/colour" + (gamePaint ? gamePaint[1] : 33);
     customReq[key] = getAssetMap()
-      .then((map) => (map["colours/colour33"] ? loadImg(map["colours/colour33"]) : null))
+      .then((map) => (map[colour] ? loadImg(map[colour]) : null))
       .then((img) => {
         if (!img) {
           return null;
@@ -433,7 +446,7 @@ function drawCustomArt(key) {
         patch
           .getContext("2d")
           .drawImage(
-            drawBackerVariant(img, BACKER_CAMO[key]),
+            gamePaint ? img : drawBackerVariant(img, BACKER_CAMO[key]),
             200 * scale,
             235 * scale,
             200 * scale,

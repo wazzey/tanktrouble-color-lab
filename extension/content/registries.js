@@ -529,6 +529,9 @@ for (const item of BACKER_ITEMS) {
     addBackerVariant(item, paint.slice(3), GX_PAINT[paint].name, box, { paint });
   }
 }
+for (const id in PATTERN_NAMES) {
+  addBackerVariant("front33", "gp" + id, PATTERN_NAMES[id], "gamepaint", { paint: "gp" + id });
+} // (TankTrouble's own pattern paints, shown in the game box each paint comes from)
 GX_ACC["sk-a-turret111"] = { slot: "turret", name: "Sakura Petal Pile", box: "sakura" };
 GX_ACC["sk-a-front107"] = { slot: "front", name: "Sakura Petal Drift", box: "sakura" }; // the game's snow, as cherry blossom
 export function restyleAcc(img, kind, W, H) {

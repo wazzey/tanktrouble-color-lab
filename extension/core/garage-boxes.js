@@ -351,6 +351,9 @@ async function boxFolderOut(res, json, g, changed) {
   } else {
     boxes = g.boxes.filter((b) => boxInFolder(b.id, f));
   } // (Back is a button next to All / Done, not a box)
+  if (!boxes.length) {
+    boxes = [folderBox(FOLDER_GAME), folderBox(FOLDER_LAB)];
+  } // a folder with nothing in it (its boxes switched off in ⚙ Settings): the two folders, as an empty garage stops the game
   json.result.data = Object.assign({}, g, { boxes });
   const headers = new Headers(res.headers);
   headers.delete("content-encoding");
@@ -978,6 +981,19 @@ async function addCustomGarageBoxes(g, numType) {
         g.boxes.push(box);
       }
     }
+    const all = allBoxes();
+    for (const box of g.boxes) {
+      for (const v of all[box.id] || []) {
+        const key = isPat(v) ? "bk-gp" + patId(v) + "-front33" : null;
+        if (!key || !GX_ACC[key] || !(await garageQuick(key))) {
+          continue;
+        }
+        const value = trophyAccValue(key);
+        if (value) {
+          box.accessories.push({ type: "front", value, boxNumber: box.id });
+        }
+      }
+    } // (Backer Treads in each of the game's pattern paints, in the game box that paint comes from)
     picCacheSave();
   } catch {
   } finally {

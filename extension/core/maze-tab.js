@@ -660,6 +660,26 @@ export function renderMazeTab() {
         renderMazeTab();
       };
       icon.append(mapThumb(k), star);
+      if (pick && on) {
+        const dark = mapT(k).shade === "dark",
+          shade = document.createElement("span");
+        shade.textContent = dark ? "🌙" : "☀";
+        shade.title = dark ? "Dark version: click for the light one" : "Light version: click for the dark one";
+        shade.style.cssText =
+          "position:absolute;top:1px;right:1px;width:18px;height:18px;line-height:18px;text-align:center;cursor:pointer;font:12px Arial;border-radius:50%;box-shadow:0 0 0 2px #fff;background:" +
+          (dark ? "#1b2140" : "#ffd54a");
+        shade.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          SETTINGS.mapShade = dark ? "light" : "dark";
+          saveSettings();
+          try {
+            mapApplyNow(true);
+          } catch {}
+          renderMazeTab();
+        };
+        icon.appendChild(shade);
+      } // (the map you picked: switch it between light and dark right there)
       tile(
         mt,
         icon,

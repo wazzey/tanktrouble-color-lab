@@ -19,6 +19,16 @@ export const WHATS_NEW = [
   ],
   [
     21,
+    "🛞",
+    "<b>Treads</b> (garage): the Backer Treads in one colour or two-tone, from TankTrouble's paints (Onyx, Gold, the camos...), Color Lab's paints or any colour",
+  ],
+  [
+    21,
+    "🌙",
+    "<b>Light or dark</b> (Maze tab): the map you picked has its own button to switch it between light and dark",
+  ],
+  [
+    21,
     "💥",
     "<b>Frag bombs</b>: show on themed weapon crates, and take your bullet colour when coloured bullets are on",
   ],
